@@ -1,4 +1,4 @@
-# 要件定義 / Requirements — デジタルモンスター
+# 要件定義 / Requirements — AIモンスター
 
 > Kiro の **仕様主導型開発（Spec-driven development, レッスン1）** に沿って作成した要件書です。
 > ユーザーストーリーは EARS 記法（Easy Approach to Requirements Syntax）を意識して記述しています。

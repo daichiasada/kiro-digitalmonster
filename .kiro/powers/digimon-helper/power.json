@@ -1,7 +1,7 @@
 {
   "name": "digimon-helper",
   "version": "0.1.0",
-  "description": "デジタルモンスター育成ゲームの開発を支援する Kiro Power。成長段階やお世話アクションを追加する際に横断的に触るべき箇所（shared/backend/frontend/infra/tests）を手順化した再利用ワークフローを提供する。",
+  "description": "AIモンスター育成ゲームの開発を支援する Kiro Power。成長段階やお世話アクションを追加する際に横断的に触るべき箇所（shared/backend/frontend/infra/tests）を手順化した再利用ワークフローを提供する。",
   "keywords": [
     "digimon",
     "monster-raising",
