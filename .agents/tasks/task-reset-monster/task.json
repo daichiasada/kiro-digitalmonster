@@ -1,0 +1,7 @@
+{
+  "task_id": "task-reset-monster",
+  "task_description": "GitHub issue #20: add a reset feature to the digital-monster game. A reset control (guarded by a confirm step to prevent accidental resets) returns the current monster to its initial state (a fresh baby egg) — training count, stats, care counters, hunger, and elapsed time are all reset. Implemented consistently with the no-auth, browser-generated monsterId design: reset overwrites the existing DynamoDB record under the SAME monsterId with a fresh baby via the existing POST /monster endpoint (frontend-only; no new backend/infra). UI text is JA/EN. Commit on branch feat/reset-monster; the orchestrator pushes, opens the PR against main (linking #20), and redeploys.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
