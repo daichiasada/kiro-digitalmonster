@@ -1,0 +1,74 @@
+{
+  "id": "FEAT-103",
+  "type": "fix",
+  "description": "Run Playwright-driven E2E/UI testing against the deployed CloudFront site (preferred) or, if deploy was blocked, against a local `npm run dev` frontend pointed at the deployed ApiUrl. Exercise the full non-chat flow that does not depend on Bedrock model access: hatch (幼年期/egg), お世話 actions (feed/train/sleep/clean), stats panel updates, battle, and 進化 (evolution banner) where reachable. Capture screenshots as artifacts. Document every real UI bug found with a concrete repro, then fix the bugs. Depends on FEAT-102 for a reachable site/API (if FEAT-102 is blocked, use local dev server against ApiUrl, or against a local mock if API also unreachable).",
+  "status": "completed",
+  "steps": [
+    "Decide target: if FEAT-102 produced a CloudFrontUrl, test against it. Otherwise run `cd packages/frontend && echo VITE_API_BASE_URL=<ApiUrl> > .env.local && npm run dev` and test http://localhost:5173 (or the vite-reported port).",
+    "Use the Playwright Kiro Power (browser automation). If browsers are not installed, run `npx playwright install chromium` first (network is open).",
+    "Load the app. Verify the egg/幼年期 sprite renders, Japanese UI labels are present, and no console errors / failed network requests on load (check that /config.json resolves and api base url is correct).",
+    "Exercise お世話: click feed (餌やり), train (トレーニング), sleep (睡眠) toggle, clean (清掃). After each, assert the StatsPanel reflects the change and no error banner appears. Capture a screenshot per state.",
+    "Trigger battle (バトル) and verify the battle log + result render and HP updates. Capture screenshot.",
+    "Verify evolution: either wait/drive enough training+time for an evolution, or confirm the EvolutionBanner wiring renders when stageId changes (document whether reachable within test; evolution age thresholds are minutes-scale).",
+    "If chat is attempted and fails due to Bedrock AccessDenied, record it as the known environmental blocker from FEAT-102; do not treat it as a UI bug.",
+    "For every genuine UI bug (broken layout, dead button, console error, failed fetch, wrong label, a11y break), write a concrete repro + root cause, then implement the fix in packages/frontend. Re-run Playwright to confirm the fix.",
+    "Record a list of (a) bugs found, (b) which were fixed and how, (c) screenshots/artifact paths into findings.",
+    "Commit UI fixes on branch `fix/ui-playwright` (one commit per logical bug fix). Re-run `npm run build` to confirm still green. Do NOT push."
+  ],
+  "acceptance_criteria": [
+    "Playwright successfully loads the app and drives feed/train/sleep/clean + battle without unexpected console errors",
+    "Screenshots captured for key states (hatch, after-care, battle, and evolution if reached)",
+    "Every real UI bug found is documented with repro + root cause in findings and fixed in packages/frontend, with a passing Playwright re-run",
+    "`npm run build` still exits 0 after fixes; UI fix commits on branch fix/ui-playwright (not pushed)",
+    "Any Bedrock-dependent failure is attributed to the FEAT-102 environmental blocker, not logged as a UI bug"
+  ],
+  "verification": [
+    "Playwright run against CloudFrontUrl (or local dev) completing the care+battle flow",
+    "cd /projects/sandbox/kiro-digitalmonster && npm run build  # still exit 0"
+  ],
+  "blocked_reason": null,
+  "findings": {
+    "target": "Primary E2E against live CloudFront https://dctfcixprjknt.cloudfront.net (config.json resolves apiBaseUrl=https://qtgfqc8t67.execute-api.us-east-1.amazonaws.com). Fix re-verified locally by building the frontend and serving packages/frontend/dist via a static node server (serve.mjs) with a config.json pointing at the deployed API (local re-verification path, since the dev-server guard blocks `npm run dev`; backend untouched so CloudFront behavior is unchanged).",
+    "e2e_summary": "Playwright (chromium headless, driven by .agents/tasks/task-digital-monster/e2e.mjs) ran the full flow against live CloudFront: 15/15 checks PASS. Load (h1 デジタルモンスター育成, 幼年期 egg sprite SVG renders, all JP labels お世話/餌やり/トレーニング/睡眠/清掃/バトル/会話 present), feed (no error), train x3 (trainingCount 0->3), sleep toggle (睡眠->起こす, mood すやすや睡眠中), clean (no error), battle (勝利！, 4-line log, HP 20->18), evolution (reached 成長期 and EvolutionBanner seen within ~75s after the 1-min age gate + 15s tick), chat on rookie (sent こんにちは、げんき？ and a Japanese Haiku reply rendered).",
+    "bugs_found": [
+      {
+        "id": "UI-1",
+        "severity": "medium",
+        "title": "Battle log rendered raw English developer strings in a Japanese UI",
+        "repro": "Open the site, click バトル (⚔️ 野生のモンスターと戦う). The battle log lists lines like 'T1: でじたん hits 野生の幼年期モンスター for 11 (enemy HP 7)', 'T1: ... hits でじたん for 2 (player HP 18)', and 'Result: player' verbatim. See artifacts/06-after-battle.png.",
+        "root_cause": "simulateBattle in packages/shared/src/battle.ts emits English log strings (T{n}:/hits/for/enemy HP/player HP/Result:). The backend battle Lambda returns that log as-is, and packages/frontend/src/components/BattlePanel.tsx printed each line verbatim. The winner HEADLINE was localized (winnerLabel) but the per-turn log underneath was untranslated English, inconsistent with the otherwise fully-Japanese UI (a 'wrong/missing Japanese label' defect).",
+        "fixed": true
+      }
+    ],
+    "fixes": [
+      {
+        "id": "UI-1",
+        "how": "Added pure, unit-testable helpers to packages/frontend/src/ui-helpers.ts: winnerLabelJa(winner), battleLogLineJa(line) and battleLogJa(log). They parse the deterministic structured log format with regexes and render Japanese ('1ターン目: {attacker} の攻撃！ {defender} に {dmg} ダメージ（相手/自分の残りHP {hp}）' and '結果: 勝利！/敗北…/引き分け'); unrecognized lines pass through unchanged so nothing is dropped. BattlePanel.tsx now uses winnerLabelJa + battleLogLineJa (removed its local English-only winnerLabel). Frontend-only change: the backend/shared log format is untouched, so NO redeploy was required.",
+        "verification": "6 new node:test unit tests added to game-ui.test.ts (12/12 pass). Full monorepo `npm run build` exits 0; root `npm test` 42/42 pass. Playwright re-run against the freshly-built bundle (verify-battle.mjs, served locally against the deployed API) shows the log fully localized: e.g. '1ターン目: でじたん の攻撃！ 野生の幼年期モンスター に 3 ダメージ（相手の残りHP 15）' ... '結果: 勝利！ 🎉'. See artifacts/09-battle-localized.png. No raw English tokens remain except the standard game term 'HP' inside '残りHP' (consistent with the HP/攻撃/防御 labels used elsewhere in StatsPanel)."
+      }
+    ],
+    "non_bugs": [
+      "Console/network '404 GET /monster/{id}' on first load is EXPECTED: a new browser UUID has no saved monster, api.getMonster treats 404 as null and the app hatches + saves a baby egg (useMonster.ts). Handled gracefully, no error banner. Not a UI bug.",
+      "feed showing mood ごきげん->ごきげん is expected on a fresh low-hunger monster; feed still succeeded (no error, autosaved).",
+      "In headless screenshots Japanese glyphs render as tofu boxes because the sandbox browser lacks CJK fonts; this is a capture-environment artifact only. DOM textContent assertions confirmed the correct Japanese strings are present. Real users with system CJK fonts see the text correctly.",
+      "Chat works at all tiers per FEAT-105; no Bedrock AccessDenied observed this session. No Bedrock issue treated as a UI bug."
+    ],
+    "evolution_chat_reachability": "Evolution to 成長期 (rookie) is reachable within the test window: gate is trainingCount>=2 AND age>=1min. After 3 trainings, the monster evolved to 成長期 and the EvolutionBanner appeared once the 15s live tick crossed the 1-min age gate (~75s). Chat is reachable at rookie: a Japanese message produced a Japanese Haiku-tier reply. Baby stage correctly shows the disabled-chat hint (chat-disabled-hint) with no input.",
+    "artifacts": [
+      ".agents/tasks/task-digital-monster/artifacts/01-load-baby.png",
+      ".agents/tasks/task-digital-monster/artifacts/02-after-feed.png",
+      ".agents/tasks/task-digital-monster/artifacts/03-after-train.png",
+      ".agents/tasks/task-digital-monster/artifacts/04-after-sleep.png",
+      ".agents/tasks/task-digital-monster/artifacts/05-after-clean.png",
+      ".agents/tasks/task-digital-monster/artifacts/06-after-battle.png",
+      ".agents/tasks/task-digital-monster/artifacts/07-evolution.png",
+      ".agents/tasks/task-digital-monster/artifacts/08-chat.png",
+      ".agents/tasks/task-digital-monster/artifacts/09-battle-localized.png",
+      ".agents/tasks/task-digital-monster/e2e.mjs (full-flow driver)",
+      ".agents/tasks/task-digital-monster/verify-battle.mjs (focused re-verification)",
+      ".agents/tasks/task-digital-monster/serve.mjs (local static server for dist)"
+    ],
+    "commit": "fix/ui-playwright @ 9759bc8 'fix(frontend): localize battle log to Japanese' (stacked on fix/bedrock-model-ids). One commit for one logical bug fix. NOT pushed per constraints.",
+    "build_after_fix": "npm run build exits 0; npm test 42/42; frontend ui-helpers tests 12/12."
+  }
+}

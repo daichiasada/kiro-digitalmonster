@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-101",
+  "type": "fix",
+  "description": "Fix the frontend build so the full monorepo build (npm run build) completes end-to-end. Baseline this session: npm install OK, npm test 42/42 pass, shared+backend tsc OK, but packages/frontend `tsc && vite build` fails with TS6310: Referenced project 'tsconfig.node.json' may not disable emit. The frontend tsconfig.json references tsconfig.node.json (composite:true) which also sets noEmit:true; TypeScript project references forbid a composite/referenced project from disabling emit. Fix following the standard modern Vite+TS template approach. After the fix, the whole `npm run build` chain (shared -> backend -> frontend -> infra) must pass, producing packages/frontend/dist and compiling infra. Independent of other features (must run first; everything else depends on a green build).",
+  "status": "completed",
+  "steps": [
+    "Reproduce: cd /projects/sandbox/kiro-digitalmonster && npm run build. Confirm failure at @ddm/frontend with TS6310 pointing at packages/frontend/tsconfig.node.json.",
+    "Fix the TS6310 in packages/frontend. Preferred: in tsconfig.node.json keep composite:true but set `noEmit:false` and add `tsBuildInfoFile` / `outDir` to a throwaway location (e.g. emitDeclarationOnly or outDir \"./node_modules/.tmp\") so the referenced project is allowed to emit, matching the current Vite template convention. Do NOT remove the vite.config.ts type-checking entirely. Alternatively, if cleaner, drop the project-reference indirection and type-check vite.config.ts via the main config includes; choose whichever yields a clean `tsc -b`/`tsc` with no behavior loss. Keep strict settings intact.",
+    "Run `cd /projects/sandbox/kiro-digitalmonster && npm run build -w @ddm/frontend` and confirm both tsc and vite build succeed and packages/frontend/dist is produced with index.html + assets.",
+    "Run the full `npm run build` from root and confirm all four workspaces (shared, backend, frontend, infra) build with exit 0.",
+    "Run `npm test` from root and confirm 42/42 shared tests still pass, and run the frontend pure-helper test file (packages/frontend/src/game-ui.test.ts) to confirm it still passes.",
+    "Commit on a new branch `fix/frontend-build-ts6310` with one focused commit. Do NOT push (orchestrator pushes)."
+  ],
+  "acceptance_criteria": [
+    "`npm run build` from repo root exits 0 and builds shared, backend, frontend, infra",
+    "packages/frontend/dist exists with built index.html and JS/CSS assets after build",
+    "`npm test` still reports 42/42 shared tests pass",
+    "Change committed on branch fix/frontend-build-ts6310, working tree otherwise clean, not pushed"
+  ],
+  "verification": [
+    "cd /projects/sandbox/kiro-digitalmonster && npm run build  # exit 0, all 4 workspaces",
+    "ls packages/frontend/dist/index.html  # exists",
+    "npm test  # 42/42 pass"
+  ],
+  "blocked_reason": null,
+  "findings": "Fixed TS6310 and unblocked the full monorepo build chain. Changes (committed as ea3a214 on branch fix/frontend-build-ts6310, NOT pushed):\n\n1. packages/frontend/tsconfig.node.json: the composite referenced project set noEmit:true, which TS project references reject (TS6310). Replaced with noEmit:false + emitDeclarationOnly:true + throwaway outDir/tsBuildInfoFile under ./node_modules/.tmp (gitignored). Keeps vite.config.ts type-checked and composite:true intact.\n\n2. Fixing TS6310 let tsc proceed and surfaced previously-masked errors in the main project (tsc had stopped at the reference error before). The frontend source consistently imports with explicit .ts/.tsx extensions, so set allowImportingTsExtensions:true in packages/frontend/tsconfig.json (noEmit:true retained, so this is valid, not a strictness weakening). Also added exclude for src/**/*.test.ts(x): game-ui.test.ts imports node:test and runs standalone via its own `npm test -w @ddm/frontend` script (node --experimental-strip-types), so it should not be part of the Vite build typecheck. Strict settings unchanged.\n\n3. infra/tsconfig.json: once frontend passed, the chain reached infra for the first time and failed with TS2688 'Cannot find type definition file for node'. infra had typeRoots:['./node_modules/@types'] but @types/node is hoisted to the repo-root node_modules in this npm workspace. Removed the restrictive typeRoots so default resolution walks up to the hoisted types. Kept types:['node'].\n\n4. .gitignore: added infra/bin/*.js and infra/lib/*.js. infra now runs `tsc` as part of the build and emits JS, but cdk.json runs via ts-node against bin/app.ts (and its watch config excludes **/*.js), so the compiled JS is throwaway and must not be committed.\n\nVerification (all green):\n- npm run build (root): exit 0; builds @ddm/shared, @ddm/backend, @ddm/frontend (vite build, 51 modules, dist/index.html + assets/*.js/*.css produced), and @ddm/infra (tsc).\n- ls packages/frontend/dist/index.html: present.\n- npm test (root): 42/42 shared tests pass. npm test -w @ddm/frontend: 6/6 frontend helper tests pass.\n\nNote for later features: the infra typeRoots/node-types resolution and compiled-JS gitignore were incidental fixes needed to satisfy FEAT-101's 'all four workspaces build' acceptance criterion; infra had simply never been reached in the build chain before because frontend failed first. CDK synth/deploy not attempted here (out of scope for FEAT-101)."
+}
