@@ -78,6 +78,14 @@ const JA_MESSAGES = {
   "evolution.banner": "進化した！ {stage} になった！",
   "evolution.close": "閉じる",
 
+  // Reset
+  "reset.button": "リセット",
+  "reset.confirmPrompt":
+    "モンスターを初期状態（新しい卵）に戻します。トレーニング回数・ステータス・経過はすべてリセットされます。よろしいですか？",
+  "reset.confirm": "リセットする",
+  "reset.cancel": "キャンセル",
+  "reset.saveFailed": "リセットを保存できませんでした。モンスターは元の状態のままです。",
+
   // Section aria-labels
   "aria.care": "お世話",
   "aria.stats": "ステータス",
@@ -143,6 +151,14 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   // Evolution banner
   "evolution.banner": "It evolved! It became {stage}!",
   "evolution.close": "Close",
+
+  // Reset
+  "reset.button": "Reset",
+  "reset.confirmPrompt":
+    "This returns your monster to its initial state (a fresh egg). Training count, stats, and progress will all be reset. Are you sure?",
+  "reset.confirm": "Reset",
+  "reset.cancel": "Cancel",
+  "reset.saveFailed": "Could not save the reset. Your monster remains unchanged.",
 
   // Section aria-labels
   "aria.care": "Care",

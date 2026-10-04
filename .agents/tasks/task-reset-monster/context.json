@@ -1,0 +1,28 @@
+{
+  "project_type": "Full-stack TypeScript monorepo (npm workspaces): React+Vite frontend (JA/EN i18n), AWS Lambda backend, DynamoDB, Amazon Bedrock chat, AWS CDK infra. Digimon-style monster-raising game. This task is GitHub issue #20: add a RESET feature that returns the current monster to its initial state (a fresh baby egg), with a confirm step to prevent accidental resets, consistent with the no-auth, browser-generated monsterId design and DynamoDB persistence. UI text must be JA/EN.",
+  "language": "TypeScript",
+  "build_system": "npm workspaces. Root scripts: build (shared->backend->frontend->infra via tsc/vite), test (shared node:test). Frontend build is `tsc && vite build`.",
+  "test_framework": "node:test built-in runner. Shared tests under packages/shared (baseline 47 pass). Frontend pure-helper tests in packages/frontend/src/game-ui.test.ts run via `cd packages/frontend && npm test` i.e. `node --experimental-strip-types --test src/game-ui.test.ts` (baseline 50).",
+  "build_command": "npm run build (root). Must stay green.",
+  "test_command": "npm test (root, shared ~47) AND `cd packages/frontend && npm test` (frontend ui-helpers ~50).",
+  "verification_instructions": "Run `npm run build` at root (must stay green, this is also the TS typecheck that enforces i18n JA/EN key parity). Run `npm test` at root (shared). Run `cd packages/frontend && npm test` for the ui-helpers tests including any new reset helper tests. Optional Playwright check against https://dctfcixprjknt.cloudfront.net (production, pre-change) is only informational; local build is the authoritative gate since the orchestrator deploys. Network is OPEN_INTERNET.",
+  "snapshot_or_generated_files": "packages/frontend/dist (vite build output, gitignored). None checked in.",
+  "setup_instructions": "cd /projects/sandbox/kiro-digitalmonster && npm install (likely already installed) && npm run build.",
+  "environment_constraints": "OPEN_INTERNET. CANNOT git push or open PRs (orchestrator handles that). Commit locally on a feature branch only (e.g. feat/reset-monster). Do NOT touch backup/previous-main branches. No new runtime dependencies allowed.",
+  "contribution_requirements": "Feature branch off main (feat/reset-monster). Well-separated commits. i18n: packages/frontend/src/i18n.ts JA dict (JA_MESSAGES) is the SOURCE OF TRUTH; MessageKey is derived from it and EN_MESSAGES is Record<MessageKey,string>, so EVERY new key MUST have BOTH a ja and an en entry or `npm run build` (tsc) fails. Keep JA output byte-identical for existing keys.",
+  "key_patterns": "Monster lifecycle hook: packages/frontend/src/state/useMonster.ts. On mount getOrCreateMonsterId() (persists one UUID under localStorage key 'ddm.monsterId' via api.ts), api.getMonster(id); on 404 hatch createMonster(monsterId, 'でじたん', now) then api.saveMonster. commit(next) sets monsterRef + React state and tracks stage via prevStageRef to fire the evolution banner (setJustEvolvedTo) when prevStage !== next.stageId. Care actions use runCareAction: guard (monster===null || busy) -> setBusy(true) -> optimistic mutate+commit -> api.saveMonster -> commit(saved) -> catch sets error -> finally setBusy(false). Shared createMonster(id, name, now) in packages/shared/src/game.ts returns a fresh baby (stageId 'baby', trainingCount 0, careCounters zero, hungryLevel 0, dirty false, stats = baby baseStats). api.saveMonster(monster) POSTs the bare monster to /monster; backend upserts by monsterId (single DynamoDB record), so saving a fresh baby under the SAME monsterId overwrites the record -> simplest reset consistent with browser-owned-id design. DEFAULT HATCH NAME is literally 'でじたん' (also hard-coded in useMonster mount). i18n via useI18n() -> t(key). No existing confirm-dialog/modal pattern in the codebase; the reset confirm is new (two-step button or small confirm panel). App.tsx composes the layout: header (.app-header with h1 + .lang-toggle), EvolutionBanner, error, then .game-grid (left .stage-area: sprite + ChatPanel + StatsPanel; right .controls-area: CarePanel + BattlePanel), then footer. Styles in packages/frontend/src/styles.css. Pure UI helpers live in ui-helpers.ts (NO React/DOM) and are unit-tested in game-ui.test.ts.",
+  "relevant_files": [
+    "packages/frontend/src/state/useMonster.ts (ADD reset() action here; reuse createMonster + api.saveMonster; reset prevStageRef; clear battleLog/lastBattle/chatLog)",
+    "packages/shared/src/game.ts (createMonster(id,name,now) -> fresh baby; reuse, do not modify)",
+    "packages/frontend/src/api.ts (getOrCreateMonsterId, saveMonster; reset overwrites same monsterId)",
+    "packages/frontend/src/i18n.ts (ADD JA+EN keys: reset button label, confirm prompt, confirm/cancel labels)",
+    "packages/frontend/src/App.tsx (place the reset control + confirm UX; wire game.reset)",
+    "packages/frontend/src/components/CarePanel.tsx (button/panel pattern reference)",
+    "packages/frontend/src/components/StatsPanel.tsx (panel/header pattern reference)",
+    "packages/frontend/src/styles.css (add reset button + confirm styles)",
+    "packages/frontend/src/ui-helpers.ts (optional: pure helper for default reset name if any logic is added)",
+    "packages/frontend/src/game-ui.test.ts (unit tests for any new pure helper)",
+    "packages/backend/src/handlers/saveMonster.ts (validates+upserts by monsterId; no change expected)"
+  ],
+  "directory_structure": "packages/shared (pure game logic + node:test), packages/frontend (React+Vite app: src/App.tsx, src/state/useMonster.ts, src/components, src/api.ts, src/i18n.ts, src/ui-helpers.ts, src/styles.css, src/game-ui.test.ts), packages/backend (Lambda handlers), infra (CDK)."
+}

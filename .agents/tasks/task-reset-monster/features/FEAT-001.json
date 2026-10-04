@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Environment setup and baseline verification. Confirm the monorepo installs, builds, and all existing tests pass before any changes, and create the feature branch. This establishes the green baseline that FEAT-002 must preserve.",
+  "status": "completed",
+  "steps": [
+    "From /projects/sandbox/kiro-digitalmonster confirm the working tree is clean on main (git status).",
+    "Create and check out a feature branch off main: `git checkout -b feat/reset-monster`.",
+    "Run `npm install` at the repo root (npm workspaces) if node_modules is missing or stale.",
+    "Run `npm run build` at the repo root and confirm it completes with no TypeScript errors (this also typechecks i18n JA/EN key parity).",
+    "Run `npm test` at the repo root and record the shared test count (baseline ~47 passing).",
+    "Run `cd packages/frontend && npm test` and record the frontend ui-helpers test count (baseline ~50 passing)."
+  ],
+  "acceptance_criteria": [
+    "Branch feat/reset-monster exists and is checked out.",
+    "`npm run build` at root succeeds with no errors.",
+    "`npm test` at root passes (record the count).",
+    "`cd packages/frontend && npm test` passes (record the count)."
+  ],
+  "verification": [
+    "npm run build (root) exits 0",
+    "npm test (root) all pass",
+    "cd packages/frontend && npm test all pass"
+  ],
+  "blocked_reason": null,
+  "findings": "Baseline green established on branch feat/reset-monster (created off main @ c71b024). ENV NOTE: npm is NOT on the default PATH; node v22.23.3 is at /usr/local/bin/node but npm lives under nvm. Prefix commands with `export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"` (npm 11.4.2). node_modules already present, so `npm install` was not needed. RESULTS: `npm run build` (root) exits 0 - shared/backend/frontend(tsc+vite, 53 modules)/infra all compile, i18n JA/EN parity typecheck passes. `npm test` (root, shared) = 47 pass / 0 fail (baseline ~47 confirmed). `cd packages/frontend && npm test` (ui-helpers) = 50 pass / 0 fail (baseline ~50 confirmed). No source changes made in this feature."
+}
