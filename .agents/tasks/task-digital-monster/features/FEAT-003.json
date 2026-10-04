@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "React + TypeScript (Vite) frontend: the playable Japanese-UI monster game. Renders the monster via per-stage SVG assets, provides care actions (feed/train/sleep/clean), battle, and chat panel, persists via the backend API with a browser-generated monsterId in localStorage, and shows stats + evolution. Depends on FEAT-001 (shared types/logic reused client-side for optimistic time passage).",
+  "status": "completed",
+  "steps": [
+    "Create packages/frontend/package.json (name @ddm/frontend, type module, deps: react, react-dom, @ddm/shared workspace:*; devDeps: vite, @vitejs/plugin-react, typescript, @types/react, @types/react-dom; scripts: dev=vite, build='tsc && vite build', preview=vite preview).",
+    "Create packages/frontend/tsconfig.json and tsconfig.node.json (standard Vite React TS config), vite.config.ts with @vitejs/plugin-react and base './' for CloudFront.",
+    "Create packages/frontend/index.html and src/main.tsx entry.",
+    "Create SVG monster assets as React components (code-generated, no binaries): packages/frontend/src/assets/monsters/Baby.tsx, Rookie.tsx, Champion.tsx, Ultimate.tsx. Each exports a self-contained inline <svg> of a distinct Digimon-style creature per stage (egg/baby, rookie, champion, ultimate). Add a MonsterSprite.tsx that picks the SVG by stageId. Keep them visually distinct and clearly 'evolving'.",
+    "Create src/api.ts: typed fetch client for GET /monster, POST /monster, POST /chat, POST /battle. Base URL from import.meta.env.VITE_API_BASE_URL. Generates/stores monsterId in localStorage (crypto.randomUUID) and includes it.",
+    "Create src/state/useMonster.ts hook: on mount, loads monster from API (or creates a new egg locally and saves), applies applyTimePassage + evolveStage from @ddm/shared for immediate UI feedback, exposes actions feed/train/sleep/clean/battle/chat that call the API and update state, and autosaves after actions.",
+    "Create src/components: StatsPanel.tsx (HP/ATK/DEF bars + stage label in Japanese), CarePanel.tsx (餌/トレーニング/睡眠/清掃 buttons), BattlePanel.tsx (fight button + battle log), ChatPanel.tsx (message input + conversation; disabled with a hint for 幼年期), EvolutionBanner.tsx (shows when stage changes).",
+    "Create src/App.tsx wiring the hook + components into the game screen, and src/styles.css for a simple pleasant Japanese-UI layout (mobile-friendly).",
+    "Create packages/frontend/.env.example with VITE_API_BASE_URL=.",
+    "Create packages/frontend/src/game-ui.test.ts with node:test covering any PURE helper you add in the frontend (e.g. stat-to-percentage, label formatting) so there is at least one dependency-free runnable test; keep DOM/React out of this test file."
+  ],
+  "acceptance_criteria": [
+    "Four visually distinct SVG monster components exist, one per growth stage, selected by stageId",
+    "monsterId is generated with crypto.randomUUID and persisted in localStorage",
+    "Chat panel is disabled/hinted for the 幼年期 (baby) stage and enabled for later stages",
+    "Care actions (餌/トレーニング/睡眠/清掃), battle, and chat are all wired to src/api.ts",
+    "All package.json/tsconfig/*.json are valid JSON; SVG markup is well-formed",
+    "env -u NODE_OPTIONS node --experimental-strip-types --test packages/frontend/src/game-ui.test.ts passes"
+  ],
+  "verification": [
+    "env -u NODE_OPTIONS node --experimental-strip-types --test packages/frontend/src/game-ui.test.ts",
+    "env -u NODE_OPTIONS tsc --noEmit --skipLibCheck --jsx react-jsx --moduleResolution bundler --target ES2022 packages/frontend/src/assets/monsters/*.tsx 2>&1 | (! grep -iE 'error TS1[0-9]{3}')  # no JSX/syntax errors; missing react types acceptable"
+  ],
+  "blocked_reason": null,
+  "findings": "FEAT-004 (CDK) notes:\n- RUNTIME CONFIG: the frontend fetches `config.json` from the SITE ROOT at startup. Shape is exactly `{ \"apiBaseUrl\": \"https://....execute-api.<region>.amazonaws.com\" }` (field name = `apiBaseUrl`). CDK must write this file into the S3 bucket root (e.g. BucketDeployment with a Source.jsonData('config.json', { apiBaseUrl }) or an inline asset) AFTER the API URL is known, so no frontend rebuild is needed per-deploy. If config.json is absent the app falls back to the build-time env var VITE_API_BASE_URL (packages/frontend/.env.example).\n- DIST OUTPUT DIR for BucketDeployment: `packages/frontend/dist` (vite build outDir). vite.config.ts uses `base: './'` so all asset URLs are relative and work behind CloudFront. index.html + hashed assets land in dist/; deploy that whole directory as the website source, plus config.json.\n- API CONTRACT consumed by src/api.ts (must match API Gateway routes/handlers): GET /monster/{monsterId} -> { monster } (404 => frontend hatches a new egg and POSTs it); POST /monster (bare Monster body) -> { ok, monster }; POST /chat (ChatRequest: {monsterId, stageId, monsterName, message}) -> { reply, modelId }; POST /battle ({ monsterId }) -> { result, monster }. CORS is already handled by backend lib/http.ts (allowedOrigin()).\n- NETWORK CONSTRAINT: react/react-dom/vite/@vitejs/plugin-react/@types/react are NOT installed in this sandbox and cannot be fetched, so `vite build`/full tsc type-check cannot run here (EXPECTED). Verified in-sandbox: game-ui.test.ts passes (6 tests) under `env -u NODE_OPTIONS node --experimental-strip-types --test`; `tsc --jsx react-jsx` shows NO TS1xxx syntax errors on all src .ts/.tsx; all JSON valid; SVG container tags balanced; shared tests still pass (22).\n- SPRITES are code-generated inline SVG React components (no binary assets): Baby/Rookie/Champion/Ultimate.tsx selected by MonsterSprite.tsx via stageId.\n- Monster default name on hatch is 'でじたん'. monsterId is crypto.randomUUID stored in localStorage key 'ddm.monsterId'."
+}

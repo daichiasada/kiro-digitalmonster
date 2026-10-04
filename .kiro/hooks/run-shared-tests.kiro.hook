@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "共有ロジックのテストを実行",
+  "description": "packages/shared/src 配下の .ts を保存したら、依存ゼロの node:test スイート（ユニット + プロパティベーステスト）を実行して回帰を即座に検知する。",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "packages/shared/src/**/*.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "packages/shared のソースが変更されました。次のコマンドでテストを実行し、結果を要約してください。失敗があれば原因と修正案を提示してください。\n\n    env -u NODE_OPTIONS node --experimental-strip-types --test packages/shared/src/__tests__/*.ts\n\n注意: このサンドボックスでは NODE_OPTIONS が壊れているため、必ず 'env -u NODE_OPTIONS' を前置してください。新しい依存（fast-check 等）はインストールできないため提案しないでください。"
+  }
+}

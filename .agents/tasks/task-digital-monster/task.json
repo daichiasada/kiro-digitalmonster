@@ -1,0 +1,26 @@
+{
+  "task_id": "task-digital-monster",
+  "task_description": "Build a Digimon-style monster raising web game from scratch: React+Vite frontend (S3+CloudFront), AWS Lambda+API Gateway backend, DynamoDB save data, Amazon Bedrock conversational AI with model selection by growth stage (baby=none, rookie=Haiku, champion=Sonnet, ultimate=Opus), and AWS CDK one-command deploy. Growth = egg->baby->rookie->champion->ultimate, evolution by training count + elapsed time, simple ATK/DEF/HP stats, care (feed/train/sleep/clean), simple battles, SVG monster art, no auth (browser-generated monsterId). Japanese UI. Quality gates adapted to a no-network sandbox: shared pure-logic unit tests + tsc syntax checks; full build/cdk synth documented in README for the user.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004", "FEAT-005"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "skipped",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "SANDBOX IS NETWORK-RESTRICTED (INTEGRATIONS_ONLY): npm install, vite build, and cdk synth cannot run here, so full build/synth are deferred to the user's local environment (documented in README). Feasible gates all PASS: shared+frontend unit tests 48/48 (incl. property-based suite and 3 review-fix regression tests); tsc --noEmit clean for packages/shared; ZERO TS1xxx syntax errors in backend, frontend, and infra (only expected TS2307 missing-module errors against uninstalled react/aws-sdk/aws-cdk-lib); all JSON valid (incl. all .kiro hook/mcp/power manifests). Three semantic review cycles completed: v1 NEEDS_CHANGES (7 issues) -> fixed -> v2 APPROVED -> v3 APPROVED. FEAT-005 adds Kiro University submission artifacts (.kiro/specs, steering, hooks, settings/mcp, powers; property-based tests; SUBMISSION.md) demonstrating all 7 required lessons + 2 bonuses. Workspace-root /projects/sandbox/.kiro left untouched."
+  },
+  "lessons_evidence": {
+    "1_spec_driven": ".kiro/specs/digital-monster/{requirements,design,tasks}.md",
+    "2_steering": ".kiro/steering/{product,tech,structure}.md",
+    "3_hooks": ".kiro/hooks/*.kiro.hook",
+    "4_property_based_testing": "packages/shared/src/__tests__/game.property.test.ts",
+    "5_powers": ".kiro/powers/digimon-helper/",
+    "6_mcp": ".kiro/settings/mcp.json",
+    "7_agents": ".agents/README.md + .agents/tasks/task-digital-monster/*-review.md",
+    "bonus_cloud": "infra/ (CDK) + README deploy section",
+    "bonus_package_power": ".kiro/powers/digimon-helper/",
+    "submission_doc": "SUBMISSION.md"
+  }
+}

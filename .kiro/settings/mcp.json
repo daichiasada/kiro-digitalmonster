@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "aws-docs": {
+      "command": "uvx",
+      "args": [
+        "awslabs.aws-documentation-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR",
+        "AWS_DOCUMENTATION_PARTITION": "aws"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "read_documentation",
+        "search_documentation",
+        "recommend"
+      ]
+    },
+    "aws-cdk": {
+      "command": "uvx",
+      "args": [
+        "awslabs.cdk-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "CDKGeneralGuidance",
+        "ExplainCDKNagRule"
+      ]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "ハンドラ変更時に仕様を同期",
+  "description": "Lambda ハンドラまたは共有ルールを変更したら、.kiro/specs/digital-monster の requirements/design/tasks が実装と一致しているか確認し、ずれていれば更新を促す。仕様主導型開発の整合性を保つためのフック。",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "packages/backend/src/**/*.ts",
+      "packages/shared/src/stages.ts",
+      "packages/shared/src/game.ts",
+      "packages/shared/src/battle.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "API ハンドラまたはゲームルールが変更されました。.kiro/specs/digital-monster/requirements.md・design.md・tasks.md を読み、今回の変更が仕様と矛盾していないか確認してください。仕様が古くなっている場合は、該当箇所（受け入れ基準・設計表・タスクのチェック状態）の更新案を提示してください。段階名(幼年期/成長期/成熟期/完全体)・進化条件(トレーニング回数 AND 経過時間)・モデル対応(Haiku/Sonnet/Opus)・ステータス(HP/ATK/DEF)の一貫性を特に確認してください。"
+  }
+}

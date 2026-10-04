@@ -1,0 +1,23 @@
+{
+  "project_type": "Full-stack TypeScript monorepo: React+Vite frontend (S3+CloudFront), AWS Lambda+API Gateway backend, DynamoDB save data, Amazon Bedrock conversational AI, AWS CDK IaC. A Digimon-style monster raising web game (Japanese UI).",
+  "language": "TypeScript",
+  "build_system": "npm workspaces monorepo. Packages: packages/frontend (Vite+React), packages/backend (Lambda, bundled by esbuild via CDK NodejsFunction or tsc), packages/shared (types/logic shared by front and back), infra (CDK app). Root package.json defines workspaces.",
+  "test_framework": "node:test (built-in Node test runner) for pure-logic unit tests in packages/shared so tests run with ZERO external dependencies (critical because this sandbox cannot install packages).",
+  "build_command": "Per package: frontend 'npm run build' (vite build + tsc), backend 'npm run build' (tsc), infra 'npm run build' (tsc) then 'npx cdk synth'. Requires 'npm install' at root first.",
+  "test_command": "node --test packages/shared/ (runs built-in test runner on compiled JS or ts via --experimental-strip-types). In sandbox use: env -u NODE_OPTIONS node --test",
+  "verification_instructions": "SANDBOX CONSTRAINT: external package registries are BLOCKED (403 via proxy), so 'npm install' CANNOT run here and therefore 'vite build' and 'cdk synth' CANNOT be executed in this environment. Feasible gates in-sandbox: (1) 'env -u NODE_OPTIONS tsc --noEmit --skipLibCheck' on standalone shared logic files for syntax/type sanity; (2) 'env -u NODE_OPTIONS node --test' on packages/shared pure-logic tests using node built-in test runner + --experimental-strip-types (no deps); (3) JSON validity of all package.json/tsconfig/cdk.json; (4) SVG well-formedness. Full build + cdk synth are documented in README for the user to run in their own environment where installs work.",
+  "snapshot_or_generated_files": "none",
+  "setup_instructions": "IMPORTANT: NODE_OPTIONS points to a missing file (/opt/amazon/kiro-agent/proxy-bootstrap.js). ALL node/npm/npx/pnpm/tsc commands MUST be run with 'env -u NODE_OPTIONS <cmd>' or they crash with MODULE_NOT_FOUND. Node v22.23.3, npm, pnpm 11, global tsc 5.9.2 are available. react/vite/aws-cdk-lib/aws-sdk are NOT installed and CANNOT be installed (network blocked).",
+  "environment_constraints": "NETWORK = INTEGRATIONS_ONLY. npm/yarn/pnpm registry, github.com, pypi all return 403 CONNECT through the proxy. Only the connected GitHub repo via the kiro gateway remote is reachable. Consequence: no dependency installation. Write all source so it is correct and will build once the user runs 'npm install' in a connected environment. Do NOT attempt npm install in features; mark any step needing it as validated by syntax/logic checks only. ALWAYS prefix node tooling with 'env -u NODE_OPTIONS'.",
+  "contribution_requirements": "Kiro University Challenge project: first commit must be the start of history (repo is empty, main branch, zero commits). Do NOT commit/push (orchestrator handles it). Leave all work in the working tree. README must document full one-command deploy (cdk deploy) with prerequisites: Node, AWS CLI creds, cdk bootstrap, Bedrock model access enablement, model IDs per region, region notes.",
+  "key_patterns": "Shared growth/battle/care logic lives in packages/shared with pure functions + node:test unit tests (no deps). Growth stages: 幼年期(egg/baby, no chat) -> 成長期 Rookie (Bedrock Claude Haiku) -> 成熟期 Champion (Claude Sonnet) -> 完全体 Ultimate (Claude Opus). Evolution condition = training count + elapsed time. Stats = ATK + DEF (+HP). Care actions = feed/train/sleep/clean as simple state ops. Time passage computed from lastUpdated diff. No auth: browser-generated monsterId (uuid) as DynamoDB partition key. Bedrock model IDs configurable via env/config file.",
+  "relevant_files": [
+    "package.json (root workspaces)",
+    "packages/shared/src/* (types, game logic, model mapping, pure fns + node:test)",
+    "packages/frontend/* (Vite React app, SVG assets per stage, API client)",
+    "packages/backend/src/* (Lambda handlers: save/load monster, chat via Bedrock)",
+    "infra/* (CDK app: S3+CloudFront, API GW + Lambda, DynamoDB, Bedrock IAM)",
+    "README.md (deploy guide)"
+  ],
+  "directory_structure": "root: package.json, tsconfig.base.json, README.md, .gitignore | packages/shared | packages/frontend | packages/backend | infra | assets (SVG source if not inlined)"
+}
