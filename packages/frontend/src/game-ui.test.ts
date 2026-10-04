@@ -409,6 +409,19 @@ test("MESSAGES.ja and MESSAGES.en have identical key sets", () => {
   assert.deepEqual(jaKeys, enKeys);
 });
 
+test("chat.disabledHint has no stray leading/trailing whitespace in either language", () => {
+  // The JA value must match the original inline literal byte-for-byte (the
+  // JSX source stripped surrounding whitespace), so no leading space is allowed.
+  const ja = t("ja", "chat.disabledHint");
+  const en = t("en", "chat.disabledHint");
+  assert.equal(ja, ja.trim());
+  assert.equal(en, en.trim());
+  assert.equal(
+    ja,
+    "幼年期のあいだはまだ言葉を話せません。トレーニングと時間経過で成長期へ進化すると会話できるようになります。",
+  );
+});
+
 test("t() returns the dictionary value for a known key", () => {
   assert.equal(t("ja", "app.title"), "デジタルモンスター育成");
   assert.equal(t("en", "app.title"), "Digital Monster Raising");

@@ -68,7 +68,7 @@ const JA_MESSAGES = {
   // Chat panel
   "chat.title": "会話",
   "chat.disabledHint":
-    " 幼年期のあいだはまだ言葉を話せません。トレーニングと時間経過で成長期へ進化すると会話できるようになります。",
+    "幼年期のあいだはまだ言葉を話せません。トレーニングと時間経過で成長期へ進化すると会話できるようになります。",
   "chat.placeholder": "メッセージを入力",
   "chat.inputAria": "メッセージ",
   "chat.send": "送信",
@@ -134,7 +134,7 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   // Chat panel
   "chat.title": "Chat",
   "chat.disabledHint":
-    " During the baby stage it cannot talk yet. Once it evolves to the rookie stage through training and time, you can chat with it.",
+    "During the baby stage it cannot talk yet. Once it evolves to the rookie stage through training and time, you can chat with it.",
   "chat.placeholder": "Type a message",
   "chat.inputAria": "Message",
   "chat.send": "Send",
