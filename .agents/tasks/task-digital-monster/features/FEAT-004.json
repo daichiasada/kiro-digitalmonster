@@ -1,0 +1,34 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "Author the AWS CDK (TypeScript) app that provisions the full stack as one-command deploy: DynamoDB table, API Gateway + Lambda for the four handlers, S3 + CloudFront to host the built frontend, and the IAM permissions (DynamoDB access + Bedrock InvokeModel for Haiku/Sonnet/Opus). Plus a README with the one-command deploy instructions. Depends on FEAT-002 (Lambda handler entry points) and FEAT-003 (frontend build output path). Do NOT run cdk deploy/synth in-sandbox (blocked registry + no AWS creds).",
+  "status": "pending",
+  "steps": [
+    "Create infra/package.json (name '@digital-monster/infra'; deps aws-cdk-lib ^2 and constructs ^10 pinned; devDeps aws-cdk ^2 (CLI), typescript, @types/node, ts-node — pinned). Scripts: build (tsc), synth (cdk synth), deploy (cdk deploy --all --require-approval never). Create infra/cdk.json with app 'npx ts-node --prefer-ts-exts bin/app.ts'. Create infra/tsconfig.json extending base.",
+    "Create infra/bin/app.ts instantiating the stack(s) with an env-agnostic or account/region-from-env configuration.",
+    "Create infra/lib/data-stack construct or a single infra/lib/digital-monster-stack.ts that defines: (1) a DynamoDB Table (PK clientId, PAY_PER_REQUEST, removalPolicy DESTROY for a demo). ",
+    "In the stack, define the four Lambda functions using aws-cdk-lib/aws-lambda-nodejs NodejsFunction, each pointing at the corresponding backend/src/handlers/*.ts entry + exported handler. Pass TABLE_NAME and AWS_REGION envs. Grant each the needed DynamoDB rights (read for getMonster/chat, read-write for save/train/chat).",
+    "Add a least-privilege IAM policy statement granting bedrock:InvokeModel on the three Anthropic model ARNs (Haiku/Sonnet/Opus) to the chat Lambda only. 幼年期 needs none. Reference the model ids from @digital-monster/shared so infra and runtime stay in sync.",
+    "Define an HTTP API or REST API (API Gateway) with routes: GET /monster, POST /monster (save), POST /train, POST /chat, wired to the respective Lambdas, with CORS enabled for the CloudFront origin (and * for demo).",
+    "Define an S3 bucket (private, OAC) + CloudFront distribution serving the frontend build (frontend/dist) via BucketDeployment, with SPA fallback to index.html. Output the CloudFront URL and API base URL as CfnOutputs.",
+    "Ensure CfnOutput exposes ApiBaseUrl and SiteUrl so the deployer can set VITE_API_BASE_URL and verify.",
+    "Write root README.md: project overview, the 4 growth stages + which Bedrock model each uses (and that 幼年期 has no conversation), architecture diagram-in-words (S3+CloudFront / API GW+Lambda / DynamoDB / Bedrock), repo layout, and a DEPLOY section documenting the exact one-command flow for a networked AWS-credentialed Kiro Web session: `npm install` at root, `npm run build -w frontend` (with VITE_API_BASE_URL set after first deploy or two-pass note), `cd infra && npx cdk bootstrap` (first time) then `npx cdk deploy --all`. Explicitly document the SANDBOX CONSTRAINT: npm registry blocked here so install/build/synth/deploy were NOT run in this environment; they must run in the credentialed session. Note Bedrock model access must be enabled in the AWS account.",
+    "Add an infra/lib unit test (vitest + aws-cdk-lib/assertions Template) OR a lightweight assertion test that the synthesized template contains a DynamoDB table, 4 Lambda functions, an API Gateway, a CloudFront distribution, and a bedrock:InvokeModel policy statement. If the test cannot run due to blocked deps, still author it correctly and record the constraint in findings."
+  ],
+  "acceptance_criteria": [
+    "infra is a valid CDK TS app (cdk.json + bin/app.ts + lib stack) with pinned aws-cdk-lib/constructs/aws-cdk versions.",
+    "The stack defines a DynamoDB table (PK clientId), four NodejsFunction Lambdas bound to the backend handlers, an API Gateway with GET /monster + POST /monster + POST /train + POST /chat, and S3+CloudFront hosting frontend/dist.",
+    "Only the chat Lambda is granted bedrock:InvokeModel, scoped to the Haiku/Sonnet/Opus model ARNs; model ids are sourced from @digital-monster/shared.",
+    "CfnOutputs expose SiteUrl and ApiBaseUrl.",
+    "README documents a one-command-style deploy for a credentialed session AND explicitly states the sandbox could not run install/build/deploy due to the blocked npm registry.",
+    "A CDK assertions test exists checking for the table, 4 Lambdas, API Gateway, CloudFront, and the Bedrock policy statement."
+  ],
+  "verification": [
+    "Validate infra/package.json, infra/cdk.json, infra/tsconfig.json parse as JSON (env -u NODE_OPTIONS node -e).",
+    "Attempt `cd infra && env -u NODE_OPTIONS npx -y tsc --noEmit`; blocked-registry/missing-deps failures are acceptable and must be recorded in findings — do NOT run `cdk synth`/`cdk deploy`.",
+    "Read the stack and confirm: exactly four Lambdas, bedrock:InvokeModel granted ONLY to the chat Lambda and scoped to the three model ARNs, CORS enabled, and CfnOutputs for SiteUrl + ApiBaseUrl.",
+    "Confirm README DEPLOY section documents `npm install` + `npm run build -w frontend` + `cdk bootstrap` + `cdk deploy`, and the sandbox-constraint note is present."
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

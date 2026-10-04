@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Scaffold the npm-workspaces monorepo and the shared domain module. This is the foundation every other feature builds on: root tooling config, a `shared` package holding the growth-stage model, the stage->Bedrock-model mapping, and the (training count + elapsed time) evolution logic reused by both backend and frontend. Independent of FEAT-002/003/004 only in that they all depend on THIS; must be first.",
+  "status": "completed",
+  "steps": [
+    "Create root package.json declaring npm workspaces: [\"shared\", \"backend\", \"frontend\", \"infra\"]. Add convenience scripts: build (build all workspaces), test (test all), and name the project 'digital-monster'. Set \"private\": true. Pin a known Node engine (>=20).",
+    "Create root tsconfig.base.json with strict:true, target ES2022, module/moduleResolution appropriate for Node (NodeNext) and a composite-friendly setup; each package extends it.",
+    "Create .gitignore covering node_modules/, dist/, cdk.out/, *.log, .env, coverage/.",
+    "Create .nvmrc with 22. Create .prettierrc (basic) and .eslintrc.cjs (TypeScript, no network plugins beyond pinned @typescript-eslint).",
+    "Create shared/package.json (name '@digital-monster/shared', main/types pointing at dist, build script 'tsc -p tsconfig.json', devDependency typescript pinned e.g. ^5.5.4). Create shared/tsconfig.json extending base, outDir dist, rootDir src.",
+    "Create shared/src/types.ts: export a Stage union/enum with exactly the 4 stages using stable identifiers (BABY=幼年期, ROOKIE=成長期, CHAMPION=成熟期, ULTIMATE=完全体). Export a Monster interface { clientId: string; name: string; stage: Stage; trainingCount: number; createdAt: number (epoch ms); updatedAt: number; happiness?: number; fullness?: number }. Export Japanese display labels per stage.",
+    "Create shared/src/bedrock.ts: export BEDROCK_MODEL_BY_STAGE mapping — BABY: null (no conversation), ROOKIE: Claude 3 Haiku model id, CHAMPION: Claude 3.5 Sonnet model id, ULTIMATE: Claude 3 Opus model id (use the official Bedrock model IDs, e.g. anthropic.claude-3-haiku-20240307-v1:0, anthropic.claude-3-5-sonnet-20240620-v1:0, anthropic.claude-3-opus-20240229-v1:0). Export helper getModelForStage(stage) returning the id or null, and a boolean canConverse(stage).",
+    "Create shared/src/evolution.ts: export evolution thresholds and a pure function nextStage(monster, now) and computeStage(trainingCount, elapsedMs) implementing 'training count + elapsed time' gating. Define explicit, documented thresholds (e.g. BABY->ROOKIE at trainingCount>=3 AND elapsed>=5min; ROOKIE->CHAMPION at >=10 AND >=30min; CHAMPION->ULTIMATE at >=25 AND >=2h). Keep thresholds in one exported const object so they are tunable.",
+    "Create shared/src/index.ts re-exporting types, bedrock, evolution.",
+    "Add shared/src/__tests__/evolution.test.ts (vitest) covering: no evolution before thresholds, evolution when both training AND time met, no skipping stages, 幼年期 canConverse()===false and getModelForStage(BABY)===null while other stages return the correct model id. Add vitest to shared devDependencies (pinned) and a 'test' script."
+  ],
+  "acceptance_criteria": [
+    "Root package.json defines workspaces shared/backend/frontend/infra and is valid JSON parseable by `node -e`.",
+    "shared/src exports Stage with 4 stages, Monster, BEDROCK_MODEL_BY_STAGE, getModelForStage, canConverse, computeStage/nextStage, and thresholds.",
+    "getModelForStage(BABY) returns null and canConverse(BABY) is false; ROOKIE/CHAMPION/ULTIMATE map to Haiku/Sonnet/Opus model ids respectively.",
+    "evolution logic requires BOTH training count AND elapsed time to advance a stage and never skips stages.",
+    "All package.json and tsconfig files are valid JSON."
+  ],
+  "verification": [
+    "Validate every package.json and tsconfig*.json parses: `for f in package.json shared/package.json shared/tsconfig.json tsconfig.base.json; do node -e \"require('fs').readFileSync('$f'); JSON.parse(require('fs').readFileSync('$f','utf8'))\" && echo \"$f ok\"; done` (run with `env -u NODE_OPTIONS`).",
+    "Type-check shared in isolation if feasible: `cd shared && env -u NODE_OPTIONS npx -y tsc --noEmit -p tsconfig.json` — if this fails ONLY due to missing node_modules/@types or blocked registry, record that in findings; a clean compile is NOT required in-sandbox.",
+    "Confirm the vitest test file exists and asserts BABY has no model and no conversation."
+  ],
+  "blocked_reason": null,
+  "findings": "Scaffolded monorepo root (package.json npm workspaces shared/backend/frontend/infra, tsconfig.base.json strict+NodeNext+ES2022, .gitignore, .nvmrc=22, .prettierrc, .eslintrc.cjs) and the @digital-monster/shared package. shared/src: types.ts (Stage enum BABY/ROOKIE/CHAMPION/ULTIMATE + STAGE_ORDER + STAGE_LABELS Japanese + Monster interface), bedrock.ts (BEDROCK_MODEL_BY_STAGE with BABY->null, ROOKIE->Haiku, CHAMPION->3.5 Sonnet, ULTIMATE->Opus using official Bedrock ids; getModelForStage + canConverse), evolution.ts (EVOLUTION_THRESHOLDS tunable const; computeStage + nextStage requiring BOTH trainingCount AND elapsedMs, never skipping/regressing), index.ts barrel. Vitest tests in src/__tests__/evolution.test.ts cover both-gates logic, no-skip, no-regress, and BABY no-model/no-conversation invariants. VERIFICATION: all package.json/tsconfig JSON parse OK; global tsc --noEmit on shared/tsconfig.json passes with 0 errors; .eslintrc.cjs loads OK. The test file fails tsc ONLY on `Cannot find module 'vitest'` because the npm registry is blocked (INTEGRATIONS_ONLY) and node_modules cannot be installed in-sandbox; all versions are pinned so `npm install` + `npm test` will work in a networked session. No npm install attempted. All node/tsc invocations run with `env -u NODE_OPTIONS` per environment constraint."
+}

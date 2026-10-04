@@ -1,0 +1,25 @@
+{
+  "project_type": "Full-stack TypeScript monorepo: Vite React+TS frontend, API Gateway + Lambda (TS) backend, DynamoDB persistence, Amazon Bedrock conversational AI, AWS CDK (TS) IaC",
+  "language": "TypeScript (frontend, backend, infra)",
+  "build_system": "npm workspaces monorepo. Vite for frontend, tsc/esbuild for Lambda bundling via CDK NodejsFunction, AWS CDK for infra. QUIRK: npm registry is BLOCKED in this sandbox (HTTP 403), so `npm install` cannot run here. All package.json files must pin explicit, well-known versions so install works in a networked session.",
+  "test_framework": "Vitest for frontend+backend unit tests (pinned in devDependencies). Tests are authored to be correct-by-construction; they CANNOT be executed in this sandbox because dependencies cannot be installed.",
+  "build_command": "Per-package: `npm run build` in frontend (vite build), backend (tsc), infra (cdk synth). NOTE: none can run in-sandbox due to blocked npm registry; they run in a networked/AWS-credentialed session.",
+  "test_command": "`npm test` (vitest) per package. Cannot execute in-sandbox (no deps).",
+  "verification_instructions": "In-sandbox verification is limited to static checks: valid JSON in package.json/tsconfig/cdk.json, TypeScript source structure review, asset files present. Full build/test/deploy run in a networked Kiro Web session with AWS creds. Deploy = `npm install` at root, then `cd infra && npx cdk deploy` (one command after frontend build). README documents exact steps.",
+  "snapshot_or_generated_files": "null (no checked-in generated/snapshot files). Frontend build output (dist/) and CDK cdk.out/ are gitignored.",
+  "setup_instructions": "In a networked session: `npm install` at repo root (workspaces install all packages). Build frontend: `npm run build -w frontend`. Deploy: `cd infra && npx cdk bootstrap` (first time) then `npx cdk deploy --all`. AWS credentials must be active (IAM role registered in Kiro Web).",
+  "environment_constraints": "Network mode INTEGRATIONS_ONLY. npm registry returns HTTP 403 -> `npm install`, `cdk synth`, `cdk deploy`, and Bedrock calls are ALL unavailable in this sandbox. Node v22 + global tsc/prettier/eslint are available for lightweight static validation (standalone tsc checks on isolated files that have no external imports). Do NOT treat inability to install/build/deploy as a task failure; document it. Do NOT run cdk deploy against AWS from here (per user: creds are registered in Kiro Web for a NEW session).",
+  "contribution_requirements": "New GitHub repo `digital-monster`. First commit must be dated on/after 9/21 (Kiro University requirement) -> a fresh repo + new commit satisfies this. Orchestrator performs the remote repo creation, push, and PR. Leave the repo fully committed locally on a clean branch.",
+  "key_patterns": "Growth stages: 幼年期 (Baby, NO Bedrock/conversation), 成長期 (Rookie -> Claude Haiku), 成熟期 (Champion -> Claude Sonnet), 完全体 (Ultimate -> Claude Opus). Evolution gated by (training count + elapsed time since creation). No auth: one browser = one monster via localStorage-generated clientId used as DynamoDB partition key. Monster appearance uses prepared IMAGE ASSETS (one per stage), NOT emoji/ASCII. Bedrock model is selected by stage in a single mapping module shared by the chat Lambda; 幼年期 short-circuits before any Bedrock call.",
+  "relevant_files": [
+    "package.json (root, npm workspaces)",
+    "shared/src/types.ts (Stage enum, Monster model, stage->Bedrock model map, evolution thresholds)",
+    "frontend/src/ (React app, 4 stage images in frontend/src/assets/monster/)",
+    "backend/src/handlers/ (getMonster, saveMonster, train, chat Lambdas)",
+    "backend/src/lib/ (dynamo client, bedrock client + model selection, evolution logic)",
+    "infra/lib/ (CDK stack: S3+CloudFront, API Gateway+Lambda, DynamoDB, Bedrock IAM)",
+    "infra/bin/ (CDK app entry)",
+    "README.md (one-command deploy guide)"
+  ],
+  "directory_structure": "Monorepo under /projects/sandbox: shared/ (shared TS types + stage/evolution logic reused by backend & frontend), frontend/ (Vite React+TS SPA + image assets), backend/ (Lambda handler sources + libs), infra/ (CDK TS app). Root package.json defines npm workspaces + convenience scripts. README.md at root."
+}

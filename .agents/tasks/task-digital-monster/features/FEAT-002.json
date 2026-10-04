@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Implement the backend: TypeScript Lambda handlers behind API Gateway for load/save/train/chat, DynamoDB-backed persistence keyed by clientId (no auth), and Bedrock integration that selects Haiku/Sonnet/Opus by growth stage and SKIPS Bedrock entirely for 幼年期. Depends on FEAT-001 (uses @digital-monster/shared).",
+  "status": "pending",
+  "steps": [
+    "Create backend/package.json (name '@digital-monster/backend', dependency on @digital-monster/shared via workspace, and pinned AWS SDK v3 deps: @aws-sdk/client-dynamodb, @aws-sdk/lib-dynamodb, @aws-sdk/client-bedrock-runtime; devDeps: typescript, @types/aws-lambda, @types/node, vitest — all pinned). Scripts: build (tsc), test (vitest). Create backend/tsconfig.json extending base, outDir dist.",
+    "Create backend/src/lib/dynamo.ts: a DynamoDBDocumentClient wrapper reading TABLE_NAME from env. Functions getMonster(clientId), putMonster(monster). Partition key 'clientId'.",
+    "Create backend/src/lib/bedrock.ts: a thin client over @aws-sdk/client-bedrock-runtime InvokeModelCommand. Function generateReply(stage, monster, userMessage): if !canConverse(stage) (i.e. 幼年期) return a canned non-LLM baby response WITHOUT calling Bedrock; otherwise build the Anthropic messages payload for getModelForStage(stage) and invoke. Read AWS_REGION from env. Keep the prompt simple and in Japanese, persona scaled by stage.",
+    "Create backend/src/lib/response.ts: helpers for API Gateway proxy responses (json(statusCode, body) with CORS headers).",
+    "Create backend/src/handlers/getMonster.ts: GET handler. Reads clientId from path/query. If none exists, returns a freshly initialized BABY monster (does NOT persist until save). Uses dynamo.getMonster.",
+    "Create backend/src/handlers/saveMonster.ts: POST handler. Validates body against Monster shape, recomputes/validates stage via shared evolution (clamp to not exceed computed allowance), sets updatedAt=now, persists via dynamo.putMonster, returns saved monster.",
+    "Create backend/src/handlers/train.ts: POST handler. Loads monster (or inits), increments trainingCount, applies happiness/fullness bump, recomputes stage via nextStage/computeStage(now), persists, returns updated monster including whether it evolved.",
+    "Create backend/src/handlers/chat.ts: POST handler. Loads monster, calls bedrock.generateReply(monster.stage, monster, message). For 幼年期 returns the canned baby reply and a flag conversationDisabled:true. Returns { reply, stage, conversationDisabled }.",
+    "Create backend/src/handlers/index.ts re-exporting the four handlers (named exports used by CDK).",
+    "Add backend/src/**/__tests__ vitest tests: (a) chat handler returns the canned reply and NEVER constructs a Bedrock command for 幼年期 (mock the bedrock-runtime client, assert send NOT called for BABY and IS called for ROOKIE/CHAMPION/ULTIMATE with the correct modelId); (b) train increments count and evolves only when thresholds met (mock dynamo); (c) saveMonster rejects malformed body. Mock AWS SDK clients so no network is needed."
+  ],
+  "acceptance_criteria": [
+    "Four handlers exist (getMonster, saveMonster, train, chat) exporting Lambda-compatible handler functions returning API Gateway proxy results with CORS headers.",
+    "chat handler does NOT invoke Bedrock for 幼年期 (BABY) and returns conversationDisabled:true; for ROOKIE/CHAMPION/ULTIMATE it invokes the model id from getModelForStage.",
+    "Persistence uses DynamoDBDocumentClient with clientId as the partition key and TABLE_NAME from env.",
+    "train increments trainingCount and advances stage only when both training-count and elapsed-time thresholds are met.",
+    "Vitest tests exist asserting the BABY-skips-Bedrock behavior and per-stage model selection using mocked AWS SDK clients.",
+    "All package.json/tsconfig are valid JSON."
+  ],
+  "verification": [
+    "Validate backend/package.json and backend/tsconfig.json parse as JSON (env -u NODE_OPTIONS node -e).",
+    "Attempt `cd backend && env -u NODE_OPTIONS npx -y tsc --noEmit`; if it fails ONLY due to missing workspace/node_modules (blocked registry), record in findings — a clean compile is not required in-sandbox.",
+    "Read chat.ts + its test and confirm the Bedrock client send() is asserted NOT-called for BABY and called with the stage-correct modelId otherwise (test would fail if the skip logic were removed)."
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

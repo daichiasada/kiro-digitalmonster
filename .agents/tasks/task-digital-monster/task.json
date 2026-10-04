@@ -1,0 +1,7 @@
+{
+  "task_id": "task-digital-monster",
+  "task_description": "Build a greenfield full-stack 'digital monster' (Tamagotchi/Digimon-style) web app monorepo: Vite React+TS frontend with 4 per-stage image assets, API Gateway + Lambda (TS) backend, DynamoDB persistence (no auth, clientId in localStorage), Amazon Bedrock conversation selecting Haiku/Sonnet/Opus by growth stage (幼年期 has NO conversation), and AWS CDK (TS) one-command deploy. Deliver fully committed code + CDK + image assets + deploy README. Do NOT run cdk deploy from this sandbox (npm registry blocked, AWS creds live only in a new Kiro Web session). Repo name: digital-monster.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null
+}

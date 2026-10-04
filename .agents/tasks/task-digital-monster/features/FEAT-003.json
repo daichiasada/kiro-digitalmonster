@@ -1,0 +1,35 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Build the Vite React+TypeScript frontend: a single-page digital-monster UI with no auth (clientId generated and stored in localStorage), save/load/train/chat wired to the backend API, and FOUR prepared IMAGE ASSETS (one per growth stage) authored as actual files and rendered per stage. The user explicitly overrode emoji/ASCII and requires image assets. Depends on FEAT-001 (shared types).",
+  "status": "pending",
+  "steps": [
+    "Create frontend/package.json (name '@digital-monster/frontend', deps react/react-dom pinned ^18, dep @digital-monster/shared via workspace; devDeps vite ^5, @vitejs/plugin-react, typescript, @types/react, @types/react-dom, vitest, @testing-library/react, jsdom — all pinned). Scripts: dev, build (tsc && vite build), preview, test. Create frontend/tsconfig.json + frontend/vite.config.ts (react plugin, jsdom test env).",
+    "Create frontend/index.html and frontend/src/main.tsx + App.tsx bootstrap.",
+    "AUTHOR FOUR IMAGE ASSETS in frontend/src/assets/monster/: baby.svg (幼年期 egg/baby), rookie.svg (成長期), champion.svg (成熟期), ultimate.svg (完全体). Use hand-authored SVG so no binary generation/network is needed. Each must be a visually distinct creature escalating in complexity/size per stage (egg -> small creature -> larger horned/winged -> fully evolved). These are real asset files, NOT emoji and NOT ASCII.",
+    "Create frontend/src/lib/stageImage.ts mapping each Stage to its imported image asset, so the component renders the correct image per stage.",
+    "Create frontend/src/lib/clientId.ts: get-or-create a UUID in localStorage under key 'digital-monster:clientId' (one browser = one monster).",
+    "Create frontend/src/lib/api.ts: typed fetch client for GET monster, POST save, POST train, POST chat using import.meta.env.VITE_API_BASE_URL; include clientId in requests.",
+    "Create frontend/src/components/MonsterView.tsx rendering the stage image (from stageImage), the Japanese stage label, name, trainingCount, and happiness/fullness bars.",
+    "Create frontend/src/components/ChatPanel.tsx: a chat UI that calls the chat API; when the monster is 幼年期 it disables the input and shows a message that 幼年期 cannot converse yet (mirrors backend conversationDisabled).",
+    "Create frontend/src/components/Controls.tsx with Train and Save buttons wired to the API; refresh monster state and image on stage change.",
+    "Wire everything in App.tsx: on mount, ensure clientId, GET monster, render MonsterView + Controls + ChatPanel. Add minimal CSS (frontend/src/styles.css).",
+    "Add frontend/src/__tests__ vitest tests: (a) stageImage returns a distinct asset for each of the 4 stages; (b) ChatPanel disables input when stage is BABY (幼年期); (c) clientId persists/reuses the same id across calls. Use @testing-library/react + jsdom; mock fetch."
+  ],
+  "acceptance_criteria": [
+    "frontend/src/assets/monster/ contains exactly four real image files (baby, rookie, champion, ultimate) that are valid SVG, visually distinct, NOT emoji/ASCII.",
+    "stageImage maps each Stage to the correct asset and MonsterView renders the image for the current stage.",
+    "No authentication: clientId is generated once and persisted in localStorage; the same id is reused on reload.",
+    "ChatPanel disables conversation UI for 幼年期 and allows it for the other three stages.",
+    "Save/Train/Chat call the backend via VITE_API_BASE_URL with the clientId.",
+    "Vitest tests exist for stage->image mapping, BABY chat-disabled, and clientId persistence."
+  ],
+  "verification": [
+    "Validate frontend/package.json, tsconfig.json parse as JSON (env -u NODE_OPTIONS node -e).",
+    "Confirm the four SVG files exist and are well-formed: `for f in baby rookie champion ultimate; do head -1 frontend/src/assets/monster/$f.svg; done` shows an <svg ...> root for each, and they differ from one another.",
+    "Attempt `cd frontend && env -u NODE_OPTIONS npx -y tsc --noEmit`; if it fails ONLY due to blocked registry/missing deps, record in findings — a clean compile is not required in-sandbox.",
+    "Read ChatPanel + its test and confirm input is disabled for BABY (test would fail if the gate were removed)."
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
