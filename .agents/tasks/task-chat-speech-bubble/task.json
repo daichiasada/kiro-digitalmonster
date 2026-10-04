@@ -1,0 +1,20 @@
+{
+  "task_id": "task-chat-speech-bubble",
+  "task_description": "GitHub issue #11: show the monster's chat conversation near the sprite as a speech bubble. The most recent monster reply renders as a bubble positioned near the monster sprite (in/over the left .stage-area) with a tail (triangle) pointing toward the monster and a fade-in on new content. While awaiting a reply the bubble shows a typing '…' state. The baby (幼年期) non-verbal canned reply is also expressed in the bubble. The latest-reply text is derived by a new pure helper in ui-helpers.ts, unit-tested in game-ui.test.ts. The existing ChatPanel transcript + input on the right are preserved. No new runtime dependencies; UI stays Japanese-only.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "review": {
+    "verdict": "APPROVED",
+    "iterations": 1,
+    "artifact": ".agents/tasks/task-chat-speech-bubble/2026-10-04-172500-review.md",
+    "notes": "v1 APPROVED. Four non-blocking cosmetic concerns surfaced (permanent baby bubble overlaps 💤/💢 badges; aria-live double-announces pending then reply; long replies clamp without ellipsis; BABY_SPEECH_TEXT duplicates backend literal with no enforced tie). None block the feature."
+  },
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build exits 0. Root npm test 47/47 (shared). Frontend npm test 33/33 (27 baseline + 6 new latestMonsterReply/BABY_SPEECH_TEXT tests). New tests cover empty/player-only/single/interleaved-last/baby-text cases and an exact-literal assertion; they exercise the real helper and would fail if reverted. No Dockerfile relevant for this UI-only frontend change (skipped)."
+  }
+}

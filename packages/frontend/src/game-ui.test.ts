@@ -10,12 +10,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  BABY_SPEECH_TEXT,
   battleLogJa,
   battleLogLineJa,
   canChat,
   careEffect,
   formatMinutesJa,
   hpPercent,
+  latestMonsterReply,
   moodLabelJa,
   parseBattleEvents,
   playerStartHpFromLog,
@@ -230,6 +232,57 @@ test("playerStartHpFromLog falls back to max HP when the player is never hit", (
 
 test("playerStartHpFromLog falls back to max HP for an empty log", () => {
   assert.equal(playerStartHpFromLog([], 25), 25);
+});
+
+test("latestMonsterReply returns null for an empty log", () => {
+  assert.equal(latestMonsterReply([]), null);
+});
+
+test("latestMonsterReply returns null when the log has only player lines", () => {
+  assert.equal(
+    latestMonsterReply([
+      { role: "player", text: "こんにちは" },
+      { role: "player", text: "元気？" },
+    ]),
+    null,
+  );
+});
+
+test("latestMonsterReply returns the single monster line text", () => {
+  assert.equal(
+    latestMonsterReply([
+      { role: "player", text: "こんにちは" },
+      { role: "monster", text: "やあ！" },
+    ]),
+    "やあ！",
+  );
+});
+
+test("latestMonsterReply returns the LAST monster line when interleaved", () => {
+  assert.equal(
+    latestMonsterReply([
+      { role: "player", text: "やあ" },
+      { role: "monster", text: "こんにちは！" },
+      { role: "player", text: "元気？" },
+      { role: "monster", text: "とっても元気だよ！" },
+      { role: "player", text: "よかった" },
+    ]),
+    "とっても元気だよ！",
+  );
+});
+
+test("latestMonsterReply returns the baby canned text when it is the last monster line", () => {
+  assert.equal(
+    latestMonsterReply([
+      { role: "player", text: "はなしかけてみる" },
+      { role: "monster", text: BABY_SPEECH_TEXT },
+    ]),
+    "…！（まだ言葉を話せないみたい。もっと育ててあげよう！）",
+  );
+});
+
+test("BABY_SPEECH_TEXT equals the exact backend canned non-verbal reply", () => {
+  assert.equal(BABY_SPEECH_TEXT, "…！（まだ言葉を話せないみたい。もっと育ててあげよう！）");
 });
 
 test("battleLogJa localizes a full log", () => {
