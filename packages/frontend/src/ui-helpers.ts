@@ -25,6 +25,31 @@ export function canChat(stageId: GrowthStage): boolean {
 }
 
 /**
+ * Canned non-verbal reply surfaced for the baby (幼年期) stage, which cannot
+ * talk. Mirrored here so the speech bubble can show it WITHOUT sending a
+ * backend/Bedrock request. Source of truth: packages/backend/src/handlers/
+ * chat.ts (the baby branch returns this exact `reply` with modelId 'none').
+ */
+export const BABY_SPEECH_TEXT = "…！（まだ言葉を話せないみたい。もっと育ててあげよう！）";
+
+/**
+ * Return the text of the most recent monster line in a chat log, or null when
+ * there is none (empty log or only player lines). React/DOM-free so it can be
+ * unit-tested under the Node runner; accepts a structural subset of ChatLine.
+ */
+export function latestMonsterReply(
+  chatLog: ReadonlyArray<{ role: "player" | "monster"; text: string }>,
+): string | null {
+  for (let i = chatLog.length - 1; i >= 0; i -= 1) {
+    const line = chatLog[i];
+    if (line.role === "monster") {
+      return line.text;
+    }
+  }
+  return null;
+}
+
+/**
  * HP as an integer percentage in [0, 100]. Guards against zero/negative maxHp.
  */
 export function hpPercent(hp: number, maxHp: number): number {

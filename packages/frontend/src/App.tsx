@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMonster } from "./state/useMonster.ts";
-import { careEffect, playerStartHpFromLog, type CareAction } from "./ui-helpers.ts";
+import {
+  BABY_SPEECH_TEXT,
+  canChat,
+  careEffect,
+  latestMonsterReply,
+  playerStartHpFromLog,
+  type CareAction,
+} from "./ui-helpers.ts";
 import { MonsterSprite } from "./assets/monsters/MonsterSprite.tsx";
 import { StatsPanel } from "./components/StatsPanel.tsx";
 import { CarePanel } from "./components/CarePanel.tsx";
 import { BattlePanel } from "./components/BattlePanel.tsx";
 import { ChatPanel } from "./components/ChatPanel.tsx";
+import { SpeechBubble } from "./components/SpeechBubble.tsx";
 import { EvolutionBanner } from "./components/EvolutionBanner.tsx";
 
 /** Root game screen wiring the state hook to the UI panels. */
@@ -94,6 +102,14 @@ export function App() {
               >
                 <MonsterSprite stageId={game.monster.stageId} size={200} />
               </div>
+              {/* Latest spoken reply shown as a bubble over the sprite. For a
+                  baby (幼年期) the monster can't chat, so surface the canned
+                  non-verbal cue WITHOUT sending a request (and never pending);
+                  otherwise mirror the live chat state. */}
+              <SpeechBubble
+                text={canChat(game.monster.stageId) ? latestMonsterReply(game.chatLog) : BABY_SPEECH_TEXT}
+                pending={canChat(game.monster.stageId) ? game.chatPending : false}
+              />
               {game.monster.isSleeping && <span className="zzz" aria-hidden="true">💤</span>}
               {game.monster.dirty && <span className="dirt" aria-hidden="true">💢</span>}
               {careFx !== null && (

@@ -122,6 +122,74 @@ body {
   left: 18px;
 }
 
+/* --- speech bubble (latest monster reply, near the sprite) --- */
+/* Anchored above the sprite inside the relatively-positioned .sprite-wrap so
+   it reads as coming from the monster. Palette matches the monster chat
+   bubble (var(--panel-2)/var(--text)). pointer-events: none so it never blocks
+   sprite interactions. */
+.speech-bubble {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 2;
+  animation: speech-bubble-in 0.3s ease-out;
+}
+
+.speech-bubble-text {
+  display: block;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap;
+  max-height: 6em;
+  overflow: hidden;
+}
+
+/* Tail: a downward-pointing triangle (border trick) toward the sprite below. */
+.speech-bubble-tail {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid var(--panel-2);
+}
+
+/* Subtle dimming for the '…' typing state. */
+.speech-bubble.pending {
+  opacity: 0.85;
+}
+
+@keyframes speech-bubble-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .speech-bubble {
+    animation: none;
+  }
+}
+
 /* --- care action feedback animations --- */
 /* Wrapper around the sprite; remounted (keyed) per action in App.tsx so the
    bounce restarts on every click, including rapid repeats of the same action. */
