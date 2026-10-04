@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import type { BattleResult, GrowthStage } from "@ddm/shared";
 import { getStage } from "@ddm/shared";
 import { MonsterSprite } from "../assets/monsters/MonsterSprite.tsx";
+import { useI18n } from "../i18n.ts";
 import {
-  battleLogLineJa,
+  battleLogLine,
   hpPercent,
   parseBattleEvents,
-  stageLabelJa,
-  winnerLabelJa,
+  stageLabel,
+  winnerLabel,
   type BattleTurnEvent,
 } from "../ui-helpers.ts";
 
@@ -53,11 +54,13 @@ export function BattlePanel({
   playerMaxHp,
   playerStartHp,
 }: BattlePanelProps) {
+  const { lang, t } = useI18n();
   // The enemy mirrors the backend (packages/backend/src/handlers/battle.ts):
   // same stageId as the player, maxHp = round(stage.baseStats.maxHp * 0.9),
-  // name `野生の{labelJa}モンスター`. getStage is already a frontend dependency.
+  // name `野生の{labelJa}モンスター` (JA). The display name is localized via the
+  // battle.enemyName template; getStage is already a frontend dependency.
   const enemyMaxHp = Math.round(getStage(playerStageId).baseStats.maxHp * 0.9);
-  const enemyName = `野生の${stageLabelJa(playerStageId)}モンスター`;
+  const enemyName = t("battle.enemyName").replace("{label}", stageLabel(playerStageId, lang));
 
   // Displayed HP for each bar; tweened down by the CSS width transition.
   const [playerHp, setPlayerHp] = useState(playerStartHp);
@@ -73,6 +76,8 @@ export function BattlePanel({
 
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   // Identity of the battle currently being animated, so a new result restarts.
+  // The language is folded into the identity so switching JA/EN re-plays the
+  // log in the newly selected language instead of keeping the stale lines.
   const playingId = useRef<string | null>(null);
 
   const clearTimer = () => {
@@ -91,7 +96,9 @@ export function BattlePanel({
     }
     // Detect a new battle run by log identity so pressing the button again
     // cleanly restarts the animation from turn 1 with fresh HP and empty log.
-    const id = log.join("\n");
+    // The active language is part of the identity so a language toggle restarts
+    // playback and re-localizes the revealed log lines.
+    const id = `${lang}\n${log.join("\n")}`;
     if (id === playingId.current) {
       return;
     }
@@ -119,10 +126,11 @@ export function BattlePanel({
       }
       setRevealed((prev) => [
         ...prev,
-        battleLogLineJa(
+        battleLogLine(
           `T${ev.turn}: ${ev.attacker === "player" ? playerName : enemyName} hits ${
             ev.defender === "player" ? playerName : enemyName
           } for ${ev.dmg} (${ev.defender} HP ${ev.defenderHpAfter})`,
+          lang,
         ),
       ]);
     };
@@ -156,7 +164,9 @@ export function BattlePanel({
     return clearTimer;
     // enemyMaxHp/enemyName/playerName are derived from stable props; the run is
     // keyed off the log identity so we intentionally depend on log + result.
-  }, [log, result, playerStartHp, enemyMaxHp, enemyName, playerName]);
+    // lang is included so toggling language re-renders the log in the new
+    // language (the run restarts since the revealed lines are rebuilt).
+  }, [log, result, playerStartHp, enemyMaxHp, enemyName, playerName, lang]);
 
   const playerMotion =
     active === null ? "" : active.attacker === "player" ? "attacking" : active.defender === "player" ? "hit" : "";
@@ -164,10 +174,10 @@ export function BattlePanel({
     active === null ? "" : active.attacker === "enemy" ? "attacking" : active.defender === "enemy" ? "hit" : "";
 
   return (
-    <section className="panel battle-panel" aria-label="バトル">
-      <h2>バトル</h2>
+    <section className="panel battle-panel" aria-label={t("aria.battle")}>
+      <h2>{t("battle.title")}</h2>
       <button type="button" className="battle-btn" onClick={onBattle} disabled={busy}>
-        ⚔️ 野生のモンスターと戦う
+        {t("battle.start")}
       </button>
 
       {result !== null && (
@@ -207,7 +217,7 @@ export function BattlePanel({
           </div>
 
           {winner !== null && (
-            <p className={`battle-result ${winner}`}>{winnerLabelJa(winner)}</p>
+            <p className={`battle-result ${winner}`}>{winnerLabel(winner, lang)}</p>
           )}
         </>
       )}

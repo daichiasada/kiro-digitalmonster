@@ -1,0 +1,33 @@
+{
+  "project_type": "TypeScript monorepo (npm workspaces): React+Vite frontend, Lambda backend, shared pure-logic lib, AWS CDK infra. Digimon-style monster raising web game for the Kiro University Challenge.",
+  "language": "TypeScript",
+  "build_system": "npm workspaces. Root `npm run build` compiles @ddm/shared (tsc) -> @ddm/backend (tsc) -> @ddm/frontend (tsc && vite build) -> infra (tsc), in that order. The backend/frontend import @ddm/shared via its compiled dist/, so shared MUST be rebuilt before they typecheck against new exports.",
+  "test_framework": "Two separate suites. (1) @ddm/shared uses the Node built-in test runner (node:test) over packages/shared/src/__tests__/*.test.ts, baseline 47 tests. (2) Frontend pure UI helpers use node:test over packages/frontend/src/game-ui.test.ts (run via `npm run test -w @ddm/frontend` = `node --experimental-strip-types --test src/game-ui.test.ts`), baseline 33 tests. Both are dependency-free and keep DOM/React out.",
+  "build_command": "npm run build  (from repo root)",
+  "test_command": "npm test  (shared, 47 baseline)  AND  npm run test -w @ddm/frontend  (frontend ui-helpers, 33 baseline). Run frontend tests with env -u NODE_OPTIONS to avoid inherited flags, e.g. `cd packages/frontend && env -u NODE_OPTIONS node --experimental-strip-types --test src/game-ui.test.ts`.",
+  "verification_instructions": "1) npm run build must stay green (shared->backend->frontend->infra). 2) Both test suites must stay green and GROW (shared stays >=47, frontend grows beyond 33 with new i18n/dictionary/formatter tests). 3) Japanese output must be byte-identical to today when lang='ja' so existing JA-only assertions in game-ui.test.ts do not regress. 4) EN variant renders for every user-visible string.",
+  "snapshot_or_generated_files": "None checked into source for this task. packages/*/dist and packages/frontend/dist are build artifacts (gitignored where applicable); infra/cdk.out is CDK synth output. No golden/snapshot fixtures to regenerate.",
+  "setup_instructions": "npm install at repo root (done, exit 0). npm run build at repo root (done, exit 0). Node >=20.",
+  "environment_constraints": "Network OPEN_INTERNET. Cannot push or open PRs (orchestrator does that). Changing packages/backend/src/handlers/chat.ts requires an AWS redeploy (cd infra && npx cdk deploy) which the ORCHESTRATOR performs after merge; the coder must NOT deploy. The baby canned reply must stay backward compatible (lang defaults to 'ja' when absent) so already-deployed backends and the frontend mirror keep working.",
+  "contribution_requirements": "No external runtime dependencies may be added (no i18n library). Respect existing patterns: pure helpers in packages/frontend/src/ui-helpers.ts, CSS in packages/frontend/src/styles.css, strings tested in game-ui.test.ts. SUBMISSION.md 7-lesson + 2-bonus mapping must remain accurate; a light note for notable new files is fine but do not restructure it. Work on a feature branch off main; do NOT touch backup/previous-main branches.",
+  "key_patterns": "Pure, React/DOM-free helpers live in ui-helpers.ts and are unit-tested in game-ui.test.ts. Existing localization helpers are JA-only and suffixed *Ja: stageLabelJa, winnerLabelJa, battleLogLineJa, battleLogJa, formatMinutesJa, moodLabelJa, plus BABY_SPEECH_TEXT. The battle log is a STRUCTURED ENGLISH string from @ddm/shared/battle.ts parsed by TURN_LINE_RE / RESULT_LINE_RE, so EN rendering of the log is straightforward. Enemy name is built client-side in BattlePanel.tsx as `野生の${stageLabelJa(stage)}モンスター`. Stage labels: StageConfig in packages/shared/src/stages.ts has labelJa only (幼年期/成長期/成熟期/完全体); frontend STAGE_LABELS_JA mirrors it. EN needs English stage labels (Baby/Rookie/Champion/Ultimate). evolutionProgress() in stages.ts returns nextLabelJa/currentLabelJa (JA only). ChatRequest DTO in packages/shared/src/types.ts has no lang field. buildSystemPrompt() in backend chat.ts hard-codes Japanese.",
+  "relevant_files": [
+    "packages/frontend/src/App.tsx (header h1, loading/error/footer text; mount I18nProvider + language toggle here)",
+    "packages/frontend/src/ui-helpers.ts (generalize *Ja helpers to be lang-aware or add *En; BABY_SPEECH_TEXT -> add EN variant)",
+    "packages/frontend/src/game-ui.test.ts (keep JA assertions; add EN + dictionary parity tests)",
+    "packages/frontend/src/components/CarePanel.tsx (お世話, 餌やり/トレーニング/睡眠/起こす/清掃, hint)",
+    "packages/frontend/src/components/StatsPanel.tsx (きぶん, HP/攻撃/防御, トレーニング回数, 進化条件 block, 最終段階, 次の段階, 経過; uses formatMinutesJa, moodLabelJa, stageLabelJa, evolutionProgress)",
+    "packages/frontend/src/components/BattlePanel.tsx (バトル, ⚔️ 野生のモンスターと戦う, enemy name, battleLogLineJa, winnerLabelJa, aria-labels)",
+    "packages/frontend/src/components/ChatPanel.tsx (会話, disabled hint, placeholder メッセージを入力, 送信, 話しかけてみよう！, aria-labels)",
+    "packages/frontend/src/components/SpeechBubble.tsx (presentational; text comes from App via BABY_SPEECH_TEXT / latestMonsterReply)",
+    "packages/frontend/src/components/EvolutionBanner.tsx (進化した！ ... になった！, 閉じる)",
+    "packages/shared/src/stages.ts (add labelEn to StageConfig for each stage; keep labelJa)",
+    "packages/shared/src/types.ts (add optional lang?: 'ja'|'en' to ChatRequest; add Lang type or keep local)",
+    "packages/backend/src/handlers/chat.ts (buildSystemPrompt branch on lang; baby canned reply EN variant; thread lang from body, default 'ja')",
+    "packages/frontend/src/api.ts (chat() already passes ChatRequest; include lang)",
+    "packages/frontend/src/state/useMonster.ts (sendChat passes lang in api.chat call)",
+    "packages/frontend/src/styles.css (style the header language toggle)",
+    "SUBMISSION.md (optional light note)"
+  ],
+  "directory_structure": "packages/shared = types + pure game/evolution/battle logic + Bedrock model mapping (node:test). packages/backend = Lambda handlers (getMonster/saveMonster/battle/chat) importing compiled @ddm/shared. packages/frontend = React+Vite UI: App.tsx root, components/*, assets/monsters/* SVG sprites, state/useMonster.ts hook, api.ts client, config.ts runtime config, ui-helpers.ts pure helpers, game-ui.test.ts, styles.css. infra = CDK app."
+}

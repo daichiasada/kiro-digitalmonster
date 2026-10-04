@@ -1,4 +1,5 @@
 import type { Monster } from "@ddm/shared";
+import { useI18n } from "../i18n.ts";
 
 export interface CarePanelProps {
   monster: Monster;
@@ -9,32 +10,31 @@ export interface CarePanelProps {
   onClean: () => void;
 }
 
-/** Care action buttons: 餌 / トレーニング / 睡眠 / 清掃. */
+/** Care action buttons: feed / train / sleep / clean. */
 export function CarePanel({ monster, busy, onFeed, onTrain, onSleep, onClean }: CarePanelProps) {
+  const { t } = useI18n();
   return (
-    <section className="panel care-panel" aria-label="お世話">
-      <h2>お世話</h2>
+    <section className="panel care-panel" aria-label={t("aria.care")}>
+      <h2>{t("care.title")}</h2>
       <div className="care-buttons">
         <button type="button" className="care-btn feed" onClick={onFeed} disabled={busy}>
           <span className="care-icon" aria-hidden="true">🍖</span>
-          <span>餌やり</span>
+          <span>{t("care.feed")}</span>
         </button>
         <button type="button" className="care-btn train" onClick={onTrain} disabled={busy}>
           <span className="care-icon" aria-hidden="true">💪</span>
-          <span>トレーニング</span>
+          <span>{t("care.train")}</span>
         </button>
         <button type="button" className="care-btn sleep" onClick={onSleep} disabled={busy}>
           <span className="care-icon" aria-hidden="true">{monster.isSleeping ? "⏰" : "😴"}</span>
-          <span>{monster.isSleeping ? "起こす" : "睡眠"}</span>
+          <span>{monster.isSleeping ? t("care.wake") : t("care.sleep")}</span>
         </button>
         <button type="button" className="care-btn clean" onClick={onClean} disabled={busy}>
           <span className="care-icon" aria-hidden="true">🧼</span>
-          <span>清掃</span>
+          <span>{t("care.clean")}</span>
         </button>
       </div>
-      <p className="care-hint">
-        トレーニングと時間経過で進化します。放っておくとお腹がすいて汚れます。
-      </p>
+      <p className="care-hint">{t("care.hint")}</p>
     </section>
   );
 }

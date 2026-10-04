@@ -85,12 +85,20 @@ export interface GetMonsterResponse {
 /** Alias kept for symmetry with the step spec. */
 export type GetMonster = GetMonsterRequest;
 
+/** UI / chat language. Defaults to "ja" when absent for backward compatibility. */
+export type Lang = "ja" | "en";
+
 /** Chat with the monster (POST /chat). */
 export interface ChatRequest {
   monsterId: string;
   stageId: GrowthStage;
   monsterName: string;
   message: string;
+  /**
+   * Preferred reply language. Optional for backward compatibility: when absent
+   * the backend defaults to "ja", so already-deployed clients behave as before.
+   */
+  lang?: Lang;
 }
 
 export interface ChatResponse {

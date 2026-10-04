@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { GrowthStage } from "@ddm/shared";
 import type { ChatLine } from "../state/useMonster.ts";
+import { useI18n } from "../i18n.ts";
 import { canChat } from "../ui-helpers.ts";
 
 export interface ChatPanelProps {
@@ -12,6 +13,7 @@ export interface ChatPanelProps {
 
 /** Conversation panel. Disabled with a hint during the 幼年期 (baby) stage. */
 export function ChatPanel({ stageId, log, pending, onSend }: ChatPanelProps) {
+  const { t } = useI18n();
   const [text, setText] = useState("");
   const enabled = canChat(stageId);
 
@@ -26,17 +28,15 @@ export function ChatPanel({ stageId, log, pending, onSend }: ChatPanelProps) {
   }
 
   return (
-    <section className="panel chat-panel" aria-label="会話">
-      <h2>会話</h2>
+    <section className="panel chat-panel" aria-label={t("aria.chat")}>
+      <h2>{t("chat.title")}</h2>
       {!enabled ? (
-        <p className="chat-disabled-hint">
-          幼年期のあいだはまだ言葉を話せません。トレーニングと時間経過で成長期へ進化すると会話できるようになります。
-        </p>
+        <p className="chat-disabled-hint">{t("chat.disabledHint")}</p>
       ) : (
         <>
           <div className="chat-log" aria-live="polite">
             {log.length === 0 ? (
-              <p className="chat-empty">話しかけてみよう！</p>
+              <p className="chat-empty">{t("chat.emptyPrompt")}</p>
             ) : (
               log.map((line, i) => (
                 <div key={i} className={`chat-line ${line.role}`}>
@@ -54,12 +54,12 @@ export function ChatPanel({ stageId, log, pending, onSend }: ChatPanelProps) {
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="メッセージを入力"
+              placeholder={t("chat.placeholder")}
               disabled={pending}
-              aria-label="メッセージ"
+              aria-label={t("chat.inputAria")}
             />
             <button type="submit" disabled={pending || text.trim() === ""}>
-              送信
+              {t("chat.send")}
             </button>
           </form>
         </>

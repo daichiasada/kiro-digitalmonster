@@ -1,0 +1,14 @@
+{
+  "task_id": "task-i18n-language-toggle",
+  "task_description": "Add a JA/EN language toggle to the Digital Monster frontend so a US judge can use the app in English. Build a dependency-free in-house i18n layer (Lang type, two complete message dictionaries, useI18n() provider/hook persisted to localStorage key 'ddm.lang', default 'ja'), put the toggle in the header, and translate EVERY user-visible string including the ones added by issues #8 (evolution conditions), #9 (battle animation), #10 (care animations), and #11 (chat speech bubble). Keep JA output byte-identical to today. Where feasible, also make the Bedrock chat AI reply in the selected language by threading an optional lang through ChatRequest -> frontend -> backend chat.ts (default 'ja', backward compatible); this requires an AWS redeploy performed by the orchestrator after merge.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build exits 0 (shared->backend->frontend tsc+vite->infra). Shared npm test 47 pass/0 fail (unchanged baseline). Frontend game-ui.test.ts 49 pass/0 fail (33 baseline + 16 new i18n/EN/parity/fallback tests). Test quality verified: new tests exercise the real lang-aware helpers (stageLabel/winnerLabel/battleLogLine/formatMinutes/moodLabel/babySpeechText) asserting EN output, byte-identical JA equivalence to the *Ja helpers, MESSAGES ja/en key-set parity (sorted deepEqual), and t() fallback (missing key -> ja value -> key). JA UI output is byte-identical to pre-change. No Docker in this repo (CDK app) so docker_build skipped. backend chat.ts changed, so an AWS redeploy of the chat Lambda is required after merge (orchestrator handles it)."
+  }
+}

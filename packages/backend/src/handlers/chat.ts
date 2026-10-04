@@ -1,5 +1,5 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
-import type { ChatContext, ChatRequest, ChatResponse, Monster } from "@ddm/shared";
+import type { ChatContext, ChatRequest, ChatResponse, Lang, Monster } from "@ddm/shared";
 import { chooseChatContext, getStage, resolveModelId } from "@ddm/shared";
 import {
   BedrockRuntimeClient,
@@ -22,9 +22,26 @@ function getBedrock(): BedrockRuntimeClient {
 /** Max tokens requested from the model; kept small for snappy, cheap replies. */
 const MAX_TOKENS = 300;
 
-/** Build a Japanese system prompt reflecting the monster's stage + personality. */
-function buildSystemPrompt(context: ChatContext): string {
+/**
+ * Build a system prompt reflecting the monster's stage + personality.
+ *
+ * `lang==='ja'` (the default when the client omits lang) returns the original
+ * 6-line Japanese prompt BYTE-IDENTICAL, so already-deployed clients behave
+ * exactly as before. `lang==='en'` returns an English prompt conveying the
+ * same intent and instructs the model to reply in English.
+ */
+function buildSystemPrompt(context: ChatContext, lang: Lang): string {
   const stage = getStage(context.stageId);
+  if (lang === "en") {
+    return [
+      `You are a digital monster named "${context.name}".`,
+      `Your current growth stage is "${stage.labelEn}".`,
+      "Chat briefly and in a friendly way with your owner (the player).",
+      "Express a monster-like, innocent, and energetic personality in your voice.",
+      `The higher the growth stage, the smarter and calmer you speak (currently ${stage.labelEn}).`,
+      "Reply in English, in about 2-3 short sentences.",
+    ].join("\n");
+  }
   return [
     `あなたは「${context.name}」という名前のデジタルモンスターです。`,
     `現在の成長段階は「${stage.labelJa}」です。`,
@@ -76,6 +93,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     return error(400, "message is required");
   }
 
+  // Reply language. Anything other than the explicit "en" opt-in falls back to
+  // "ja", preserving the original behavior for old clients that never send it.
+  const lang: Lang = body.lang === "en" ? "en" : "ja";
+
   // Load the persisted monster. It is the source of truth WHEN it exists, so a
   // client cannot spoof a higher stage/model. For a brand-new monster that was
   // never saved we fall back to the client-sent stageId/monsterName instead of
@@ -97,7 +118,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   // Baby stage: no chat. Return a non-verbal, canned reply.
   if (!stage.canChat || stage.bedrockModelKey === "none") {
     const response: ChatResponse = {
-      reply: "…！（まだ言葉を話せないみたい。もっと育ててあげよう！）",
+      reply:
+        lang === "en"
+          ? "…! (It can't talk yet. Let's raise it more!)"
+          : "…！（まだ言葉を話せないみたい。もっと育ててあげよう！）",
       modelId: "none",
     };
     return ok(response);
@@ -108,7 +132,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const requestPayload = {
     anthropic_version: "bedrock-2023-05-31",
     max_tokens: MAX_TOKENS,
-    system: buildSystemPrompt(context),
+    system: buildSystemPrompt(context, lang),
     messages: [
       {
         role: "user",
@@ -131,8 +155,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const parsed = JSON.parse(decoded) as AnthropicResponse;
     const reply = extractText(parsed);
 
+    const emptyReplyFallback =
+      lang === "en"
+        ? "… (couldn't come up with a reply)"
+        : "…（うまく返事ができなかったみたい）";
     const response: ChatResponse = {
-      reply: reply !== "" ? reply : "…（うまく返事ができなかったみたい）",
+      reply: reply !== "" ? reply : emptyReplyFallback,
       modelId,
     };
     return ok(response);

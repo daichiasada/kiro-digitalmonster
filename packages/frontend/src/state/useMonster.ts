@@ -33,6 +33,7 @@ import {
 } from "@ddm/shared";
 import * as api from "../api.ts";
 import { getOrCreateMonsterId } from "../api.ts";
+import { useI18n } from "../i18n.ts";
 
 /** How often (ms) to re-apply time passage so hunger/age tick live. */
 const TIME_TICK_MS = 15_000;
@@ -77,6 +78,7 @@ function advance(monster: Monster, now: number): Monster {
 }
 
 export function useMonster(): UseMonsterState {
+  const { lang } = useI18n();
   const [monster, setMonster] = useState<Monster | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +93,11 @@ export function useMonster(): UseMonsterState {
   // being re-created on every render.
   const monsterRef = useRef<Monster | null>(null);
   const prevStageRef = useRef<GrowthStage | null>(null);
+
+  // Mirror the active UI language into a ref so sendChat (a useCallback) always
+  // sends the current language without being re-created on every lang change.
+  const langRef = useRef(lang);
+  langRef.current = lang;
 
   const commit = useCallback((next: Monster) => {
     const prevStage = prevStageRef.current;
@@ -242,6 +249,7 @@ export function useMonster(): UseMonsterState {
           stageId: current.stageId,
           monsterName: current.name,
           message: trimmed,
+          lang: langRef.current,
         });
         setChatLog((log) => [
           ...log,
