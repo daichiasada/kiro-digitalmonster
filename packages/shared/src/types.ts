@@ -1,5 +1,5 @@
 /**
- * Core domain types for the Digital Monster game.
+ * Core domain types for the AI Monster game.
  *
  * These types are shared between the frontend (React) and the backend (Lambda)
  * so that the save data shape and the DTOs over the API are defined once.

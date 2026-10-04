@@ -2,7 +2,7 @@
   "name": "@ddm/infra",
   "version": "0.1.0",
   "private": true,
-  "description": "AWS CDK (TypeScript) infrastructure for the Digital Monster game: DynamoDB, Lambda, HTTP API, Bedrock IAM, S3 + CloudFront.",
+  "description": "AWS CDK (TypeScript) infrastructure for the AI Monster game: DynamoDB, Lambda, HTTP API, Bedrock IAM, S3 + CloudFront.",
   "bin": {
     "infra": "bin/app.js"
   },

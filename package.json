@@ -2,7 +2,7 @@
   "name": "kiro-digitalmonster",
   "version": "0.1.0",
   "private": true,
-  "description": "Digital Monster - a Digimon-style monster raising web game (TypeScript monorepo).",
+  "description": "AI Monster - a Digimon-style monster raising web game (TypeScript monorepo).",
   "workspaces": [
     "packages/*",
     "infra"

@@ -65,7 +65,7 @@ const BACKEND_HANDLERS = path.join(
 const FRONTEND_DIST = path.join(REPO_ROOT, "packages", "frontend", "dist");
 
 /**
- * The complete Digital Monster infrastructure:
+ * The complete AI Monster infrastructure:
  *   - DynamoDB table for monster save data
  *   - Four Lambda functions (getMonster / saveMonster / chat / battle)
  *   - HTTP API (API Gateway v2) with CORS wiring the Lambdas to routes

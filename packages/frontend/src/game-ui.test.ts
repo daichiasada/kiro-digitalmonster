@@ -423,8 +423,8 @@ test("chat.disabledHint has no stray leading/trailing whitespace in either langu
 });
 
 test("t() returns the dictionary value for a known key", () => {
-  assert.equal(t("ja", "app.title"), "デジタルモンスター育成");
-  assert.equal(t("en", "app.title"), "Digital Monster Raising");
+  assert.equal(t("ja", "app.title"), "AIモンスター育成");
+  assert.equal(t("en", "app.title"), "AI Monster Raising");
 });
 
 test("t() falls back to the JA value when a language is missing the key", () => {

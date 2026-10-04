@@ -39,7 +39,7 @@ new DigitalMonsterStack(app, "DigitalMonsterStack", {
   bedrockModelSonnet,
   bedrockModelOpus,
   description:
-    "Digital Monster (Digimon-style raising game): DynamoDB + Lambda + HTTP API + Bedrock + S3/CloudFront.",
+    "AI Monster (Digimon-style raising game): DynamoDB + Lambda + HTTP API + Bedrock + S3/CloudFront.",
 });
 
 app.synth();

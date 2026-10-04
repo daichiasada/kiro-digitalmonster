@@ -30,7 +30,7 @@ export const DEFAULT_LANG: Lang = "ja";
  */
 const JA_MESSAGES = {
   // App shell
-  "app.title": "デジタルモンスター育成",
+  "app.title": "AIモンスター育成",
   "app.loading": "読み込み中…",
   "app.loadError": "モンスターを準備できませんでした。",
   "app.footer": "進化条件: トレーニング回数 ＋ 経過時間 ／ セーブは自動です",
@@ -103,7 +103,7 @@ export type MessageKey = keyof typeof JA_MESSAGES;
  */
 const EN_MESSAGES: Record<MessageKey, string> = {
   // App shell
-  "app.title": "Digital Monster Raising",
+  "app.title": "AI Monster Raising",
   "app.loading": "Loading…",
   "app.loadError": "Could not prepare your monster.",
   "app.footer": "Evolution: training count + elapsed time / saving is automatic",

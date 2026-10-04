@@ -1,4 +1,4 @@
-# 実装タスク / Implementation Plan — デジタルモンスター
+# 実装タスク / Implementation Plan — AIモンスター
 
 > **仕様主導型開発（レッスン1）** の実装フェーズ。要件・設計を実装可能な単位へ分解したもの。
 > 実際の実装は `.agents/tasks/task-digital-monster/`（FEAT-001..005）と対応しており、
