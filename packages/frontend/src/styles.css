@@ -199,6 +199,51 @@ body {
   font-size: 0.85rem;
 }
 
+/* --- evolution progress --- */
+.evolution-progress {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.evolution-title {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+.evolution-next {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.evolution-req {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.evolution-req.met {
+  color: var(--ok);
+}
+
+.evolution-check {
+  width: 1em;
+  text-align: center;
+}
+
+.evolution-final {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 /* --- care --- */
 .care-buttons {
   display: grid;

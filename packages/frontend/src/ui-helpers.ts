@@ -89,6 +89,18 @@ export function battleLogJa(log: readonly string[]): string[] {
   return log.map(battleLogLineJa);
 }
 
+/**
+ * Format a duration in milliseconds as a whole-minute Japanese string, e.g.
+ * `150000` -> `"2分"`. Rounds DOWN (Math.floor). Non-finite or negative input
+ * is guarded to `"0分"`.
+ */
+export function formatMinutesJa(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) {
+    return "0分";
+  }
+  return `${Math.floor(ms / 60000)}分`;
+}
+
 /** A short, friendly Japanese mood string derived from the monster's state. */
 export function moodLabelJa(monster: Pick<Monster, "isSleeping" | "dirty" | "hungryLevel">): string {
   if (monster.isSleeping) {

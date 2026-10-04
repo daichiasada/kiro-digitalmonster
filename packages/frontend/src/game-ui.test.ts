@@ -13,6 +13,7 @@ import {
   battleLogJa,
   battleLogLineJa,
   canChat,
+  formatMinutesJa,
   hpPercent,
   moodLabelJa,
   stageLabelJa,
@@ -68,6 +69,14 @@ test("winnerLabelJa maps each winner to a Japanese headline", () => {
   assert.equal(winnerLabelJa("player"), "勝利！ 🎉");
   assert.equal(winnerLabelJa("enemy"), "敗北… 💥");
   assert.equal(winnerLabelJa("draw"), "引き分け 🤝");
+});
+
+test("formatMinutesJa floors to whole minutes and guards bad input", () => {
+  assert.equal(formatMinutesJa(0), "0分");
+  assert.equal(formatMinutesJa(60000), "1分");
+  assert.equal(formatMinutesJa(150000), "2分");
+  assert.equal(formatMinutesJa(-1), "0分");
+  assert.equal(formatMinutesJa(Number.NaN), "0分");
 });
 
 test("battleLogLineJa localizes a player attack turn line", () => {

@@ -1,0 +1,7 @@
+{
+  "task_id": "task-evolution-conditions-ui",
+  "task_description": "GitHub issue #8: make evolution conditions visible in the UI. Show current and next growth stage, the requirements for the next evolution (training count + elapsed time), and the player's current progress (e.g. 'トレーニング 3/6', '経過 2分/5分'). The final stage (完全体) shows a '最終段階' message. Implemented via a pure, unit-tested helper in @ddm/shared plus a Japanese minutes formatter in the frontend, rendered in StatsPanel. Japanese-only UI; no new runtime dependencies.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001"],
+  "blocked_reason": null
+}
