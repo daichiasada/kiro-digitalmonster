@@ -1,7 +1,19 @@
 {
   "task_id": "task-digital-monster",
   "task_description": "Build a greenfield full-stack 'digital monster' (Tamagotchi/Digimon-style) web app monorepo: Vite React+TS frontend with 4 per-stage image assets, API Gateway + Lambda (TS) backend, DynamoDB persistence (no auth, clientId in localStorage), Amazon Bedrock conversation selecting Haiku/Sonnet/Opus by growth stage (幼年期 has NO conversation), and AWS CDK (TS) one-command deploy. Deliver fully committed code + CDK + image assets + deploy README. Do NOT run cdk deploy from this sandbox (npm registry blocked, AWS creds live only in a new Kiro Web session). Repo name: digital-monster.",
-  "status": "in_progress",
+  "status": "completed",
   "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
-  "blocked_reason": null
+  "blocked_reason": null,
+  "review": {
+    "iterations": 1,
+    "verdict": "APPROVED",
+    "artifact": ".agents/tasks/task-digital-monster/2026-10-04-145124-review.md"
+  },
+  "verification": {
+    "build": "skipped",
+    "tests": "skipped",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "Network mode INTEGRATIONS_ONLY blocks the npm registry (HTTP 403), so `npm install`, build (vite/tsc/cdk synth), and vitest CANNOT run in-sandbox; documented in README and feature findings. Static verification passed: all 11 package.json/tsconfig/cdk.json files parse as valid JSON; `tsc --noEmit` on the dependency-free shared package exits 0; the four stage SVG assets exist, are well-formed, and are distinct. Test quality reviewed manually: chat.test.ts mocks the AWS SDK and asserts the Bedrock command is NEVER constructed/sent for BABY (幼年期) while invoked with the stage-correct model id (Haiku/Sonnet/Opus) otherwise — it would fail if the baby short-circuit or per-stage selection were reverted. The infra Bedrock IAM policy and the runtime chat path both source model ids from @digital-monster/shared, so they cannot drift. No project Dockerfile. Full build/test/deploy run in a networked, AWS-credentialed Kiro Web session per the user's plan."
+  }
 }
