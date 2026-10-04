@@ -140,6 +140,12 @@ export function BattlePanel({
       if (i >= events.length) {
         clearTimer();
         setActive(null);
+        // Clear the final turn's damage popup so it does not linger over the
+        // sprite after the battle ends. With motion the `damage-pop-rise`
+        // keyframe already fades it out, but under prefers-reduced-motion the
+        // popup is forced opacity:1 with animation:none, so without this it
+        // would stay pinned until the next run.
+        setPop(null);
         setWinner(result.winner);
         return;
       }

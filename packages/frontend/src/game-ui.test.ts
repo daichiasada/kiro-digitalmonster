@@ -18,6 +18,7 @@ import {
   hpPercent,
   moodLabelJa,
   parseBattleEvents,
+  playerStartHpFromLog,
   stageLabelJa,
   statBarPercent,
   winnerLabelJa,
@@ -194,6 +195,41 @@ test("parseBattleEvents leaves winner null when there is no Result line", () => 
   ]);
   assert.equal(winner, null);
   assert.equal(events.length, 1);
+});
+
+test("playerStartHpFromLog derives start HP from the first player-defender event", () => {
+  // Player enters damaged: first time the player is hit it drops to 18 after a
+  // 2-damage hit, so the pre-battle HP was 20 — not the max of 25.
+  const log = [
+    "T1: でじたん hits 野生の幼年期モンスター for 11 (enemy HP 7)",
+    "T2: 野生の幼年期モンスター hits でじたん for 2 (player HP 18)",
+    "T3: でじたん hits 野生の幼年期モンスター for 7 (enemy HP 0)",
+    "Result: player",
+  ];
+  assert.equal(playerStartHpFromLog(log, 25), 20);
+});
+
+test("playerStartHpFromLog uses the FIRST player-defender event when hit twice", () => {
+  const log = [
+    "T1: 野生の幼年期モンスター hits でじたん for 4 (player HP 16)",
+    "T2: 野生の幼年期モンスター hits でじたん for 3 (player HP 13)",
+    "Result: enemy",
+  ];
+  // First hit: 16 + 4 = 20, ignoring the later 13 + 3.
+  assert.equal(playerStartHpFromLog(log, 25), 20);
+});
+
+test("playerStartHpFromLog falls back to max HP when the player is never hit", () => {
+  const log = [
+    "T1: でじたん hits 野生の幼年期モンスター for 11 (enemy HP 7)",
+    "T2: でじたん hits 野生の幼年期モンスター for 7 (enemy HP 0)",
+    "Result: player",
+  ];
+  assert.equal(playerStartHpFromLog(log, 25), 25);
+});
+
+test("playerStartHpFromLog falls back to max HP for an empty log", () => {
+  assert.equal(playerStartHpFromLog([], 25), 25);
 });
 
 test("battleLogJa localizes a full log", () => {

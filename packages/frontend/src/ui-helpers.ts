@@ -149,6 +149,27 @@ export function parseBattleEvents(log: readonly string[]): BattlePlayback {
 }
 
 /**
+ * Derive the player's HP entering the battle from the raw log alone.
+ *
+ * The backend simulates from the player's CURRENT HP (which may be below max
+ * for a damaged-but-alive monster), and the post-battle monster is committed
+ * before the result lands, so the pre-battle HP is no longer available from
+ * game state. It is recoverable from the log instead: for the FIRST event
+ * where the player is the defender, the pre-hit HP is `defenderHpAfter + dmg`,
+ * i.e. the HP the player had entering that first hit. If the player is never
+ * hit (the enemy dies first), there is no such event and we fall back to
+ * `maxHp` (full).
+ */
+export function playerStartHpFromLog(log: readonly string[], maxHp: number): number {
+  const { events } = parseBattleEvents(log);
+  const firstHit = events.find((ev) => ev.defender === "player");
+  if (firstHit === undefined) {
+    return maxHp;
+  }
+  return firstHit.defenderHpAfter + firstHit.dmg;
+}
+
+/**
  * Format a duration in milliseconds as a whole-minute Japanese string, e.g.
  * `150000` -> `"2分"`. Rounds DOWN (Math.floor). Non-finite or negative input
  * is guarded to `"0分"`.
