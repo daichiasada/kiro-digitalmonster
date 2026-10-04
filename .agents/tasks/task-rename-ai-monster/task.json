@@ -1,0 +1,14 @@
+{
+  "task_id": "task-rename-ai-monster",
+  "task_description": "Issue #24: Rename the product's human-readable name from 'Digital Monster / デジタルモンスター' to 'AI Monster / AIモンスター' across docs, frontend UI/page title/app name, backend+shared copy, package descriptions, and .kiro spec/steering/power prose. Preserve all infra identifiers (CloudFormation stack name/logical IDs), directory paths, npm @ddm/* scopes, repo name token, and TypeScript type identifiers so the live AWS stack and build are unaffected.",
+  "status": "completed",
+  "feature_order": ["FEAT-001"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build exit 0 (i18n JA/EN parity enforced). Shared tests 47/47, frontend game-ui tests 50/50 (app.title assertions updated to the new AIモンスター育成 / AI Monster Raising values and would fail if the rename were reverted). cdk synth exit 0: stack still named DigitalMonsterStack, 40 resources, logical/resource IDs unchanged (verified byte-identical Resources/Outputs vs unmodified synth); only the stack Description text changed to 'AI Monster'. Semantic review v1 raised one NEEDS_CHANGES (packages/frontend/.env.example missed); coder fixed it plus a second extensionless miss (root .env.example) by broadening the audit to all tracked files. Review v2 APPROVED with 0 open issues. Audit confirms every remaining 'digital-monster'/'デジタルモンスター' hit is a deliberately preserved identifier/path (stack class/ID, file/dir paths, repo name token kiro-digitalmonster, @ddm scopes). No Dockerfile in repo for this change; docker build not applicable."
+  }
+}
