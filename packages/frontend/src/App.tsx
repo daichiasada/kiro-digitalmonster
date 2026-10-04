@@ -117,7 +117,7 @@ export function App() {
                   every action, including rapid repeats of the same button
                   (a persistent class would not restart the finished animation). */}
               <div
-                key={careFx?.key ?? "idle"}
+                key={careFx === null ? "idle" : `fx-${careFx.key}`}
                 className={`sprite-bounce-layer ${careFx !== null ? "reacting" : ""}`}
               >
                 <MonsterSprite stageId={game.monster.stageId} size={200} />
