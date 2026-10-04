@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Environment setup and baseline confirmation. Create the feature branch and confirm the existing build and tests are green before making changes.",
+  "status": "completed",
+  "steps": [
+    "From /projects/sandbox/kiro-digitalmonster on branch main (clean), create and checkout a new branch: feat/chat-speech-bubble. Do NOT touch backup/previous-main branches.",
+    "Run `npm install` at the repo root (dependencies are already installed; this just confirms a clean state).",
+    "Run `npm run build` at the root and confirm it exits 0 (shared -> backend -> frontend tsc+vite -> infra).",
+    "Run `npm test` at the root and confirm shared tests pass (baseline 47/47).",
+    "Run `cd packages/frontend && npm test` and confirm the ui-helpers tests pass (baseline 27/27)."
+  ],
+  "acceptance_criteria": [
+    "Branch feat/chat-speech-bubble is checked out off main.",
+    "`npm run build` exits 0.",
+    "Root `npm test` reports 47 passing, 0 failing.",
+    "`npm test -w @ddm/frontend` (or cd packages/frontend && npm test) reports 27 passing, 0 failing."
+  ],
+  "verification": [
+    "npm run build",
+    "npm test",
+    "cd packages/frontend && npm test"
+  ],
+  "blocked_reason": null,
+  "findings": "Branch feat/chat-speech-bubble created off main (clean, synced with origin/main) and checked out. Baseline verified green: `npm run build` exits 0 (shared->backend->frontend tsc+vite->infra; vite built in ~7s). Root `npm test` = 47 pass / 0 fail (shared). `cd packages/frontend && npm test` = 27 pass / 0 fail (ui-helpers via node --experimental-strip-types --test src/game-ui.test.ts). npm install reported only non-blocking audit notices, no errors. Setup-only feature: no source changes and no commit made per briefing; branch left checked out for FEAT-002. Note: the .agents/tasks/task-chat-speech-bubble/ dir is untracked (task-plan artifacts), not committed as part of this setup."
+}

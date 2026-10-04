@@ -1,0 +1,24 @@
+{
+  "project_type": "Full-stack TypeScript monorepo (npm workspaces): React+Vite frontend (Japanese UI), AWS Lambda backend, DynamoDB, Amazon Bedrock chat, AWS CDK infra. Digimon-style monster raising game. This task is GitHub issue #11: show the monster's latest chat reply as a speech bubble near the sprite.",
+  "language": "TypeScript",
+  "build_system": "npm workspaces. Root scripts: build (shared->backend->frontend->infra via tsc/vite), test (shared node:test). Frontend build is `tsc && vite build`.",
+  "test_framework": "node:test built-in runner. Shared tests under packages/shared (baseline 47/47). Frontend pure-helper tests in packages/frontend/src/game-ui.test.ts run via `npm test -w @ddm/frontend` i.e. `node --experimental-strip-types --test src/game-ui.test.ts` (baseline 27/27).",
+  "build_command": "npm run build (root). Verified green at baseline.",
+  "test_command": "npm test (root, shared 47/47) AND `cd packages/frontend && npm test` (frontend ui-helpers 27/27).",
+  "verification_instructions": "Run `npm run build` at root (must stay green). Run `npm test` at root (shared). Run `cd packages/frontend && npm test` for the ui-helpers tests including the new speech-bubble helper tests. Network is OPEN_INTERNET. Do not deploy for this UI-only change.",
+  "snapshot_or_generated_files": "packages/frontend/dist (vite build output, gitignored). None checked in.",
+  "setup_instructions": "cd /projects/sandbox/kiro-digitalmonster && npm install (already installed) && npm run build.",
+  "environment_constraints": "OPEN_INTERNET. CANNOT git push or open PRs (orchestrator handles that). Commit locally on a feature branch only. Do NOT touch backup/previous-main branches. No new runtime dependencies allowed. UI stays Japanese-only (i18n deferred to issue #12).",
+  "contribution_requirements": "Feature branch off main (e.g. feat/chat-speech-bubble). One or a few logically-separated commits. Keep existing baby disabled-hint UX unless intentionally replaced; keep SUBMISSION.md mapping consistent (no change expected for this UI tweak).",
+  "key_patterns": "Chat state in packages/frontend/src/state/useMonster.ts: chatLog: ChatLine[] where ChatLine = { role:'player'|'monster'; text:string; modelId?:string }, chatPending:boolean, sendChat(message). Monster reply appended as {role:'monster'}. Baby (幼年期) stage: getStage(stageId).canChat is false; backend returns canned non-verbal reply (modelId 'none', text '…！（まだ言葉を話せないみたい。もっと育ててあげよう！）') but the frontend ChatPanel never sends for baby (shows .chat-disabled-hint only, text '幼年期のあいだはまだ言葉を話せません…'). Pure UI helpers live in packages/frontend/src/ui-helpers.ts (NO React/DOM, unit-tested in game-ui.test.ts). App layout in App.tsx: .game-grid with left .stage-area containing .sprite-wrap (wraps <MonsterSprite stageId size={200} />, plus 💤/💢 overlays and the care-fx overlay) then <StatsPanel>; right .controls-area has CarePanel, BattlePanel, ChatPanel. Existing care-FX overlays are positioned absolute within .sprite-wrap and use @keyframes with onAnimationEnd + a fallback timer; follow that pattern. Styles in packages/frontend/src/styles.css (chat styles start ~L719, sprite/stage styles ~L90).",
+  "relevant_files": [
+    "packages/frontend/src/ui-helpers.ts (add latestMonsterReply helper here)",
+    "packages/frontend/src/game-ui.test.ts (add unit tests for the helper)",
+    "packages/frontend/src/components/ChatPanel.tsx (existing chat log + input; pattern for ChatLine rendering)",
+    "packages/frontend/src/App.tsx (renders .stage-area / .sprite-wrap on the left; where the bubble mounts near the sprite)",
+    "packages/frontend/src/state/useMonster.ts (chatLog, chatPending, sendChat; baby sendChat early-returns because !stage.canChat)",
+    "packages/frontend/src/styles.css (sprite/stage styles ~L90, care-fx overlay pattern, chat styles ~L719)",
+    "packages/backend/src/handlers/chat.ts (baby canned reply source of truth: text + modelId 'none')"
+  ],
+  "directory_structure": "packages/shared (pure game logic), packages/frontend (React+Vite app: src/App.tsx, src/state, src/components, src/ui-helpers.ts, src/styles.css, src/game-ui.test.ts), packages/backend (Lambda handlers), infra (CDK)."
+}
