@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { STAGES, evolveStage, getStage, stageIndex } from "../stages.ts";
+import { STAGES, evolutionProgress, evolveStage, getStage, stageIndex } from "../stages.ts";
 import { createMonster, train } from "../game.ts";
 import {
   BEDROCK_MODEL_IDS,
@@ -78,6 +78,67 @@ test("training enough and letting time pass actually evolves via train()", () =>
   assert.equal(m.stageId, "rookie");
   // Stats rebased to at least rookie base.
   assert.ok(m.stats.maxHp >= getStage("rookie").baseStats.maxHp);
+});
+
+test("evolutionProgress for a fresh baby reports the rookie requirement unmet", () => {
+  const prog = evolutionProgress(baby(), T0);
+  assert.equal(prog.currentStageId, "baby");
+  assert.equal(prog.currentLabelJa, "幼年期");
+  assert.equal(prog.isFinalStage, false);
+  assert.equal(prog.nextStageId, "rookie");
+  assert.equal(prog.nextLabelJa, "成長期");
+  assert.equal(prog.trainingCurrent, 0);
+  assert.equal(prog.trainingRequired, 2);
+  assert.equal(prog.trainingMet, false);
+  assert.equal(prog.elapsedMs, 0);
+  assert.equal(prog.requiredMs, 1 * MINUTE);
+  assert.equal(prog.ageMet, false);
+});
+
+test("evolutionProgress reports partial progress matching the issue examples", () => {
+  const rookie: Monster = { ...baby(), stageId: "rookie", trainingCount: 3 };
+  const prog = evolutionProgress(rookie, T0 + 2 * MINUTE);
+  assert.equal(prog.currentStageId, "rookie");
+  assert.equal(prog.nextStageId, "champion");
+  assert.equal(prog.nextLabelJa, "成熟期");
+  assert.equal(prog.trainingCurrent, 3);
+  assert.equal(prog.trainingRequired, 6);
+  assert.equal(prog.trainingMet, false);
+  assert.equal(prog.elapsedMs, 2 * MINUTE);
+  assert.equal(prog.requiredMs, 5 * MINUTE);
+  assert.equal(prog.ageMet, false);
+});
+
+test("evolutionProgress met-flags agree with evolveStage advancing", () => {
+  const req = getStage("baby").evolveRequirement;
+  assert.ok(req);
+  const ready: Monster = { ...baby(), trainingCount: req.minTrainingCount };
+  const now = T0 + req.minAgeMs;
+  const prog = evolutionProgress(ready, now);
+  assert.equal(prog.trainingMet, true);
+  assert.equal(prog.ageMet, true);
+  // The display agrees with the real evolution logic advancing to rookie.
+  assert.equal(evolveStage(ready, now), "rookie");
+});
+
+test("evolutionProgress reports an ultimate monster as the final stage", () => {
+  const m: Monster = { ...baby(), stageId: "ultimate", trainingCount: 50 };
+  const prog = evolutionProgress(m, T0 + 100 * MINUTE);
+  assert.equal(prog.isFinalStage, true);
+  assert.equal(prog.currentLabelJa, "完全体");
+  assert.equal(prog.nextStageId, null);
+  assert.equal(prog.nextLabelJa, null);
+  assert.equal(prog.trainingRequired, null);
+  assert.equal(prog.requiredMs, null);
+  assert.equal(prog.trainingMet, true);
+  assert.equal(prog.ageMet, true);
+  assert.equal(prog.trainingCurrent, 50);
+});
+
+test("evolutionProgress clamps elapsedMs to >= 0 when now < bornAt", () => {
+  const prog = evolutionProgress(baby(), T0 - 5 * MINUTE);
+  assert.equal(prog.elapsedMs, 0);
+  assert.equal(prog.ageMet, false);
 });
 
 test("bedrock model mapping per stage", () => {

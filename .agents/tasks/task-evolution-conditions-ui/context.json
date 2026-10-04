@@ -1,0 +1,25 @@
+{
+  "project_type": "TypeScript monorepo (npm workspaces): React+Vite frontend (Japanese UI), Node Lambda backend, shared domain lib, AWS CDK infra",
+  "language": "TypeScript",
+  "build_system": "npm workspaces. Root `npm run build` builds @ddm/shared (tsc) -> @ddm/backend -> @ddm/frontend (tsc && vite build) -> infra (tsc). Shared/frontend tests use the Node built-in test runner with --experimental-strip-types (no bundler, no jest).",
+  "test_framework": "node:test + node:assert/strict. Shared: `node --test --experimental-strip-types src/__tests__/*.ts`. Frontend pure helpers: `node --experimental-strip-types --test src/game-ui.test.ts` (DOM/React kept OUT of this file).",
+  "build_command": "npm run build (root)",
+  "test_command": "npm test (shared, 42/42) and npm test -w @ddm/frontend (ui-helpers)",
+  "verification_instructions": "1) npm run build  2) npm test  3) npm test -w @ddm/frontend  All must pass. New pure helpers must have node:test coverage.",
+  "snapshot_or_generated_files": "null (no snapshots; infra/cdk.out is generated CDK output, not touched by this task)",
+  "setup_instructions": "npm install at repo root (workspaces). Node >=20.",
+  "environment_constraints": "OPEN_INTERNET. No new runtime dependencies allowed. Keep UI Japanese-only (i18n is a separate issue #12).",
+  "contribution_requirements": "Do NOT push or open PRs (orchestrator does that). Work on branch feat/evolution-conditions-ui off main. Do not touch backup/previous-main. One logical commit preferred.",
+  "key_patterns": "Pure, dependency-free helpers live in packages/shared/src/stages.ts (near STAGES config) and packages/frontend/src/ui-helpers.ts; both tested via node:test. STAGES array holds evolveRequirement {minTrainingCount, minAgeMs} per stage; evolveRequirement is null for terminal 'ultimate'. Monster has stageId, trainingCount, bornAt. StatsPanel.tsx renders stage badge + trainingCount; styles use .panel/.stat-row/.stat-label/.bar conventions in styles.css.",
+  "relevant_files": [
+    "packages/shared/src/stages.ts (ADD pure helper evolutionProgress)",
+    "packages/shared/src/types.ts (GrowthStage, Monster, EvolveRequirement)",
+    "packages/shared/src/__tests__/stages.test.ts (ADD helper tests)",
+    "packages/frontend/src/ui-helpers.ts (ADD ms->Japanese minutes formatter)",
+    "packages/frontend/src/game-ui.test.ts (ADD formatter tests)",
+    "packages/frontend/src/components/StatsPanel.tsx (RENDER evolution progress)",
+    "packages/frontend/src/styles.css (ADD evolution-progress styles)",
+    "packages/frontend/src/App.tsx (footer already mentions 進化条件)"
+  ],
+  "directory_structure": "packages/shared (domain logic+tests), packages/backend (Lambda), packages/frontend (React UI, components/, state/useMonster.ts, ui-helpers.ts, styles.css), infra (CDK)"
+}

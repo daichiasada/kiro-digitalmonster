@@ -115,3 +115,83 @@ export function evolveStage(monster: Monster, now: number): GrowthStage {
   }
   return monster.stageId;
 }
+
+/**
+ * Player-facing snapshot of how close a monster is to its next evolution.
+ *
+ * This intentionally reuses the exact same AND-gate semantics as
+ * {@link evolveStage} (trainingCount >= minTrainingCount AND elapsed >=
+ * minAgeMs), so the displayed progress can never contradict the real
+ * evolution logic.
+ */
+export interface EvolutionProgress {
+  /** The monster's current stage id. */
+  currentStageId: GrowthStage;
+  /** Japanese label of the current stage. */
+  currentLabelJa: string;
+  /** True when the monster is at the terminal stage (no further evolution). */
+  isFinalStage: boolean;
+  /** Stage the monster evolves into next, or null at the final stage. */
+  nextStageId: GrowthStage | null;
+  /** Japanese label of the next stage, or null at the final stage. */
+  nextLabelJa: string | null;
+  /** Completed training sessions so far. */
+  trainingCurrent: number;
+  /** Training sessions required to advance, or null at the final stage. */
+  trainingRequired: number | null;
+  /** True when the training requirement is satisfied. */
+  trainingMet: boolean;
+  /** Elapsed milliseconds since birth, clamped to >= 0. */
+  elapsedMs: number;
+  /** Milliseconds that must elapse to advance, or null at the final stage. */
+  requiredMs: number | null;
+  /** True when the elapsed-time requirement is satisfied. */
+  ageMet: boolean;
+}
+
+/**
+ * Compute a player-facing snapshot of a monster's progress toward its next
+ * evolution. Pure (no side effects); `now` is epoch milliseconds.
+ *
+ * At the final stage the requirement fields are null and both met flags are
+ * reported true (there is nothing left to satisfy).
+ */
+export function evolutionProgress(monster: Monster, now: number): EvolutionProgress {
+  const current = getStage(monster.stageId);
+  const requirement = current.evolveRequirement;
+  const elapsedMs = Math.max(0, now - monster.bornAt);
+
+  if (requirement === null) {
+    return {
+      currentStageId: current.id,
+      currentLabelJa: current.labelJa,
+      isFinalStage: true,
+      nextStageId: null,
+      nextLabelJa: null,
+      trainingCurrent: monster.trainingCount,
+      trainingRequired: null,
+      trainingMet: true,
+      elapsedMs,
+      requiredMs: null,
+      ageMet: true,
+    };
+  }
+
+  const next = STAGES[stageIndex(monster.stageId) + 1] ?? null;
+  const trainingMet = monster.trainingCount >= requirement.minTrainingCount;
+  const ageMet = elapsedMs >= requirement.minAgeMs;
+
+  return {
+    currentStageId: current.id,
+    currentLabelJa: current.labelJa,
+    isFinalStage: false,
+    nextStageId: next?.id ?? null,
+    nextLabelJa: next?.labelJa ?? null,
+    trainingCurrent: monster.trainingCount,
+    trainingRequired: requirement.minTrainingCount,
+    trainingMet,
+    elapsedMs,
+    requiredMs: requirement.minAgeMs,
+    ageMet,
+  };
+}

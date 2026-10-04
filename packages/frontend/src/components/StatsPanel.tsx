@@ -1,5 +1,12 @@
 import type { Monster } from "@ddm/shared";
-import { hpPercent, moodLabelJa, statBarPercent, stageLabelJa } from "../ui-helpers.ts";
+import { evolutionProgress } from "@ddm/shared";
+import {
+  formatMinutesJa,
+  hpPercent,
+  moodLabelJa,
+  statBarPercent,
+  stageLabelJa,
+} from "../ui-helpers.ts";
 
 /** Reference max values used only to scale the ATK/DEF bars visually. */
 const ATK_REFERENCE = 40;
@@ -15,6 +22,9 @@ export function StatsPanel({ monster }: StatsPanelProps) {
   const hp = hpPercent(stats.hp, stats.maxHp);
   const atk = statBarPercent(stats.atk, ATK_REFERENCE);
   const def = statBarPercent(stats.def, DEF_REFERENCE);
+
+  const now = Date.now();
+  const prog = evolutionProgress(monster, now);
 
   return (
     <section className="panel stats-panel" aria-label="ステータス">
@@ -51,6 +61,31 @@ export function StatsPanel({ monster }: StatsPanelProps) {
       </div>
 
       <p className="train-count">トレーニング回数: {monster.trainingCount}</p>
+
+      <div className="evolution-progress">
+        <h3 className="evolution-title">進化条件</h3>
+        {prog.isFinalStage ? (
+          <p className="evolution-final">最終段階（{stageLabelJa(monster.stageId)}）</p>
+        ) : (
+          <>
+            <p className="evolution-next">
+              次の段階: {prog.nextLabelJa}
+            </p>
+            <p className={`evolution-req${prog.trainingMet ? " met" : " unmet"}`}>
+              <span className="evolution-check" aria-hidden="true">
+                {prog.trainingMet ? "✓" : "・"}
+              </span>
+              トレーニング {prog.trainingCurrent}/{prog.trainingRequired}
+            </p>
+            <p className={`evolution-req${prog.ageMet ? " met" : " unmet"}`}>
+              <span className="evolution-check" aria-hidden="true">
+                {prog.ageMet ? "✓" : "・"}
+              </span>
+              経過 {formatMinutesJa(prog.elapsedMs)}/{formatMinutesJa(prog.requiredMs ?? 0)}
+            </p>
+          </>
+        )}
+      </div>
     </section>
   );
 }
