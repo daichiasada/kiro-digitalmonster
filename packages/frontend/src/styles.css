@@ -502,6 +502,220 @@ body {
   color: var(--muted);
 }
 
+/* --- battle animation --- */
+.battle-stage {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 8px;
+  margin: 14px 0 4px;
+  padding: 10px 4px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+}
+
+.combatant {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.combatant-sprite {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+/* Enemy faces the player: mirror its sprite horizontally. */
+.combatant.enemy .combatant-sprite {
+  transform: scaleX(-1);
+}
+
+.combatant-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.battle-vs {
+  font-weight: 800;
+  color: var(--muted);
+  padding-bottom: 24px;
+}
+
+.battle-hp {
+  width: 100%;
+  max-width: 120px;
+  height: 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.battle-hp-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #34d399, #10b981);
+  /* Smoothly tween the bar as HP drops each turn. */
+  transition: width 500ms ease;
+}
+
+/* Attacker lunges toward the opponent; defender shakes and flashes on hit. */
+.combatant.player.attacking .combatant-sprite {
+  animation: battle-lunge-right 0.4s ease;
+}
+
+.combatant.enemy.attacking .combatant-sprite {
+  /* The enemy sprite is already mirrored; lunge toward the player (right in
+     its local, un-mirrored space). */
+  animation: battle-lunge-right 0.4s ease;
+}
+
+.combatant.hit .combatant-sprite {
+  animation: battle-hit 0.4s ease;
+}
+
+@keyframes battle-lunge-right {
+  0% {
+    transform: translateX(0);
+  }
+  40% {
+    transform: translateX(22px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Preserve the enemy's horizontal mirror while lunging. */
+.combatant.enemy.attacking .combatant-sprite {
+  animation-name: battle-lunge-right-mirrored;
+}
+
+@keyframes battle-lunge-right-mirrored {
+  0% {
+    transform: scaleX(-1) translateX(0);
+  }
+  40% {
+    transform: scaleX(-1) translateX(22px);
+  }
+  100% {
+    transform: scaleX(-1) translateX(0);
+  }
+}
+
+@keyframes battle-hit {
+  0%,
+  100% {
+    transform: translateX(0);
+    filter: none;
+  }
+  20% {
+    transform: translateX(-6px);
+    filter: brightness(2.2);
+  }
+  40% {
+    transform: translateX(6px);
+    filter: brightness(2.2);
+  }
+  60% {
+    transform: translateX(-4px);
+    filter: brightness(1.6);
+  }
+  80% {
+    transform: translateX(4px);
+    filter: none;
+  }
+}
+
+/* Keep the enemy mirror intact while shaking on a hit. */
+.combatant.enemy.hit .combatant-sprite {
+  animation-name: battle-hit-mirrored;
+}
+
+@keyframes battle-hit-mirrored {
+  0%,
+  100% {
+    transform: scaleX(-1) translateX(0);
+    filter: none;
+  }
+  20% {
+    transform: scaleX(-1) translateX(-6px);
+    filter: brightness(2.2);
+  }
+  40% {
+    transform: scaleX(-1) translateX(6px);
+    filter: brightness(2.2);
+  }
+  60% {
+    transform: scaleX(-1) translateX(-4px);
+    filter: brightness(1.6);
+  }
+  80% {
+    transform: scaleX(-1) translateX(4px);
+    filter: none;
+  }
+}
+
+.damage-pop {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #fca5a5;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  animation: damage-pop-rise 0.8s ease-out forwards;
+}
+
+/* Un-mirror the popup text inside the mirrored enemy sprite container. */
+.combatant.enemy .damage-pop {
+  transform: translateX(-50%) scaleX(-1);
+}
+
+@keyframes damage-pop-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.8);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(-50%, -4px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -28px) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Disable lunge/shake/popup motion but still reveal the final state: HP bars
+     jump to their final width, the full log is shown, and the winner headline
+     appears. Mirrors the care-FX reduced-motion block above. */
+  .combatant .combatant-sprite {
+    animation: none !important;
+  }
+
+  .battle-hp-fill {
+    transition: none !important;
+  }
+
+  .damage-pop {
+    animation: none !important;
+    opacity: 1;
+  }
+}
+
 /* --- chat --- */
 .chat-disabled-hint {
   color: var(--muted);

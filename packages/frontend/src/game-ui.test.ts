@@ -17,6 +17,7 @@ import {
   formatMinutesJa,
   hpPercent,
   moodLabelJa,
+  parseBattleEvents,
   stageLabelJa,
   statBarPercent,
   winnerLabelJa,
@@ -133,6 +134,66 @@ test("careEffect durations are short and non-blocking", () => {
     const { durationMs } = careEffect(action);
     assert.ok(durationMs > 0 && durationMs <= 1000, `${action} duration out of range`);
   }
+});
+
+test("parseBattleEvents maps a player-attack line to attacker player/defender enemy", () => {
+  const { events, winner } = parseBattleEvents([
+    "T1: でじたん hits 野生の幼年期モンスター for 11 (enemy HP 7)",
+  ]);
+  assert.equal(winner, null);
+  assert.deepEqual(events, [
+    { turn: 1, attacker: "player", defender: "enemy", dmg: 11, defenderHpAfter: 7 },
+  ]);
+});
+
+test("parseBattleEvents maps an enemy-attack line to attacker enemy/defender player", () => {
+  const { events } = parseBattleEvents([
+    "T2: 野生の幼年期モンスター hits でじたん for 2 (player HP 18)",
+  ]);
+  assert.deepEqual(events, [
+    { turn: 2, attacker: "enemy", defender: "player", dmg: 2, defenderHpAfter: 18 },
+  ]);
+});
+
+test("parseBattleEvents parses a full multi-turn log with a Result line", () => {
+  const { events, winner } = parseBattleEvents([
+    "T1: でじたん hits 野生の幼年期モンスター for 11 (enemy HP 7)",
+    "T2: 野生の幼年期モンスター hits でじたん for 2 (player HP 18)",
+    "T3: でじたん hits 野生の幼年期モンスター for 7 (enemy HP 0)",
+    "Result: player",
+  ]);
+  assert.equal(winner, "player");
+  assert.deepEqual(events, [
+    { turn: 1, attacker: "player", defender: "enemy", dmg: 11, defenderHpAfter: 7 },
+    { turn: 2, attacker: "enemy", defender: "player", dmg: 2, defenderHpAfter: 18 },
+    { turn: 3, attacker: "player", defender: "enemy", dmg: 7, defenderHpAfter: 0 },
+  ]);
+});
+
+test("parseBattleEvents ignores unknown lines without throwing", () => {
+  const { events, winner } = parseBattleEvents([
+    "T1: でじたん hits 野生の幼年期モンスター for 11 (enemy HP 7)",
+    "something unexpected",
+    "T2: 野生の幼年期モンスター hits でじたん for 2 (player HP 18)",
+    "Result: enemy",
+  ]);
+  assert.equal(winner, "enemy");
+  assert.deepEqual(events, [
+    { turn: 1, attacker: "player", defender: "enemy", dmg: 11, defenderHpAfter: 7 },
+    { turn: 2, attacker: "enemy", defender: "player", dmg: 2, defenderHpAfter: 18 },
+  ]);
+});
+
+test("parseBattleEvents returns empty events and null winner for an empty log", () => {
+  assert.deepEqual(parseBattleEvents([]), { events: [], winner: null });
+});
+
+test("parseBattleEvents leaves winner null when there is no Result line", () => {
+  const { events, winner } = parseBattleEvents([
+    "T1: でじたん hits 野生の幼年期モンスター for 11 (enemy HP 7)",
+  ]);
+  assert.equal(winner, null);
+  assert.equal(events.length, 1);
 });
 
 test("battleLogJa localizes a full log", () => {

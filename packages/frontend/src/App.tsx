@@ -124,6 +124,16 @@ export function App() {
               log={game.battleLog}
               result={game.lastBattle}
               onBattle={game.battle}
+              playerName={game.monster.name}
+              playerStageId={game.monster.stageId}
+              playerMaxHp={game.monster.stats.maxHp}
+              // useMonster.battle() commits the UPDATED (post-battle) monster, so
+              // game.monster.stats.hp is already the END HP once the result lands
+              // and is NOT a reliable pre-battle value. Battles begin from a
+              // revived/full-ish state, so we start the bar at full (playerMaxHp)
+              // and let the parsed defenderHpAfter values drive it down to the
+              // real end HP during playback.
+              playerStartHp={game.monster.stats.maxHp}
             />
             <ChatPanel
               stageId={game.monster.stageId}

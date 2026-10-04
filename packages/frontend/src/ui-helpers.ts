@@ -90,6 +90,65 @@ export function battleLogJa(log: readonly string[]): string[] {
 }
 
 /**
+ * One parsed turn of a battle. `attacker`/`defender` identify the two sides,
+ * `dmg` is the damage dealt that turn, and `defenderHpAfter` is the HP the
+ * defender has remaining once the hit lands (used to tween the HP bar down).
+ */
+export interface BattleTurnEvent {
+  turn: number;
+  attacker: "player" | "enemy";
+  defender: "player" | "enemy";
+  dmg: number;
+  defenderHpAfter: number;
+}
+
+/** The ordered, structured playback derived from a raw battle log. */
+export interface BattlePlayback {
+  events: BattleTurnEvent[];
+  winner: BattleWinner | null;
+}
+
+/**
+ * Parse a raw battle log (the English developer strings emitted by
+ * @ddm/shared simulateBattle) into an ordered list of turn events plus the
+ * final winner. Pure and React-free so it can drive the animated UI and be
+ * unit-tested under the Node test runner.
+ *
+ * Reuses TURN_LINE_RE / RESULT_LINE_RE. The regex `side` group names whose HP
+ * REMAINS after the hit, i.e. the DEFENDER: side==='enemy' means the player
+ * attacked the enemy; side==='player' means the enemy attacked the player.
+ * Unknown/unmatched lines are skipped without throwing. If no result line is
+ * present, `winner` is null.
+ */
+export function parseBattleEvents(log: readonly string[]): BattlePlayback {
+  const events: BattleTurnEvent[] = [];
+  let winner: BattleWinner | null = null;
+
+  for (const line of log) {
+    const turn = TURN_LINE_RE.exec(line);
+    if (turn !== null) {
+      const [, n, , , dmg, side, hp] = turn;
+      const defender = side === "enemy" ? "enemy" : "player";
+      const attacker = defender === "enemy" ? "player" : "enemy";
+      events.push({
+        turn: Number.parseInt(n, 10),
+        attacker,
+        defender,
+        dmg: Number.parseInt(dmg, 10),
+        defenderHpAfter: Number.parseInt(hp, 10),
+      });
+      continue;
+    }
+    const result = RESULT_LINE_RE.exec(line);
+    if (result !== null) {
+      winner = result[1] as BattleWinner;
+    }
+  }
+
+  return { events, winner };
+}
+
+/**
  * Format a duration in milliseconds as a whole-minute Japanese string, e.g.
  * `150000` -> `"2分"`. Rounds DOWN (Math.floor). Non-finite or negative input
  * is guarded to `"0分"`.
