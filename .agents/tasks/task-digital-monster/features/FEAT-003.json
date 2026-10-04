@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "feat",
   "description": "Build the Vite React+TypeScript frontend: a single-page digital-monster UI with no auth (clientId generated and stored in localStorage), save/load/train/chat wired to the backend API, and FOUR prepared IMAGE ASSETS (one per growth stage) authored as actual files and rendered per stage. The user explicitly overrode emoji/ASCII and requires image assets. Depends on FEAT-001 (shared types).",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create frontend/package.json (name '@digital-monster/frontend', deps react/react-dom pinned ^18, dep @digital-monster/shared via workspace; devDeps vite ^5, @vitejs/plugin-react, typescript, @types/react, @types/react-dom, vitest, @testing-library/react, jsdom — all pinned). Scripts: dev, build (tsc && vite build), preview, test. Create frontend/tsconfig.json + frontend/vite.config.ts (react plugin, jsdom test env).",
     "Create frontend/index.html and frontend/src/main.tsx + App.tsx bootstrap.",
