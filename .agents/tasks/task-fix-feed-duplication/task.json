@@ -1,7 +1,14 @@
 {
   "task_id": "task-fix-feed-duplication",
   "task_description": "Fix GitHub issue #18: feeding the monster (餌やり / Feed) makes the monster appear to multiply (multiple sprites shown on screen). Root cause confirmed via live Playwright reproduction: a duplicate React key collision among sibling elements in .sprite-wrap in packages/frontend/src/App.tsx (the bounce-layer div and the care-fx span share the numeric careFx.key when a care FX is active), which corrupts reconciliation and leaves an orphaned, un-unmounted sprite layer in the DOM. Fix is frontend-only; expected behavior is exactly one monster at all times with feed only reducing hunger, restoring a little HP, and playing the feed animation.",
-  "status": "in_progress",
+  "status": "completed",
   "feature_order": ["FEAT-001"],
-  "blocked_reason": null
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build (root) exits 0. Shared tests 47/47 pass; frontend ui-helpers tests 50/50 pass (baselines maintained). The fix is a React-component-level change not coverable by the dependency-free pure-helper harness, so no unit test was added; test_quality=pass reflects that the existing suites still exercise the pure logic and stay green. Behavioral verification is live: orchestrator independently reproduced the bug on the deployed site (single Feed click turned 1 sprite SVG into 2 that persist); after the fix, agent-browser verification against the dev server showed exactly 1 sprite SVG and 1 .sprite-bounce-layer after a single feed and after 5 rapid feeds, with the 🍖 feed FX and SpeechBubble intact (screenshot: /projects/sandbox/.kiro/artifacts/screenshots/feed-single-monster.png). No Dockerfile build path for this frontend-only change. Frontend-only: no backend/infra change, no redeploy of backend/infra required (only a frontend static redeploy to ship)."
+  }
 }
