@@ -9,7 +9,7 @@ export interface MonsterSpriteProps {
   title?: string;
 }
 
-export function Baby({ size = 160, title = "幼年期のデジタルモンスター" }: MonsterSpriteProps) {
+export function Baby({ size = 160, title = "幼年期のAIモンスター" }: MonsterSpriteProps) {
   return (
     <svg
       width={size}

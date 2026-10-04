@@ -5,7 +5,7 @@
  */
 import type { MonsterSpriteProps } from "./Baby.tsx";
 
-export function Ultimate({ size = 160, title = "完全体のデジタルモンスター" }: MonsterSpriteProps) {
+export function Ultimate({ size = 160, title = "完全体のAIモンスター" }: MonsterSpriteProps) {
   return (
     <svg
       width={size}

@@ -1,5 +1,5 @@
 /**
- * Typed fetch client for the Digital Monster backend.
+ * Typed fetch client for the AI Monster backend.
  *
  * API contract (matches packages/backend/src/handlers/*.ts):
  *   GET  {base}/monster/{monsterId}  -> 200 { monster } | 404 if not found
