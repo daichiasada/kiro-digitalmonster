@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Environment setup and baseline verification. Confirm the toolchain works in this sandbox (npm is only reachable via a PATH export) and that build + both test suites are green before making changes. Also create the feature branch.",
+  "status": "completed",
+  "steps": [
+    "In every shell, prepend npm to PATH: export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" (node v22.23.3; npm 11.4.2).",
+    "From /projects/sandbox/kiro-digitalmonster confirm the working tree is clean on main, then create and checkout the branch feat/chat-near-monster (branch off main). Do NOT touch backup/previous-main branches.",
+    "Run `npm run build` at the repo root and confirm it exits 0 (shared -> backend -> frontend tsc+vite -> infra).",
+    "Run `npm test` at the repo root and confirm shared tests pass (baseline 47/47).",
+    "Run `cd packages/frontend && npm test` and confirm the ui-helpers tests pass (baseline 50/50)."
+  ],
+  "acceptance_criteria": [
+    "Branch feat/chat-near-monster exists and is checked out, created from main.",
+    "`npm run build` exits 0.",
+    "Root `npm test` reports 47 pass / 0 fail.",
+    "Frontend `npm test` reports 50 pass / 0 fail."
+  ],
+  "verification": [
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm run build",
+    "npm test (root)",
+    "cd packages/frontend && npm test"
+  ],
+  "blocked_reason": null,
+  "findings": "Branch feat/chat-near-monster created off clean main. PATH export (/opt/toolchains/.nvm/versions/node/v22.23.3/bin) required for npm. Baseline verified green: npm run build exit 0; root npm test 47/47; frontend npm test 50/50."
+}
