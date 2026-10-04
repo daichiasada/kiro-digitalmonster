@@ -1,0 +1,19 @@
+{
+  "name": "kiro-digitalmonster",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Digital Monster - a Digimon-style monster raising web game (TypeScript monorepo).",
+  "workspaces": [
+    "packages/*",
+    "infra"
+  ],
+  "scripts": {
+    "build": "npm run build -w @ddm/shared && npm run build -w @ddm/backend && npm run build -w @ddm/frontend && npm run build -w infra",
+    "test": "npm run test -w @ddm/shared",
+    "synth": "cd infra && npx cdk synth",
+    "deploy": "cd infra && npx cdk deploy --all"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
