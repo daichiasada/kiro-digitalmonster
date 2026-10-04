@@ -1,4 +1,5 @@
 import type { BattleResult } from "@ddm/shared";
+import { battleLogLineJa, winnerLabelJa } from "../ui-helpers.ts";
 
 export interface BattlePanelProps {
   busy: boolean;
@@ -7,19 +8,7 @@ export interface BattlePanelProps {
   onBattle: () => void;
 }
 
-/** Maps the battle winner to a Japanese headline. */
-function winnerLabel(result: BattleResult): string {
-  switch (result.winner) {
-    case "player":
-      return "勝利！ 🎉";
-    case "enemy":
-      return "敗北… 💥";
-    default:
-      return "引き分け 🤝";
-  }
-}
-
-/** Battle button plus a scrolling battle log. */
+/** Battle button plus a scrolling battle log (localized to Japanese). */
 export function BattlePanel({ busy, log, result, onBattle }: BattlePanelProps) {
   return (
     <section className="panel battle-panel" aria-label="バトル">
@@ -28,12 +17,12 @@ export function BattlePanel({ busy, log, result, onBattle }: BattlePanelProps) {
         ⚔️ 野生のモンスターと戦う
       </button>
       {result !== null && (
-        <p className={`battle-result ${result.winner}`}>{winnerLabel(result)}</p>
+        <p className={`battle-result ${result.winner}`}>{winnerLabelJa(result.winner)}</p>
       )}
       {log.length > 0 && (
         <ol className="battle-log">
           {log.map((line, i) => (
-            <li key={i}>{line}</li>
+            <li key={i}>{battleLogLineJa(line)}</li>
           ))}
         </ol>
       )}

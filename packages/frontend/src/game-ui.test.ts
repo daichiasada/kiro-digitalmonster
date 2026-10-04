@@ -10,11 +10,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  battleLogJa,
+  battleLogLineJa,
   canChat,
   hpPercent,
   moodLabelJa,
   stageLabelJa,
   statBarPercent,
+  winnerLabelJa,
 } from "./ui-helpers.ts";
 
 test("stageLabelJa maps each stage to its Japanese label", () => {
@@ -59,4 +62,45 @@ test("moodLabelJa reflects the monster state in priority order", () => {
   assert.equal(moodLabelJa({ isSleeping: false, dirty: false, hungryLevel: 8 }), "とてもお腹がすいている");
   assert.equal(moodLabelJa({ isSleeping: false, dirty: false, hungryLevel: 4 }), "お腹がすいてきた");
   assert.equal(moodLabelJa({ isSleeping: false, dirty: false, hungryLevel: 0 }), "ごきげん");
+});
+
+test("winnerLabelJa maps each winner to a Japanese headline", () => {
+  assert.equal(winnerLabelJa("player"), "勝利！ 🎉");
+  assert.equal(winnerLabelJa("enemy"), "敗北… 💥");
+  assert.equal(winnerLabelJa("draw"), "引き分け 🤝");
+});
+
+test("battleLogLineJa localizes a player attack turn line", () => {
+  assert.equal(
+    battleLogLineJa("T1: でじたん hits 野生の幼年期モンスター for 11 (enemy HP 7)"),
+    "1ターン目: でじたん の攻撃！ 野生の幼年期モンスター に 11 ダメージ（相手の残りHP 7）",
+  );
+});
+
+test("battleLogLineJa localizes an enemy attack turn line", () => {
+  assert.equal(
+    battleLogLineJa("T2: 野生の幼年期モンスター hits でじたん for 2 (player HP 18)"),
+    "2ターン目: 野生の幼年期モンスター の攻撃！ でじたん に 2 ダメージ（自分の残りHP 18）",
+  );
+});
+
+test("battleLogLineJa localizes the result line for each winner", () => {
+  assert.equal(battleLogLineJa("Result: player"), "結果: 勝利！ 🎉");
+  assert.equal(battleLogLineJa("Result: enemy"), "結果: 敗北… 💥");
+  assert.equal(battleLogLineJa("Result: draw"), "結果: 引き分け 🤝");
+});
+
+test("battleLogLineJa returns unknown lines unchanged", () => {
+  assert.equal(battleLogLineJa("something unexpected"), "something unexpected");
+});
+
+test("battleLogJa localizes a full log", () => {
+  const out = battleLogJa([
+    "T1: でじたん hits 野生の幼年期モンスター for 9 (enemy HP 0)",
+    "Result: player",
+  ]);
+  assert.deepEqual(out, [
+    "1ターン目: でじたん の攻撃！ 野生の幼年期モンスター に 9 ダメージ（相手の残りHP 0）",
+    "結果: 勝利！ 🎉",
+  ]);
 });

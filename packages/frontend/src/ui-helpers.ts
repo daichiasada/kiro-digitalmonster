@@ -4,7 +4,7 @@
  * These contain NO DOM / React so they can be unit-tested with the Node
  * built-in test runner (see game-ui.test.ts).
  */
-import type { GrowthStage, Monster } from "@ddm/shared";
+import type { BattleWinner, GrowthStage, Monster } from "@ddm/shared";
 
 /** Japanese display label per growth stage. */
 const STAGE_LABELS_JA: Record<GrowthStage, string> = {
@@ -44,6 +44,49 @@ export function statBarPercent(value: number, reference: number): number {
     return 0;
   }
   return Math.max(0, Math.min(100, Math.round((value / reference) * 100)));
+}
+
+/** Japanese headline for a finished battle, keyed by winner. */
+export function winnerLabelJa(winner: BattleWinner): string {
+  switch (winner) {
+    case "player":
+      return "勝利！ 🎉";
+    case "enemy":
+      return "敗北… 💥";
+    default:
+      return "引き分け 🤝";
+  }
+}
+
+// Matches a per-turn attack line emitted by @ddm/shared simulateBattle, e.g.
+//   "T1: でじたん hits 野生の幼年期モンスター for 11 (enemy HP 7)"
+const TURN_LINE_RE =
+  /^T(\d+): (.+) hits (.+) for (\d+) \((enemy|player) HP (\d+)\)$/;
+// Matches the final result line, e.g. "Result: player".
+const RESULT_LINE_RE = /^Result: (player|enemy|draw)$/;
+
+/**
+ * Localize a single battle-log line produced by the backend (which emits
+ * English developer strings) into Japanese for display. Unknown lines are
+ * returned unchanged so nothing is ever silently dropped.
+ */
+export function battleLogLineJa(line: string): string {
+  const turn = TURN_LINE_RE.exec(line);
+  if (turn !== null) {
+    const [, n, attacker, defender, dmg, side, hp] = turn;
+    const target = side === "enemy" ? "相手" : "自分";
+    return `${n}ターン目: ${attacker} の攻撃！ ${defender} に ${dmg} ダメージ（${target}の残りHP ${hp}）`;
+  }
+  const result = RESULT_LINE_RE.exec(line);
+  if (result !== null) {
+    return `結果: ${winnerLabelJa(result[1] as BattleWinner)}`;
+  }
+  return line;
+}
+
+/** Localize an entire battle log. */
+export function battleLogJa(log: readonly string[]): string[] {
+  return log.map(battleLogLineJa);
 }
 
 /** A short, friendly Japanese mood string derived from the monster's state. */
