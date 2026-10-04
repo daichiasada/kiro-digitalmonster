@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "タスク完了時に Issue を参照して対応",
+  "description": "一連の会話（タスク）が完了したら、GitHub リポジトリの未解決 Issue を参照する。対応すべき Issue があれば、優先度順に1件ずつ自律的に対応（作業ブランチ＋PR）する。レビュー指摘やユーザー要望の取りこぼしを防ぐためのフック。手動トリガー（UI のボタン）で、タスクの区切りに実行する想定。",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "現在のタスク（一連の会話）が完了しました。次を実行してください。\n\n1. GitHub リポジトリ daichiasada/kiro-digitalmonster の未解決 Issue を参照する。`gh pr`/`gh issue` は GraphQL 依存でこの環境では失敗するため、必ず REST を使うこと:\n   gh api \"repos/daichiasada/kiro-digitalmonster/issues?state=open&per_page=50\" --jq '.[] | select(.pull_request == null) | {number, title, labels: [.labels[].name]}'\n   （/issues は PR も含むため .pull_request == null で Issue のみに絞る）\n2. 対応すべき Issue が無ければ「対応待ちの Issue はありません」と報告して終了する。\n3. 対応すべき Issue がある場合は、優先度順（バグ > 機能 > ドキュメント、ユーザー影響の大きいものを優先）に1件選び、その Issue を自律的に対応する:\n   - main から作業ブランチを作成（例 fix/issue-<番号> または feat/issue-<番号>）。main へ直接コミットしない。\n   - 変更を実装し、ビルド（npm run build）とテスト（npm test）が通ることを確認する。このサンドボックスでは NODE_OPTIONS が壊れているため node 実行時は 'env -u NODE_OPTIONS' を前置し、新規依存はインストールしない。\n   - 機能/修正ごとにコミットを分け、push は provider Power 経由（git push 直叩き禁止）。\n   - PR は gh api 経由で作成（gh pr create はこの環境で不可）。PR 本文に「Closes #<番号>」を記載し、何をテストしたかを明記する。\n   - CI 設定ファイル（.github/workflows/*）の変更は必ず PR 経由で、main へ直接 push しない。\n4. 1件対応したら、残りの未解決 Issue の有無と、作成した PR のリンクを報告する。複数ある場合は、続けて対応してよいかをユーザーに確認する。\n\n注意: backup/previous-main ブランチ（旧実装の退避）は変更しないこと。SUBMISSION.md の 7レッスン＋2ボーナスの対応表との整合を保つこと。"
+  }
+}
