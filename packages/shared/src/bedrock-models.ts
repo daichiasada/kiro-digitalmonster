@@ -7,14 +7,20 @@ export type InvokableModelKey = Exclude<BedrockModelKey, "none">;
 /**
  * Default Amazon Bedrock model IDs per tier.
  *
- * These are Anthropic Claude model IDs. Exact IDs and availability vary by
- * region and account, so they are overridable via environment variables
- * (see {@link resolveModelId}). The README documents how to override them.
+ * These are Anthropic Claude *cross-region inference-profile* IDs (note the
+ * "us." prefix). The current-generation Claude models cannot be invoked by
+ * their bare foundation-model ID with on-demand throughput; Bedrock requires
+ * the ID (or ARN) of an inference profile instead. The "us." system-defined
+ * profiles route to multiple US regions and work in us-east-1.
+ *
+ * Exact IDs and availability vary by region and account, so they are
+ * overridable via environment variables (see {@link resolveModelId}). The
+ * README documents how to override them.
  */
 export const BEDROCK_MODEL_IDS: Record<InvokableModelKey, string> = {
-  haiku: "anthropic.claude-3-5-haiku-20241022-v1:0",
-  sonnet: "anthropic.claude-3-5-sonnet-20241022-v2:0",
-  opus: "anthropic.claude-3-opus-20240229-v1:0",
+  haiku: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+  sonnet: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  opus: "us.anthropic.claude-opus-4-5-20251101-v1:0",
 };
 
 /** Environment variable names used to override each tier's model ID. */

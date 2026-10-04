@@ -39,14 +39,18 @@ export interface DigitalMonsterStackProps extends StackProps {
 
 /**
  * Default Anthropic Claude model IDs, kept in sync with
- * packages/shared/src/bedrock-models.ts (BEDROCK_MODEL_IDS). These are used to
- * build the Bedrock InvokeModel IAM resource ARNs so the chat Lambda can only
- * invoke the specific foundation models it needs.
+ * packages/shared/src/bedrock-models.ts (BEDROCK_MODEL_IDS). These are
+ * cross-region inference-profile IDs (the "us." prefix); current-generation
+ * Claude models must be invoked via an inference profile rather than the bare
+ * foundation-model ID. They are used to build the Bedrock InvokeModel IAM
+ * resource ARNs so the chat Lambda can only invoke the specific models it
+ * needs (both the inference-profile ARNs and the underlying foundation-model
+ * ARNs the profile fans out to).
  */
 const DEFAULT_BEDROCK_MODEL_IDS = {
-  haiku: "anthropic.claude-3-5-haiku-20241022-v1:0",
-  sonnet: "anthropic.claude-3-5-sonnet-20241022-v2:0",
-  opus: "anthropic.claude-3-opus-20240229-v1:0",
+  haiku: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+  sonnet: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  opus: "us.anthropic.claude-opus-4-5-20251101-v1:0",
 } as const;
 
 // Monorepo roots relative to this file (infra/lib/digital-monster-stack.ts).
@@ -161,21 +165,35 @@ export class DigitalMonsterStack extends Stack {
     // chat only reads the monster to build its personality prompt.
     table.grantReadData(chatFn);
 
-    // Resolve the three Claude foundation-model ARNs (using overrides when set)
-    // and allow the chat Lambda to invoke exactly those.
+    // Resolve the three Claude model IDs (using overrides when set) and allow
+    // the chat Lambda to invoke exactly those. These are cross-region
+    // inference-profile IDs (the "us." prefix), so invoking them requires
+    // bedrock:InvokeModel on BOTH:
+    //   (1) the inference-profile ARN in this account/region, and
+    //   (2) the underlying foundation-model ARNs the profile fans out to.
+    // Because the "us." system profiles route across multiple US regions, the
+    // foundation-model resource is granted with a wildcard region and the bare
+    // model id (the profile id with the leading "us." stripped).
     const modelIds = [
       props.bedrockModelHaiku ?? DEFAULT_BEDROCK_MODEL_IDS.haiku,
       props.bedrockModelSonnet ?? DEFAULT_BEDROCK_MODEL_IDS.sonnet,
       props.bedrockModelOpus ?? DEFAULT_BEDROCK_MODEL_IDS.opus,
     ];
-    const modelArns = modelIds.map(
-      (modelId) => `arn:${Aws.PARTITION}:bedrock:${region}::foundation-model/${modelId}`,
+    const inferenceProfileArns = modelIds.map(
+      (modelId) =>
+        `arn:${Aws.PARTITION}:bedrock:${region}:${Aws.ACCOUNT_ID}:inference-profile/${modelId}`,
     );
+    const foundationModelArns = modelIds.map((modelId) => {
+      // Strip the leading "us." (cross-region profile prefix) to get the bare
+      // foundation-model id the profile routes to.
+      const bareModelId = modelId.replace(/^us\./, "");
+      return `arn:${Aws.PARTITION}:bedrock:*::foundation-model/${bareModelId}`;
+    });
     chatFn.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ["bedrock:InvokeModel"],
-        resources: modelArns,
+        resources: [...inferenceProfileArns, ...foundationModelArns],
       }),
     );
 
