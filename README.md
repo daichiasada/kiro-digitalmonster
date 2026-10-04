@@ -65,11 +65,11 @@ API Gateway (HTTP API, CORS)
 | 成長段階 | 英名 | 会話AI | デフォルト Bedrock モデルID |
 |---|---|---|---|
 | 幼年期（卵→赤ちゃん） | Baby | **会話なし** | ―（Bedrock を呼ばず定型の鳴き声を返します） |
-| 成長期 | Rookie | Claude **Haiku** | `anthropic.claude-3-5-haiku-20241022-v1:0` |
-| 成熟期 | Champion | Claude **Sonnet** | `anthropic.claude-3-5-sonnet-20241022-v2:0` |
-| 完全体 | Ultimate | Claude **Opus** | `anthropic.claude-3-opus-20240229-v1:0` |
+| 成長期 | Rookie | Claude **Haiku** | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
+| 成熟期 | Champion | Claude **Sonnet** | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
+| 完全体 | Ultimate | Claude **Opus** | `us.anthropic.claude-opus-4-5-20251101-v1:0` |
 
-デフォルトモデルIDは `packages/shared/src/bedrock-models.ts`（`BEDROCK_MODEL_IDS`）に定義されています。上書き方法は [Bedrock モデルIDの上書き](#-bedrock-モデルidの上書き--overriding-model-ids) を参照してください。
+デフォルトモデルIDは `packages/shared/src/bedrock-models.ts`（`BEDROCK_MODEL_IDS`）に定義されています。これらは Anthropic Claude の **クロスリージョン推論プロファイル ID**（`us.` プレフィックス付き）です。現行世代の Claude はオンデマンドでベアのファウンデーションモデルIDを直接呼び出せず、推論プロファイル経由での呼び出しが必要なためです。IDや提供状況はリージョン/アカウントによって異なるため、すべて上書き可能です。上書き方法は [Bedrock モデルIDの上書き](#-bedrock-モデルidの上書き--overriding-model-ids) を参照してください。
 
 ---
 
@@ -79,9 +79,9 @@ API Gateway (HTTP API, CORS)
 2. **AWS アカウント** と、設定済みの **AWS CLI 資格情報**（`aws configure` もしくは環境変数 / SSO）。デプロイ先アカウントに対する管理者相当の権限が必要です。
 3. **Amazon Bedrock のモデルアクセス有効化**（最重要）:
    - AWS コンソール → **Amazon Bedrock** → **Model access**（モデルアクセス）ページを開く。
-   - **Anthropic Claude 3.5 Haiku / Claude 3.5 Sonnet / Claude 3 Opus** へのアクセスをリクエスト（有効化）する。
+   - **Anthropic Claude Haiku / Sonnet / Opus**（デフォルトは Claude 4.5 系のクロスリージョン推論プロファイル）へのアクセスをリクエスト（有効化）する。
    - 有効化していないと、会話機能（chat Lambda）が `AccessDenied` で失敗します。
-4. **リージョン**: `us-east-1`（バージニア北部）を推奨します。Claude 各モデル、とくに **Opus** の提供状況はリージョンによって異なるため、まずは `us-east-1` が無難です。別リージョンを使う場合は、そのリージョンで上記 3 モデルが利用可能か確認してください。
+4. **リージョン**: `us-east-1`（バージニア北部）を推奨します。Claude 各モデルの提供状況・推論プロファイルの可用性はリージョンによって異なるため、まずは `us.` プレフィックス付きプロファイルが使える `us-east-1` が無難です。別リージョンを使う場合は、そのリージョンで上記 3 モデル（または上書き先のモデル）が利用可能か確認してください。
 
 ---
 
@@ -136,9 +136,9 @@ npx cdk deploy
 環境変数で上書き:
 
 ```bash
-export BEDROCK_MODEL_HAIKU=anthropic.claude-3-5-haiku-20241022-v1:0
-export BEDROCK_MODEL_SONNET=anthropic.claude-3-5-sonnet-20241022-v2:0
-export BEDROCK_MODEL_OPUS=anthropic.claude-3-opus-20240229-v1:0
+export BEDROCK_MODEL_HAIKU=us.anthropic.claude-haiku-4-5-20251001-v1:0
+export BEDROCK_MODEL_SONNET=us.anthropic.claude-sonnet-4-5-20250929-v1:0
+export BEDROCK_MODEL_OPUS=us.anthropic.claude-opus-4-5-20251101-v1:0
 cd infra && npx cdk deploy
 ```
 
@@ -146,9 +146,9 @@ CDK コンテキストで上書き:
 
 ```bash
 npx cdk deploy \
-  -c bedrockModelHaiku=anthropic.claude-3-5-haiku-20241022-v1:0 \
-  -c bedrockModelSonnet=anthropic.claude-3-5-sonnet-20241022-v2:0 \
-  -c bedrockModelOpus=anthropic.claude-3-opus-20240229-v1:0
+  -c bedrockModelHaiku=us.anthropic.claude-haiku-4-5-20251001-v1:0 \
+  -c bedrockModelSonnet=us.anthropic.claude-sonnet-4-5-20250929-v1:0 \
+  -c bedrockModelOpus=us.anthropic.claude-opus-4-5-20251101-v1:0
 ```
 
 `ALLOWED_ORIGIN`（CORS 許可オリジン、デフォルト `*`）も環境変数またはコンテキスト `-c allowedOrigin=...` で指定できます。設定例は [`.env.example`](./.env.example) を参照してください。
@@ -187,15 +187,17 @@ DynamoDB テーブルと S3 バケットは開発向けに `removalPolicy: DESTR
 
 ---
 
-## ⚠️ このリポジトリの生成環境についての注意 / Sandbox limitation note
+## ✅ ビルド・デプロイ検証状況 / Build & deploy status
 
-このプロジェクトは **ネットワーク制限されたサンドボックス** 内で生成されました。外部パッケージレジストリへアクセスできなかったため、生成時には次のコマンドを **実行できていません**。
+このプロジェクトは、上記「デプロイ手順」のフロー（`npm install` → `npm run build` → `cd infra && npx cdk bootstrap && npx cdk deploy`）で **実際にビルド・デプロイ済み** です。
 
-- `npm install`（依存関係の取得）
-- `vite build`（フロントのビルド、`packages/frontend/dist` の生成）
-- `cdk synth` / `cdk deploy`（CDK の合成・デプロイ）
+- `npm install` / `npm run build`（`shared` → `backend` → `frontend` → `infra`）がグリーンで通ります。
+- `packages/frontend/dist` が Vite で生成され、CDK の `BucketDeployment` が synth 時にこれを取り込みます。
+- `npx cdk bootstrap` → `npx cdk deploy` が成功し、CloudFront 配信 + API Gateway + DynamoDB + Bedrock IAM を含むスタックがデプロイされます。デプロイ後は `cdk deploy` の **Outputs**（`CloudFrontUrl` / `ApiUrl` ほか）が表示され、`CloudFrontUrl` を開けばそのまま遊べます。
 
-ソースコードはこれらがローカルで実行されれば正しくビルド・デプロイできるように記述していますが、**お手元の環境で上記「デプロイ手順」を実行してください**（`npm install` → `npm run build` → `cd infra && npx cdk bootstrap && npx cdk deploy`）。初回は Bedrock のモデルアクセス有効化を忘れずに行ってください。
+> 具体的な CloudFront / API の URL はデプロイのたびにアカウント・リージョンごとに新しく払い出されるため、本 README には固定値を記載していません。上記フローを実行すると、お手元のアカウントで同じ構成が再現できます。
+>
+> 初回は **Bedrock のモデルアクセス有効化**（上記「前提条件」3.）を忘れずに行ってください。有効化していないと、ビルド・デプロイ自体は成功しても会話/バトルの Bedrock 呼び出しが実行時に `AccessDenied` になります。
 
 ---
 

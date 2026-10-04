@@ -2,14 +2,30 @@
   "task_id": "task-digital-monster",
   "task_description": "Build a Digimon-style monster raising web game from scratch: React+Vite frontend (S3+CloudFront), AWS Lambda+API Gateway backend, DynamoDB save data, Amazon Bedrock conversational AI with model selection by growth stage (baby=none, rookie=Haiku, champion=Sonnet, ultimate=Opus), and AWS CDK one-command deploy. Growth = egg->baby->rookie->champion->ultimate, evolution by training count + elapsed time, simple ATK/DEF/HP stats, care (feed/train/sleep/clean), simple battles, SVG monster art, no auth (browser-generated monsterId). Japanese UI. Quality gates adapted to a no-network sandbox: shared pure-logic unit tests + tsc syntax checks; full build/cdk synth documented in README for the user.",
   "status": "completed",
-  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004", "FEAT-005"],
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004", "FEAT-005", "FEAT-101", "FEAT-102", "FEAT-105", "FEAT-103", "FEAT-104"],
+  "session2_review": "v4 semantic review APPROVED (.agents/tasks/task-digital-monster/2026-10-04-162340-review.md), first pass. Two minor non-blocking issues noted: (1) foundation-model IAM ARN uses wildcard region bedrock:*::foundation-model/... - required for us. cross-region inference profiles, still limited to the 3 specific model IDs and only the chat Lambda, not a real over-grant; (2) battleLog turn-line regex uses greedy (.+) name captures - a monster name containing ' hits '/' for ' could misparse a log line (garbled, never crashes); enemy name is app-controlled. Neither blocks the demo.",
+  "session2_note": "Session 2 (OPEN_INTERNET): finishing the deferred build/synth/deploy/Playwright work. FEAT-001..005 are the original from-scratch implementation (completed, kept for history). FEAT-101..104 are this session: fix frontend build (TS6310), cdk synth+deploy with outputs, Playwright E2E + UI fixes, and review-followup docs + GitHub Issue content for the orchestrator to file. Baseline measured this session: npm install OK, npm test 42/42 pass, build fails only in frontend (TS6310).",
   "blocked_reason": null,
-  "verification": {
+  "verification_session1": {
     "build": "skipped",
     "tests": "pass",
     "test_quality": "pass",
     "docker_build": "skipped",
-    "summary": "SANDBOX IS NETWORK-RESTRICTED (INTEGRATIONS_ONLY): npm install, vite build, and cdk synth cannot run here, so full build/synth are deferred to the user's local environment (documented in README). Feasible gates all PASS: shared+frontend unit tests 48/48 (incl. property-based suite and 3 review-fix regression tests); tsc --noEmit clean for packages/shared; ZERO TS1xxx syntax errors in backend, frontend, and infra (only expected TS2307 missing-module errors against uninstalled react/aws-sdk/aws-cdk-lib); all JSON valid (incl. all .kiro hook/mcp/power manifests). Three semantic review cycles completed: v1 NEEDS_CHANGES (7 issues) -> fixed -> v2 APPROVED -> v3 APPROVED. FEAT-005 adds Kiro University submission artifacts (.kiro/specs, steering, hooks, settings/mcp, powers; property-based tests; SUBMISSION.md) demonstrating all 7 required lessons + 2 bonuses. Workspace-root /projects/sandbox/.kiro left untouched."
+    "summary": "SANDBOX IS NETWORK-RESTRICTED (INTEGRATIONS_ONLY): npm install, vite build, and cdk synth cannot run here, so full build/synth are deferred to the user's local environment (documented in README). Feasible gates all PASS: shared+frontend unit tests 48/48; tsc --noEmit clean for packages/shared; ZERO TS1xxx syntax errors in backend, frontend, and infra. Three semantic review cycles completed: v1 NEEDS_CHANGES (7 issues) -> fixed -> v2 APPROVED -> v3 APPROVED."
+  },
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "Session 2 (OPEN_INTERNET), final verification on branch stack tip (docs/review-followup-and-issues @ c46a9f4). BUILD: `npm run build` exits 0 - all four workspaces (shared/backend/frontend/infra) compile, vite build produces packages/frontend/dist. TESTS: `npm test` 42/42 shared pass; frontend ui-helpers 12/12 pass. TEST_QUALITY: the 6 new battleLog localization tests in game-ui.test.ts assert exact Japanese output of battleLogLineJa/battleLogJa/winnerLabelJa against structured input and pass-through of unknown lines - they exercise the UI-1 fix path and would fail if BattlePanel's localization were reverted (previously raw English). Not static/mock-only. DOCKER: no Dockerfile, skipped. DEPLOY (real AWS, account 051826704233/us-east-1): cdk synth OK; cdk bootstrap OK; cdk deploy CREATE/UPDATE_COMPLETE. Outputs: CloudFrontUrl=https://dctfcixprjknt.cloudfront.net, ApiUrl=https://qtgfqc8t67.execute-api.us-east-1.amazonaws.com, BucketName=digitalmonsterstack-sitebucket397a1860-hhaphsn9socs, TableName=DigitalMonsterStack-Monsters. API smoke: GET 404 for unknown, hatch+load round-trip OK, battle OK. CHAT fixed (FEAT-105): retired Claude model IDs replaced with active cross-region inference-profile IDs; chat Lambda IAM extended to inference-profile + foundation-model ARNs; redeployed; chat returns 200 Japanese replies at rookie(haiku)/champion(sonnet)/ultimate(opus), baby returns canned modelId=none without Bedrock. PLAYWRIGHT E2E (FEAT-103) against live CloudFront: 15/15 flow checks pass; found+fixed UI-1 (battle log was raw English in JP UI). Stale-comment finding (FEAT-104): confirmed FALSE POSITIVE - comments already correct since original commit 391d571."
+  },
+  "session2_branches": {
+    "fix/frontend-build-ts6310": "ea3a214 - resolve TS6310 frontend build, unblock full monorepo build",
+    "fix/bedrock-model-ids": "762c158 - active Claude inference-profile model IDs + scoped chat Lambda IAM (stacked on build fix)",
+    "fix/ui-playwright": "9759bc8 - localize battle log to Japanese (UI-1) (stacked on bedrock)",
+    "docs/review-followup-and-issues": "61a089f docs refresh + c46a9f4 add package-lock.json (tip of stack)",
+    "note": "Branches form a linear stack on top of main (ba1f251): ea3a214 -> 762c158 -> 9759bc8 -> 61a089f -> c46a9f4. Orchestrator to push and open PR(s). Not pushed by this session."
   },
   "lessons_evidence": {
     "1_spec_driven": ".kiro/specs/digital-monster/{requirements,design,tasks}.md",

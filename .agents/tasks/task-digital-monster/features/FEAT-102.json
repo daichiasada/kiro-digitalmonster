@@ -1,0 +1,54 @@
+{
+  "id": "FEAT-102",
+  "type": "chore",
+  "description": "Verify CDK synth and deploy the stack to AWS, capturing outputs. Depends on FEAT-101 (frontend dist must exist for CDK BucketDeployment). Network is OPEN_INTERNET; AWS creds valid (account 051826704233, role dasada-kiro, region us-east-1). Run cdk synth, then cdk bootstrap (idempotent) and cdk deploy, and record CloudFrontUrl / ApiUrl / BucketName / TableName from stack Outputs. If deploy succeeds but a later runtime chat/battle call fails with Bedrock AccessDenied, that is an environmental blocker (model access not enabled) to record, NOT a code failure, provided the IAM/model-ID wiring in infra/lib/digital-monster-stack.ts is correct.",
+  "status": "completed",
+  "steps": [
+    "cd /projects/sandbox/kiro-digitalmonster/infra && npx cdk synth 2>&1 | tail -40. Confirm synth succeeds and emits the stack template. Fix any synth-time TypeScript/CDK errors (e.g. missing dist, context wiring) and re-run.",
+    "Run `npx cdk bootstrap` in infra/ (idempotent; sets up the CDK toolkit stack in account 051826704233 / us-east-1). Capture output.",
+    "Run `npx cdk deploy --all --require-approval never` in infra/. Capture the full Outputs block.",
+    "Record CloudFrontUrl, ApiUrl, BucketName, TableName into the feature `findings` field verbatim.",
+    "Smoke-test the API with curl: GET <ApiUrl>/monster/<random-uuid> should return 404 JSON (monster not found). POST a hatchling then GET it. Record results. If POST /chat or POST /battle returns a Bedrock AccessDenied, record the exact error and note model-access-not-enabled as an environmental blocker.",
+    "Do not commit infra changes unless a code fix was required to make synth/deploy pass; if a fix was needed, commit it on branch `fix/cdk-deploy` (one commit). Record all outputs in findings regardless."
+  ],
+  "acceptance_criteria": [
+    "`npx cdk synth` in infra/ succeeds",
+    "`npx cdk deploy` completes and the stack Outputs (CloudFrontUrl, ApiUrl, BucketName, TableName) are captured verbatim in the feature findings",
+    "GET <ApiUrl>/monster/<uuid> returns a 404 JSON response (API reachable); hatch+load round-trip recorded",
+    "Any Bedrock AccessDenied at runtime is captured with exact error text and labeled an environmental blocker, with confirmation that the IAM policy in digital-monster-stack.ts scopes bedrock:InvokeModel to the chat Lambda on the 3 Claude ARNs"
+  ],
+  "verification": [
+    "cd /projects/sandbox/kiro-digitalmonster/infra && npx cdk synth",
+    "npx cdk deploy --all --require-approval never  # outputs captured",
+    "curl -s -o /dev/null -w '%{http_code}' <ApiUrl>/monster/00000000-0000-0000-0000-000000000000  # 404"
+  ],
+  "blocked_reason": null,
+  "findings": {
+    "summary": "cdk synth + bootstrap + deploy all succeeded on branch fix/frontend-build-ts6310. No code change was required to make synth/deploy pass, so no fix/cdk-deploy commit was created. Core API (getMonster/saveMonster/battle) verified end-to-end. Bedrock chat is blocked by an ENVIRONMENTAL issue (the hard-coded Claude model versions are retired by AWS), not AccessDenied and not a code bug; IAM/model-ID wiring confirmed correct.",
+    "cdk_synth": "npx cdk synth in infra/ exited 0; template Outputs ApiUrl/CloudFrontUrl/BucketName/TableName emitted.",
+    "cdk_bootstrap": "npx cdk bootstrap exited 0. Environment aws://051826704233/us-east-1 bootstrapped (CDKToolkit stack UPDATE_COMPLETE, existing toolkit updated).",
+    "cdk_deploy": "npx cdk deploy --all --require-approval never exited 0. DigitalMonsterStack CREATE_COMPLETE in ~217s (41/41 resources). Stack ARN: arn:aws:cloudformation:us-east-1:051826704233:stack/DigitalMonsterStack/89e39510-c00c-11f1-92b2-12a4cc6ca915",
+    "stack_outputs": {
+      "ApiUrl": "https://qtgfqc8t67.execute-api.us-east-1.amazonaws.com",
+      "CloudFrontUrl": "https://dctfcixprjknt.cloudfront.net",
+      "BucketName": "digitalmonsterstack-sitebucket397a1860-hhaphsn9socs",
+      "TableName": "DigitalMonsterStack-Monsters"
+    },
+    "smoke_tests": {
+      "get_nonexistent_404": "GET /monster/00000000-0000-0000-0000-000000000000 -> HTTP 404, body {\"error\":\"Monster not found\"} (API reachable, 404 JSON as required).",
+      "hatch_roundtrip": "POST /monster with a valid baby hatchling (id 11111111-2222-3333-4444-555555555555, name テストっち) -> HTTP 200 {\"ok\":true,\"monster\":{...}}. GET /monster/11111111-2222-3333-4444-555555555555 -> HTTP 200 returned the same monster (round-trip confirmed, DynamoDB persistence working).",
+      "battle": "POST /battle {\"monsterId\":\"11111111-2222-3333-4444-555555555555\",\"seed\":42} -> HTTP 200. Full battle log returned, winner=player, 5 turns, monster persisted with updated stats. NOTE: /battle takes {monsterId} (loads monster + builds a stage-scaled enemy server-side); it does NOT accept player/enemy objects.",
+      "chat_saved_baby": "POST /chat for the saved baby monster -> HTTP 200 {\"reply\":\"…！（まだ言葉を話せないみたい。もっと育ててあげよう！）\",\"modelId\":\"none\"}. Baby stage intentionally returns a canned non-verbal reply WITHOUT invoking Bedrock (the persisted monster is the source of truth for stage, so a client cannot spoof a higher tier for a saved monster).",
+      "chat_bedrock_rookie_haiku": "POST /chat with an UNSAVED monsterId at stageId=rookie (falls back to client stage, forcing a real Bedrock InvokeModel on Haiku) -> HTTP 502."
+    },
+    "bedrock_blocker": {
+      "classification": "ENVIRONMENTAL (model lifecycle), NOT a code bug and NOT AccessDenied.",
+      "exact_error": "Bedrock chat failed: This model version has reached the end of its life. Please refer to the AWS documentation for more details.",
+      "tiers_affected": "All three tiers return the identical end-of-life error: rookie/haiku (anthropic.claude-3-5-haiku-20241022-v1:0), champion/sonnet (anthropic.claude-3-5-sonnet-20241022-v2:0), ultimate/opus (anthropic.claude-3-opus-20240229-v1:0).",
+      "why_not_accessdenied": "The request reached Bedrock and Bedrock reported a model-lifecycle status (end-of-life). There was no AccessDenied / unauthorized error, which means the IAM InvokeModel grant is working.",
+      "iam_wiring_confirmed": "Verified the DEPLOYED chat Lambda role (DigitalMonsterStack-ChatFnServiceRoleC3825F1B-amoJhNKFcKLZ) inline policy allows ONLY bedrock:InvokeModel on exactly the 3 Claude foundation-model ARNs: arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-haiku-20241022-v1:0, .../anthropic.claude-3-5-sonnet-20241022-v2:0, .../anthropic.claude-3-opus-20240229-v1:0. Only the chat Lambda (not getMonster/saveMonster/battle) has any bedrock permission. Matches infra/lib/digital-monster-stack.ts DEFAULT_BEDROCK_MODEL_IDS and packages/shared/src/bedrock-models.ts BEDROCK_MODEL_IDS.",
+      "remediation_note": "Not fixed here (out of scope: this feature verifies deploy). The model IDs are overridable at deploy time via BEDROCK_MODEL_HAIKU/SONNET/OPUS env vars (passed through from stack props bedrockModelHaiku/Sonnet/Opus) or by updating the defaults in both bedrock-models.ts and digital-monster-stack.ts to current (non-retired) Claude model IDs / inference-profile ARNs. Enabling model access alone will not resolve the end-of-life error."
+    },
+    "deployed_state": "Stack left DEPLOYED (not destroyed) so the next feature (Playwright E2E) can test against CloudFrontUrl https://dctfcixprjknt.cloudfront.net. A test monster (id 11111111-2222-3333-4444-555555555555) exists in the table from smoke tests."
+  }
+}
