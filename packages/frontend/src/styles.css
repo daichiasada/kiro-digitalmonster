@@ -123,8 +123,15 @@ body {
 }
 
 /* --- care action feedback animations --- */
+/* Wrapper around the sprite; remounted (keyed) per action in App.tsx so the
+   bounce restarts on every click, including rapid repeats of the same action. */
+.sprite-bounce-layer {
+  display: grid;
+  place-items: center;
+}
+
 /* Short sprite reaction (bounce) applied for every care action. */
-.sprite-wrap.reacting {
+.sprite-bounce-layer.reacting {
   animation: sprite-bounce 0.4s ease-out;
 }
 
@@ -152,6 +159,11 @@ body {
 /* 睡眠: 💤 floats up as a bubble. */
 .care-fx.fx-sleep {
   animation: fx-sleep 0.7s ease-out forwards;
+}
+
+/* 起こす: ⏰ pops and shakes to signal waking up. */
+.care-fx.fx-wake {
+  animation: fx-wake 0.6s ease-out forwards;
 }
 
 /* 清掃: ✨ sparkles and fades. */
@@ -220,6 +232,25 @@ body {
   }
 }
 
+@keyframes fx-wake {
+  0% {
+    transform: translate(-50%, -60%) scale(0.6) rotate(-12deg);
+    opacity: 0;
+  }
+  30% {
+    transform: translate(-50%, -70%) scale(1.2) rotate(12deg);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(-50%, -70%) scale(1.1) rotate(-10deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -80%) scale(1.2) rotate(0deg);
+    opacity: 0;
+  }
+}
+
 @keyframes fx-clean {
   0% {
     transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
@@ -236,7 +267,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sprite-wrap.reacting {
+  .sprite-bounce-layer.reacting {
     animation: none;
   }
 

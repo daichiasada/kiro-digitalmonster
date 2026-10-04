@@ -30,6 +30,14 @@ export function App() {
 
   const triggerCareFx = useCallback(
     (action: CareAction, run: () => void) => {
+      // Only play the cue when the underlying care action can actually run.
+      // `runCareAction` no-ops when the monster is null or an action is already
+      // in flight (busy), so playing the FX unconditionally would show a cue for
+      // an action that was dropped. Keep the visual honest by gating on the
+      // same conditions.
+      if (game.monster === null || game.busy) {
+        return;
+      }
       setCareFx((prev) => ({ action, key: (prev?.key ?? 0) + 1 }));
       clearFxTimer();
       // Fallback clear in case onAnimationEnd never fires (e.g. reduced motion).
@@ -39,12 +47,17 @@ export function App() {
       }, careEffect(action).durationMs + 50);
       run();
     },
-    [clearFxTimer],
+    [clearFxTimer, game.busy, game.monster],
   );
 
   const handleFeed = useCallback(() => triggerCareFx("feed", game.feed), [triggerCareFx, game.feed]);
   const handleTrain = useCallback(() => triggerCareFx("train", game.train), [triggerCareFx, game.train]);
-  const handleSleep = useCallback(() => triggerCareFx("sleep", game.sleep), [triggerCareFx, game.sleep]);
+  // The sleep button is a toggle (睡眠 ⇄ 起こす); show the cue that matches the
+  // branch taken so waking never shows the 💤 sleep bubble.
+  const handleSleep = useCallback(
+    () => triggerCareFx(game.monster?.isSleeping ? "wake" : "sleep", game.sleep),
+    [triggerCareFx, game.sleep, game.monster],
+  );
   const handleClean = useCallback(() => triggerCareFx("clean", game.clean), [triggerCareFx, game.clean]);
 
   const handleFxEnd = useCallback(() => {
@@ -70,9 +83,17 @@ export function App() {
         <main className="game-grid">
           <div className="stage-area">
             <div
-              className={`sprite-wrap ${game.monster.isSleeping ? "sleeping" : ""} ${careFx !== null ? "reacting" : ""}`}
+              className={`sprite-wrap ${game.monster.isSleeping ? "sleeping" : ""}`}
             >
-              <MonsterSprite stageId={game.monster.stageId} size={200} />
+              {/* Keyed on the FX counter so the bounce remounts and re-fires on
+                  every action, including rapid repeats of the same button
+                  (a persistent class would not restart the finished animation). */}
+              <div
+                key={careFx?.key ?? "idle"}
+                className={`sprite-bounce-layer ${careFx !== null ? "reacting" : ""}`}
+              >
+                <MonsterSprite stageId={game.monster.stageId} size={200} />
+              </div>
               {game.monster.isSleeping && <span className="zzz" aria-hidden="true">💤</span>}
               {game.monster.dirty && <span className="dirt" aria-hidden="true">💢</span>}
               {careFx !== null && (

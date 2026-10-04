@@ -101,8 +101,11 @@ export function formatMinutesJa(ms: number): string {
   return `${Math.floor(ms / 60000)}分`;
 }
 
-/** A care action the player can perform on the monster. */
-export type CareAction = "feed" | "train" | "sleep" | "clean";
+/**
+ * A care action the player can perform on the monster. `sleep` and `wake` are
+ * the two halves of the sleep toggle button so each shows a matching cue.
+ */
+export type CareAction = "feed" | "train" | "sleep" | "wake" | "clean";
 
 /**
  * Visual-effect descriptor for a care action. Drives the transient overlay
@@ -120,6 +123,7 @@ const CARE_EFFECTS: Record<CareAction, CareEffect> = {
   feed: { className: "fx-feed", emoji: "🍖", durationMs: 700 },
   train: { className: "fx-train", emoji: "💪", durationMs: 600 },
   sleep: { className: "fx-sleep", emoji: "💤", durationMs: 700 },
+  wake: { className: "fx-wake", emoji: "⏰", durationMs: 600 },
   clean: { className: "fx-clean", emoji: "✨", durationMs: 700 },
 };
 
