@@ -101,6 +101,36 @@ export function formatMinutesJa(ms: number): string {
   return `${Math.floor(ms / 60000)}分`;
 }
 
+/** A care action the player can perform on the monster. */
+export type CareAction = "feed" | "train" | "sleep" | "clean";
+
+/**
+ * Visual-effect descriptor for a care action. Drives the transient overlay
+ * animation (FEAT-002 consumes this): a CSS class name, an overlay emoji, and
+ * how long the effect stays on screen in milliseconds.
+ */
+export interface CareEffect {
+  className: string;
+  emoji: string;
+  durationMs: number;
+}
+
+/** Fixed visual-effect descriptor per care action. */
+const CARE_EFFECTS: Record<CareAction, CareEffect> = {
+  feed: { className: "fx-feed", emoji: "🍖", durationMs: 700 },
+  train: { className: "fx-train", emoji: "💪", durationMs: 600 },
+  sleep: { className: "fx-sleep", emoji: "💤", durationMs: 700 },
+  clean: { className: "fx-clean", emoji: "✨", durationMs: 700 },
+};
+
+/**
+ * Map a care action to its visual-effect descriptor. Durations are kept short
+ * and non-blocking so the overlay never gets in the player's way.
+ */
+export function careEffect(action: CareAction): CareEffect {
+  return CARE_EFFECTS[action];
+}
+
 /** A short, friendly Japanese mood string derived from the monster's state. */
 export function moodLabelJa(monster: Pick<Monster, "isSleeping" | "dirty" | "hungryLevel">): string {
   if (monster.isSleeping) {

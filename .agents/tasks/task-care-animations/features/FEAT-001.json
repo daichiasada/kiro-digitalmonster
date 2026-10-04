@@ -1,0 +1,24 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Add a pure, dependency-free mapping from a care action (feed/train/sleep/clean) to its visual-effect descriptor (CSS class name, overlay emoji, and animation duration in ms) in packages/frontend/src/ui-helpers.ts, with unit tests in packages/frontend/src/game-ui.test.ts. This keeps the animation logic testable without a DOM and gives FEAT-002 a single source of truth to drive the overlays. Independent of FEAT-002's React/CSS wiring except that FEAT-002 consumes this helper.",
+  "status": "completed",
+  "steps": [
+    "In packages/frontend/src/ui-helpers.ts, add an exported union type `CareAction = \"feed\" | \"train\" | \"sleep\" | \"clean\"` and an exported interface describing a care effect, e.g. `CareEffect { className: string; emoji: string; durationMs: number }`.",
+    "Add an exported pure function `careEffect(action: CareAction): CareEffect` returning a fixed descriptor per action. Suggested values (keep durations short, 400-800ms, non-blocking): feed -> { className: 'fx-feed', emoji: '🍖', durationMs: 700 }; train -> { className: 'fx-train', emoji: '💪', durationMs: 600 }; sleep -> { className: 'fx-sleep', emoji: '💤', durationMs: 700 }; clean -> { className: 'fx-clean', emoji: '✨', durationMs: 700 }. Pick stable class names you will reuse verbatim in styles.css (FEAT-002).",
+    "Follow the existing style in ui-helpers.ts: JSDoc comment, Record-based lookup table (like STAGE_LABELS_JA) rather than a switch if it reads cleaner. Keep it pure, no DOM/React imports.",
+    "In packages/frontend/src/game-ui.test.ts, add tests (node:test + assert/strict, matching the existing file style) that assert careEffect returns the exact className, emoji, and durationMs for each of the four actions, and that durations are within a short, non-blocking range (e.g. > 0 and <= 1000)."
+  ],
+  "acceptance_criteria": [
+    "`careEffect` and the `CareAction`/`CareEffect` types are exported from packages/frontend/src/ui-helpers.ts with no DOM/React imports.",
+    "careEffect returns a distinct className and emoji for each of feed/train/sleep/clean.",
+    "Running `npm run test -w @ddm/frontend` passes including the new careEffect tests.",
+    "The new tests would fail if careEffect's mapping were changed (they assert concrete values)."
+  ],
+  "verification": [
+    "cd /projects/sandbox/kiro-digitalmonster && npm run test -w @ddm/frontend  (all tests pass, including new careEffect tests)",
+    "cd /projects/sandbox/kiro-digitalmonster && npx tsc -p packages/frontend --noEmit  OR rely on FEAT-002 full build; confirm ui-helpers.ts type-checks"
+  ],
+  "blocked_reason": null,
+  "findings": "Added CareAction union, CareEffect interface, and pure careEffect() backed by a CARE_EFFECTS Record lookup (matching the STAGE_LABELS_JA pattern) in packages/frontend/src/ui-helpers.ts, with no DOM/React imports. Class names fx-feed/fx-train/fx-sleep/fx-clean are stable for FEAT-002 to reuse verbatim in styles.css. Added 3 tests in game-ui.test.ts (exact descriptor per action, distinctness of className/emoji, duration range >0 and <=1000). npm run test -w @ddm/frontend: 16 pass / 0 fail. npx tsc -p packages/frontend --noEmit: exit 0."
+}

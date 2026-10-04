@@ -1,0 +1,25 @@
+{
+  "project_type": "Full-stack TypeScript monorepo: React+Vite frontend (Japanese UI), AWS Lambda backend, DynamoDB, Bedrock chat, CDK infra. This issue (#10) touches ONLY the frontend care-action UI.",
+  "language": "TypeScript",
+  "build_system": "npm workspaces monorepo. Root scripts: build (shared->backend->frontend->infra), test (shared node:test). Frontend build is `tsc && vite build`; frontend test is `node --experimental-strip-types --test src/game-ui.test.ts`.",
+  "test_framework": "node:test (built-in Node test runner). Pure helpers in packages/frontend/src/ui-helpers.ts are unit-tested in packages/frontend/src/game-ui.test.ts with NO DOM/React. Shared has 42 tests via root `npm test`.",
+  "build_command": "cd /projects/sandbox/kiro-digitalmonster && npm run build",
+  "test_command": "cd /projects/sandbox/kiro-digitalmonster && npm test  (shared) ; and npm run test -w @ddm/frontend (frontend helpers)",
+  "verification_instructions": "npm run build must pass (tsc + vite build for frontend). npm run test -w @ddm/frontend must pass. Baseline on branch feat/care-animations (off main @ 56e0468) is GREEN: build exit 0, shared test exit 0, frontend tests 0 fail.",
+  "snapshot_or_generated_files": "packages/frontend/dist (vite build output, gitignored). None checked in.",
+  "setup_instructions": "npm install (already done, exit 0). Branch feat/care-animations already created off main.",
+  "environment_constraints": "OPEN_INTERNET. Node v22. CANNOT git push or open PRs (orchestrator handles). Commit locally on feat/care-animations only. Do NOT touch backup/previous-main. No new runtime dependencies allowed. UI must stay Japanese-only (i18n is later issue #12).",
+  "contribution_requirements": "Incremental, logically-separated commits. Keep UI Japanese-only.",
+  "key_patterns": "App.tsx renders .stage-area > .sprite-wrap wrapping <MonsterSprite stageId size={200}/> plus overlay spans: .zzz 💤 when monster.isSleeping and .dirt 💢 when monster.dirty. Care actions come from useMonster(): feed/train/sleep/clean, gated by game.busy. CarePanel.tsx has four .care-btn buttons (feed/train/sleep/clean). Pure UI mappings live in ui-helpers.ts and are unit-tested in game-ui.test.ts. Styles in styles.css use CSS @keyframes (existing example: `pop` used by .evolution-banner). The existing .zzz and .dirt overlays are STATIC (no animation).",
+  "relevant_files": [
+    "packages/frontend/src/App.tsx (stage-area / sprite-wrap, overlays, wires useMonster to CarePanel)",
+    "packages/frontend/src/components/CarePanel.tsx (four care buttons)",
+    "packages/frontend/src/state/useMonster.ts (runCareAction; feed/train/sleep/clean; busy)",
+    "packages/frontend/src/assets/monsters/MonsterSprite.tsx (stage sprite selector)",
+    "packages/frontend/src/ui-helpers.ts (pure helpers - add action->effect mapping here)",
+    "packages/frontend/src/game-ui.test.ts (unit tests for ui-helpers)",
+    "packages/frontend/src/styles.css (add @keyframes + effect classes; existing `pop` keyframe + .sprite-wrap/.zzz/.dirt patterns)"
+  ],
+  "directory_structure": "packages/frontend/src: App.tsx, state/useMonster.ts, components/ (CarePanel, StatsPanel, BattlePanel, ChatPanel, EvolutionBanner), assets/monsters/ (MonsterSprite + per-stage SVGs), ui-helpers.ts, game-ui.test.ts, styles.css",
+  "baseline_findings": "On feat/care-animations: npm install exit 0, npm run build exit 0, npm test (shared) exit 0, frontend helper tests 0 fail. tsconfig TS6310 from the previous task is already resolved on main."
+}

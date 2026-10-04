@@ -1,0 +1,7 @@
+{
+  "task_id": "task-care-animations",
+  "task_description": "Issue #10: Add short, non-blocking visual feedback animations to the four care actions (餌やり/トレーニング/睡眠/清掃) in the React frontend. Feed shows food approaching the monster, train shows a 気合い puff + sprite bounce, sleep shows an animated 💤 bubble, clean shows ✨ sparkles, and the sprite gives a light reaction for every action. A pure action->effect mapping lives in ui-helpers.ts with unit tests; the wiring and CSS keyframes live in App.tsx and styles.css. Frontend-only; no new deps; Japanese UI preserved. Branch feat/care-animations; orchestrator pushes + opens PR.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
