@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Move the conversation UI (ChatPanel: input + send button + transcript, including the baby disabled hint) so it renders visually next to the monster sprite instead of in the right-hand .controls-area. GitHub issue #19. Combined with the #11 speech bubble over the sprite, the conversation should read as happening right at the monster. This is primarily a component-placement + CSS change; preserve all existing chat logic, the baby-stage disabled hint, the pending '…' indicator, i18n (JA/EN), and the responsive single-column collapse at narrow widths.",
+  "status": "completed",
+  "steps": [
+    "In packages/frontend/src/App.tsx, move the <ChatPanel ... /> element out of the right-hand <div className=\"controls-area\"> and into the left-hand <div className=\"stage-area\">, placed directly under the sprite region so the conversation sits beneath/next to the monster. Recommended order inside .stage-area: .sprite-wrap, then <ChatPanel>, then <StatsPanel> (so the chat is immediately adjacent to the sprite); alternatively keep StatsPanel before ChatPanel if that reads better - but the ChatPanel MUST be in .stage-area, not .controls-area. Keep all existing props unchanged: stageId={game.monster.stageId} log={game.chatLog} pending={game.chatPending} onSend={game.sendChat}. Leave <CarePanel> and <BattlePanel> in .controls-area untouched.",
+    "Do NOT change ChatPanel.tsx logic/markup unless a small adjustment is needed for the new placement. The baby .chat-disabled-hint branch, the .chat-log transcript, the pending '…' bubble (.chat-line monster with '…'), the .chat-form (input + submit), canChat(stageId) gating, and all t() i18n keys (chat.title, chat.disabledHint, chat.placeholder, chat.inputAria, chat.send, chat.emptyPrompt, aria.chat) must remain intact and unchanged in behavior.",
+    "In packages/frontend/src/styles.css, adjust layout as needed so the ChatPanel reads as part of the stage/monster area. The .stage-area is already `display:grid; gap:16px`, so a moved panel will stack vertically under the sprite with correct spacing by default. If you want the chat visually tied to the sprite, you may tighten spacing or add a subtle visual grouping, but keep it minimal. Ensure the .chat-log max-height (currently 220px) does not make the stage column dramatically taller than the controls column in the two-column layout; consider reducing the transcript max-height when it sits under the sprite if it looks unbalanced (optional, keep JA/EN text unchanged).",
+    "Verify the responsive behavior: .game-grid is single-column below 760px and two-column at >=760px (align-items:start). After moving ChatPanel into .stage-area, confirm the narrow/mobile single-column layout still stacks sprite -> chat -> stats -> care -> battle in a sensible reading order and nothing overflows. Do not remove or weaken the @media (min-width:760px) rule.",
+    "If (and only if) you introduce any new user-visible string, add it to BOTH the JA (JA_MESSAGES, source of truth) and EN (EN_MESSAGES) dictionaries in packages/frontend/src/i18n.ts with the same key; existing JA strings must stay byte-identical. A pure layout move should need NO new strings.",
+    "If you extract any pure (React/DOM-free) helper during this change, place it in packages/frontend/src/ui-helpers.ts and add focused unit tests in packages/frontend/src/game-ui.test.ts. A pure-layout change may add no new unit test; in that case document the manual/Playwright layout verification in the feature findings.",
+    "Commit on branch feat/chat-near-monster with a clear message, e.g. `feat(frontend): place chat UI next to the monster sprite (closes #19)`. Stage only the files you changed (App.tsx, styles.css, and i18n.ts/ui-helpers.ts/game-ui.test.ts only if actually modified)."
+  ],
+  "acceptance_criteria": [
+    "In App.tsx, <ChatPanel> is rendered inside <div className=\"stage-area\"> (the left/monster column), not inside .controls-area.",
+    "<CarePanel> and <BattlePanel> remain in .controls-area, unchanged.",
+    "Baby stage still shows the localized .chat-disabled-hint and no input (canChat false), in both JA and EN.",
+    "Non-baby stages still show the transcript, the pending '…' bubble while a reply is in flight, and the input + send button, all wired to the same game.sendChat / game.chatLog / game.chatPending.",
+    "`npm run build` exits 0.",
+    "Root `npm test` reports >=47 pass / 0 fail; frontend `npm test` reports >=50 pass / 0 fail.",
+    "The two-column layout at >=760px still renders and the single-column layout below 760px still collapses sensibly (sprite and chat adjacent, nothing overflowing)."
+  ],
+  "verification": [
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm run build",
+    "npm test (root) -> 47/47",
+    "cd packages/frontend && npm test -> >=50/50",
+    "Optional: use the playwright Kiro Power (or npm run dev) to load the app, confirm the chat input/transcript renders directly under/next to the sprite in both wide (>=760px) and narrow (<760px) viewports, and that the baby disabled hint still appears for a baby-stage monster."
+  ],
+  "blocked_reason": null,
+  "findings": "Moved <ChatPanel> from .controls-area into .stage-area in App.tsx, ordered sprite-wrap -> ChatPanel -> StatsPanel so chat sits directly under the sprite. Props unchanged (stageId/log/pending/onSend). CarePanel/BattlePanel left untouched in .controls-area. ChatPanel.tsx and i18n.ts NOT modified, so the baby .chat-disabled-hint, the pending '…' bubble, canChat gating, and all t() keys (JA byte-identical, EN parity) are preserved by construction. styles.css: reduced .chat-log max-height 220px -> 180px to keep the stage column balanced against the controls column in the two-column layout; no selectors removed and the @media (min-width:760px) two-column rule untouched (single-column collapse <760px intact). No new user-visible strings; no pure helper extracted, so no new unit tests. Verified: npm run build exit 0; root npm test 47/47; frontend npm test 50/50. Live Playwright render of the local static build was not possible because the Playwright browser runs in an isolated network namespace and cannot reach the host's localhost static server (ERR_CONNECTION_REFUSED); structural correctness confirmed via the tsc build + the diff. Committed on feat/chat-near-monster as 248d5c3."
+}

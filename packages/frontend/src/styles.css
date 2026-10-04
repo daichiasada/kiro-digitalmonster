@@ -845,7 +845,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 220px;
+  /* The chat now sits in the stage column directly under the sprite, so keep
+     the transcript compact to avoid making the left column dramatically taller
+     than the controls column in the two-column (>=760px) layout. */
+  max-height: 180px;
   overflow-y: auto;
   padding: 4px;
   margin-bottom: 10px;

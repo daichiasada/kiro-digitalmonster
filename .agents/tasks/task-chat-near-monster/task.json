@@ -1,0 +1,14 @@
+{
+  "task_id": "task-chat-near-monster",
+  "task_description": "GitHub issue #19: move the conversation UI (ChatPanel: input, send button, transcript, baby disabled hint) from the right-hand controls-area to the left-hand stage-area so it renders next to the monster sprite, making the conversation read as happening right at the monster alongside the #11 speech bubble. Preserve the baby disabled-hint UX, i18n (JA/EN), the pending '…' indicator, and the existing responsive layout.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build exits 0; shared tests 47/47; frontend ui-helpers 50/50. Change is a purely structural move of <ChatPanel> from .controls-area into .stage-area (under the sprite, before StatsPanel) plus a one-line .chat-log max-height 220px->180px tweak; props and ChatPanel logic unchanged, so baby disabled-hint, pending '…' indicator, and i18n (JA/EN) are preserved by construction. No new runtime deps, no new i18n keys, no new/changed pure helpers (so existing 50 frontend tests remain the relevant coverage and still pass). No Docker in project. Live Playwright render not feasible: the browser namespace cannot reach host localhost and the deployed CloudFront URL still serves pre-change main; structural correctness confirmed via tsc build + diff review."
+  }
+}

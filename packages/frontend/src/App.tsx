@@ -143,6 +143,12 @@ export function App() {
                 </span>
               )}
             </div>
+            <ChatPanel
+              stageId={game.monster.stageId}
+              log={game.chatLog}
+              pending={game.chatPending}
+              onSend={game.sendChat}
+            />
             <StatsPanel monster={game.monster} />
           </div>
 
@@ -173,12 +179,6 @@ export function App() {
               // gives defenderHpAfter + dmg; fall back to full only when the
               // player is never hit. See playerStartHpFromLog.
               playerStartHp={playerStartHpFromLog(game.battleLog, game.monster.stats.maxHp)}
-            />
-            <ChatPanel
-              stageId={game.monster.stageId}
-              log={game.chatLog}
-              pending={game.chatPending}
-              onSend={game.sendChat}
             />
           </div>
         </main>
