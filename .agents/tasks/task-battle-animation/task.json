@@ -1,0 +1,15 @@
+{
+  "task_id": "task-battle-animation",
+  "task_description": "Issue #9: Add a turn-by-turn animated battle sequence to the wild-monster battle in the digital-monster frontend. Both combatants shown with HP bars; per-turn attack motion (lunge/shake, hit flash), damage-number popups, smooth HP-bar tweening, and the battle log revealed one line at a time in sync, ending with the localized winner. Core logic is a pure, unit-tested parser (parseBattleEvents) in ui-helpers.ts that turns the structured battle log into ordered turn events; the UI is driven off it. No new runtime deps; UI stays Japanese-only; respect prefers-reduced-motion.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build exits 0 across all four workspaces. Shared tests 47/47. Frontend ui-helpers 27/27 (17 baseline + 6 parseBattleEvents + 4 playerStartHpFromLog). Parser and start-HP helper tests exercise real logic (attacker/defender mapping, unknown-line skip, empty log, missing-Result winner=null, first-player-defender start-HP derivation and max fallback) and would fail if reverted. Semantic review v2 APPROVED after addressing the player-HP-bar seeding and reduced-motion popup-clear issues from v1. No Dockerfile for the frontend build path, so docker build skipped.",
+    "review": "v1 NEEDS_CHANGES -> fixes in f07c60b -> v2 APPROVED (one non-blocking cosmetic note: lethal-first-hit over-estimates the player bar's starting fraction by one frame, strictly better than prior behavior)."
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Establish a green baseline before implementing the battle animation. Confirm dependencies install, the full monorepo builds, and both test suites pass at their documented baselines (shared 47, frontend ui-helpers 17). This de-risks later verification by proving the toolchain works first.",
+  "status": "completed",
+  "steps": [
+    "From repo root /projects/sandbox/kiro-digitalmonster run `npm install` to ensure workspace dependencies are present.",
+    "Run `npm run build` from the repo root and confirm all four workspaces (@ddm/shared, @ddm/backend, @ddm/frontend, infra) compile with no errors.",
+    "Run `npm test` from the repo root and confirm the shared suite passes (baseline 47 tests).",
+    "Run `npm test -w @ddm/frontend` and confirm the ui-helpers suite passes (baseline 17 tests).",
+    "Record the exact commands and their pass/fail results in this feature's findings field."
+  ],
+  "acceptance_criteria": [
+    "`npm run build` exits 0 with no TypeScript errors across all workspaces.",
+    "`npm test` (shared) passes all baseline tests (47).",
+    "`npm test -w @ddm/frontend` passes all baseline tests (17)."
+  ],
+  "verification": [
+    "npm run build",
+    "npm test",
+    "npm test -w @ddm/frontend"
+  ],
+  "blocked_reason": null,
+  "findings": "Baseline established and all green. Environment: Node v22.23.3, branch feat/battle-animation. Commands run from repo root /projects/sandbox/kiro-digitalmonster:\n- `npm install` -> exit 0 (added 46 packages, 204 audited; 3 npm-audit advisories noted but unrelated, no action taken).\n- `npm run build` -> exit 0. All four workspaces compiled with no TS errors: @ddm/shared (tsc), @ddm/backend (tsc), @ddm/frontend (tsc + vite build, 51 modules transformed, built in ~6.8s), infra (tsc).\n- `npm test` (shared) -> exit 0, 47/47 pass (0 fail), matches baseline 47.\n- `npm test -w @ddm/frontend` (ui-helpers / game-ui.test.ts) -> exit 0, 17/17 pass (0 fail), matches baseline 17.\nNo code changes made; animation implementation deferred to FEAT-002. Not committed per instructions."
+}
