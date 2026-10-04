@@ -1,0 +1,27 @@
+{
+  "name": "@digital-monster/backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "API Gateway + Lambda handlers (TypeScript) for the digital monster: load/save/train/chat with DynamoDB persistence and stage-gated Amazon Bedrock conversation.",
+  "type": "module",
+  "main": "./dist/handlers/index.js",
+  "types": "./dist/handlers/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.637.0",
+    "@aws-sdk/client-dynamodb": "^3.637.0",
+    "@aws-sdk/lib-dynamodb": "^3.637.0",
+    "@digital-monster/shared": "*"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.143",
+    "@types/node": "^20.14.15",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}

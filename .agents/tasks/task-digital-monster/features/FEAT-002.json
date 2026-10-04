@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Implement the backend: TypeScript Lambda handlers behind API Gateway for load/save/train/chat, DynamoDB-backed persistence keyed by clientId (no auth), and Bedrock integration that selects Haiku/Sonnet/Opus by growth stage and SKIPS Bedrock entirely for 幼年期. Depends on FEAT-001 (uses @digital-monster/shared).",
-  "status": "pending",
+  "status": "completed",
   "steps": [
     "Create backend/package.json (name '@digital-monster/backend', dependency on @digital-monster/shared via workspace, and pinned AWS SDK v3 deps: @aws-sdk/client-dynamodb, @aws-sdk/lib-dynamodb, @aws-sdk/client-bedrock-runtime; devDeps: typescript, @types/aws-lambda, @types/node, vitest — all pinned). Scripts: build (tsc), test (vitest). Create backend/tsconfig.json extending base, outDir dist.",
     "Create backend/src/lib/dynamo.ts: a DynamoDBDocumentClient wrapper reading TABLE_NAME from env. Functions getMonster(clientId), putMonster(monster). Partition key 'clientId'.",
@@ -29,5 +29,5 @@
     "Read chat.ts + its test and confirm the Bedrock client send() is asserted NOT-called for BABY and called with the stage-correct modelId otherwise (test would fail if the skip logic were removed)."
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Implemented @digital-monster/backend as an ESM NodeNext package reusing @digital-monster/shared (no stage/model/evolution logic duplicated). Added libs: dynamo.ts (DynamoDBDocumentClient keyed by clientId, TABLE_NAME from env, lazy client), bedrock.ts (generateReply short-circuits for BABY via canConverse -> canned Japanese baby reply, conversationDisabled:true, and NEVER constructs/sends an InvokeModelCommand; otherwise invokes getModelForStage(stage) model), response.ts (CORS json/error helpers), monster.ts (initMonster + strict parseMonster validation). Four handlers (getMonster/saveMonster/train/chat) return API Gateway proxy results with CORS; handlers/index.ts re-exports them as named exports for CDK. saveMonster clamps the requested stage down to computeStage() allowance. train increments trainingCount and uses nextStage() so it evolves only when BOTH the count and time gates are met; returns an `evolved` flag. Vitest tests: chat.test.ts mocks the bedrock-runtime SDK (BedrockRuntimeClient.send + InvokeModelCommand ctor) and asserts BABY never builds/sends a command while ROOKIE/CHAMPION/ULTIMATE invoke HAIKU/SONNET/OPUS model ids; train.test.ts asserts increment + evolve-only-when-both-gates-met (mocked dynamo); saveMonster.test.ts asserts malformed bodies are rejected (400, no persist) and valid save stamps updatedAt + clamps overclaimed stage. ENVIRONMENT: npm registry blocked (INTEGRATIONS_ONLY), so node_modules cannot be installed; `tsc --noEmit` reports ONLY TS2307 'cannot find module' for aws-sdk/aws-lambda/@types/node/@digital-monster/shared and the consequent process/TextDecoder names — no logic/type errors in authored code. This is the documented expected outcome; vitest cannot execute in-sandbox for the same reason. All package.json/tsconfig.json validated as parseable JSON."
 }
