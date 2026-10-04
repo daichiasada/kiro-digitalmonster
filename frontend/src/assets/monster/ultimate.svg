@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="完全体のモンスター（大翼・鎧・オーラをまとった最終進化体）">
+  <title>完全体 / ULTIMATE</title>
+  <defs>
+    <radialGradient id="ultAura" cx="50%" cy="50%" r="50%">
+      <stop offset="60%" stop-color="#fff7cc" stop-opacity="0" />
+      <stop offset="100%" stop-color="#ffcf33" stop-opacity="0.85" />
+    </radialGradient>
+    <linearGradient id="ultBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff8a5b" />
+      <stop offset="55%" stop-color="#e4452f" />
+      <stop offset="100%" stop-color="#9c1f2e" />
+    </linearGradient>
+    <linearGradient id="ultWing" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffd27f" />
+      <stop offset="100%" stop-color="#e4452f" />
+    </linearGradient>
+  </defs>
+  <!-- radiant aura -->
+  <circle cx="120" cy="120" r="118" fill="url(#ultAura)" />
+  <!-- aura spikes -->
+  <g stroke="#ffcf33" stroke-width="3" stroke-linecap="round" opacity="0.8">
+    <line x1="120" y1="4" x2="120" y2="26" />
+    <line x1="24" y1="46" x2="40" y2="60" />
+    <line x1="216" y1="46" x2="200" y2="60" />
+    <line x1="8" y1="130" x2="30" y2="130" />
+    <line x1="232" y1="130" x2="210" y2="130" />
+  </g>
+  <!-- enormous feathered wings -->
+  <path d="M66 118 q-70 -30 -62 -92 q24 20 40 16 q-8 24 10 30 q-10 18 10 26 q-10 12 2 20 z"
+    fill="url(#ultWing)" stroke="#8f1f20" stroke-width="2.5" />
+  <path d="M174 118 q70 -30 62 -92 q-24 20 -40 16 q8 24 -10 30 q10 18 -10 26 q10 12 -2 20 z"
+    fill="url(#ultWing)" stroke="#8f1f20" stroke-width="2.5" />
+  <!-- armored legs -->
+  <rect x="82" y="190" width="24" height="36" rx="8" fill="#7a1620" />
+  <rect x="134" y="190" width="24" height="36" rx="8" fill="#7a1620" />
+  <path d="M82 226 l6 10 M94 226 l0 11 M106 226 l-6 10" stroke="#3e0b12" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M134 226 l6 10 M146 226 l0 11 M158 226 l-6 10" stroke="#3e0b12" stroke-width="3.5" stroke-linecap="round" />
+  <!-- spiked tail -->
+  <path d="M180 182 q58 6 60 -52 q-26 30 -48 28 z" fill="#9c1f2e" />
+  <path d="M232 128 l16 -6 l-10 16 z" fill="#ffcf33" />
+  <!-- massive body with armor -->
+  <ellipse cx="120" cy="150" rx="84" ry="74" fill="url(#ultBody)" stroke="#7a1620" stroke-width="3.5" />
+  <!-- armored breastplate -->
+  <path d="M120 92 l44 30 l-16 70 h-56 l-16 -70 z" fill="#ffcf33" opacity="0.9" stroke="#b8860b" stroke-width="2" />
+  <circle cx="120" cy="150" r="12" fill="#9c1f2e" stroke="#b8860b" stroke-width="2.5" />
+  <!-- crown of three horns -->
+  <path d="M120 70 l-10 -40 l20 0 z" fill="#ffe066" stroke="#b8860b" stroke-width="2" />
+  <path d="M88 86 q-18 -34 -34 -40 q24 2 36 24 z" fill="#ffe066" stroke="#b8860b" stroke-width="2" />
+  <path d="M152 86 q18 -34 34 -40 q-24 2 -36 24 z" fill="#ffe066" stroke="#b8860b" stroke-width="2" />
+  <!-- blazing eyes -->
+  <path d="M86 136 l28 6 l-26 12 z" fill="#fff2b0" />
+  <path d="M154 136 l-28 6 l26 12 z" fill="#fff2b0" />
+  <circle cx="99" cy="146" r="5" fill="#3e0b12" />
+  <circle cx="141" cy="146" r="5" fill="#3e0b12" />
+  <!-- roaring fanged mouth -->
+  <path d="M96 176 q24 22 48 0" fill="#3e0b12" stroke="#1c0509" stroke-width="2" />
+  <path d="M104 178 l6 12 l6 -12 z M124 178 l6 12 l6 -12 z" fill="#fff" />
+  <path d="M104 192 l6 -10 l6 10 z M124 192 l6 -10 l6 10 z" fill="#fff" />
+</svg>

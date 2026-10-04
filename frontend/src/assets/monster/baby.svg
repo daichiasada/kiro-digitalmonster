@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="幼年期のモンスター（卵から孵った赤ちゃん）">
+  <title>幼年期 / BABY</title>
+  <defs>
+    <radialGradient id="babyShell" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#fdf6e3" />
+      <stop offset="100%" stop-color="#e9d8a6" />
+    </radialGradient>
+  </defs>
+  <!-- small egg body -->
+  <ellipse cx="120" cy="150" rx="60" ry="72" fill="url(#babyShell)" stroke="#bfa35c" stroke-width="3" />
+  <!-- egg zigzag crack -->
+  <polyline points="70,140 90,132 82,152 104,146 96,166 122,160"
+    fill="none" stroke="#bfa35c" stroke-width="3" stroke-linejoin="round" />
+  <!-- tiny sprout on top (just hatched) -->
+  <path d="M120 86 q-4 -18 -18 -22 q16 -2 18 14 q2 -16 18 -14 q-14 4 -18 22 z" fill="#6cc24a" />
+  <!-- simple eyes -->
+  <circle cx="104" cy="150" r="7" fill="#333" />
+  <circle cx="136" cy="150" r="7" fill="#333" />
+  <circle cx="106" cy="148" r="2.4" fill="#fff" />
+  <circle cx="138" cy="148" r="2.4" fill="#fff" />
+  <!-- small mouth -->
+  <path d="M110 172 q10 8 20 0" fill="none" stroke="#333" stroke-width="2.5" stroke-linecap="round" />
+  <!-- blush -->
+  <circle cx="92" cy="164" r="5" fill="#f4a3a3" opacity="0.7" />
+  <circle cx="148" cy="164" r="5" fill="#f4a3a3" opacity="0.7" />
+</svg>

@@ -1,0 +1,266 @@
+:root {
+  --bg: #0f1226;
+  --panel: #1b1f3b;
+  --panel-2: #242a52;
+  --text: #eef1ff;
+  --muted: #a9b0d6;
+  --accent: #7ad1ff;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    'Hiragino Kaku Gothic ProN',
+    Meiryo,
+    sans-serif;
+  background: radial-gradient(circle at 50% 0%, #1a2050 0%, var(--bg) 70%);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.app-header h1 {
+  text-align: center;
+  letter-spacing: 0.08em;
+  margin: 0.5rem 0 1.5rem;
+}
+
+.app-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .app-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.app-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.monster-view,
+.controls,
+.chat-panel {
+  background: var(--panel);
+  border: 1px solid #2c3360;
+  border-radius: 16px;
+  padding: 1.25rem;
+}
+
+.monster-image-wrap {
+  display: flex;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 55%, #2a3570 0%, #141833 70%);
+  border-radius: 12px;
+  padding: 0.5rem;
+}
+
+.monster-image {
+  width: 240px;
+  height: 240px;
+  image-rendering: auto;
+}
+
+.monster-name {
+  text-align: center;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.monster-stage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.stage-badge {
+  background: var(--accent);
+  color: #06233a;
+  font-weight: 700;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+}
+
+.training-count {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.monster-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.stat {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr 2.5rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stat-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stat-track {
+  background: #11152e;
+  border-radius: 999px;
+  height: 12px;
+  overflow: hidden;
+}
+
+.stat-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.stat-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.controls-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn {
+  flex: 1;
+  border: none;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #06233a;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn--train {
+  background: #9bffb0;
+}
+
+.btn--save {
+  background: #ffd166;
+}
+
+.controls-status {
+  color: var(--accent);
+  margin: 0.75rem 0 0;
+}
+
+.controls-error,
+.chat-error {
+  color: #ff8a8a;
+  margin: 0.5rem 0 0;
+}
+
+.chat-title {
+  margin: 0 0 0.5rem;
+}
+
+.chat-disabled-note {
+  background: var(--panel-2);
+  color: var(--muted);
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  margin: 0 0 0.75rem;
+}
+
+.chat-log {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.chat-msg {
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  max-width: 85%;
+  word-break: break-word;
+}
+
+.chat-msg--user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #06233a;
+}
+
+.chat-msg--monster {
+  align-self: flex-start;
+  background: var(--panel-2);
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chat-input {
+  flex: 1;
+  background: #11152e;
+  border: 1px solid #2c3360;
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.chat-input:disabled {
+  opacity: 0.6;
+}
+
+.chat-send {
+  border: none;
+  border-radius: 10px;
+  padding: 0 1.1rem;
+  background: var(--accent);
+  color: #06233a;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chat-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.app-loading,
+.app-error {
+  text-align: center;
+  color: var(--muted);
+}

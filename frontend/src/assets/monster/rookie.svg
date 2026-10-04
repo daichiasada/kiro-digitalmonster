@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="成長期のモンスター（小さな四足の生き物）">
+  <title>成長期 / ROOKIE</title>
+  <defs>
+    <linearGradient id="rookieBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ad1ff" />
+      <stop offset="100%" stop-color="#3a8fd6" />
+    </linearGradient>
+  </defs>
+  <!-- legs -->
+  <rect x="86" y="176" width="18" height="34" rx="8" fill="#2f6fab" />
+  <rect x="136" y="176" width="18" height="34" rx="8" fill="#2f6fab" />
+  <!-- tail -->
+  <path d="M172 160 q34 -6 30 -40 q-14 18 -30 20 z" fill="#3a8fd6" />
+  <!-- rounded body -->
+  <ellipse cx="120" cy="150" rx="66" ry="56" fill="url(#rookieBody)" stroke="#2f6fab" stroke-width="3" />
+  <!-- belly -->
+  <ellipse cx="120" cy="162" rx="34" ry="30" fill="#dff4ff" />
+  <!-- a single small horn (new growth) -->
+  <path d="M120 96 l-10 -26 l20 0 z" fill="#ffd166" stroke="#c99a2e" stroke-width="2" />
+  <!-- ears -->
+  <path d="M80 112 q-18 -14 -8 -34 q18 10 20 30 z" fill="#3a8fd6" />
+  <path d="M160 112 q18 -14 8 -34 q-18 10 -20 30 z" fill="#3a8fd6" />
+  <!-- eyes -->
+  <circle cx="100" cy="146" r="11" fill="#fff" />
+  <circle cx="140" cy="146" r="11" fill="#fff" />
+  <circle cx="102" cy="148" r="5.5" fill="#222" />
+  <circle cx="138" cy="148" r="5.5" fill="#222" />
+  <!-- mouth with little fang -->
+  <path d="M106 170 q14 12 28 0" fill="none" stroke="#1c3f5f" stroke-width="3" stroke-linecap="round" />
+  <path d="M116 176 l4 7 l4 -7 z" fill="#fff" />
+</svg>
