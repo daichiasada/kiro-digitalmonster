@@ -1,0 +1,30 @@
+{
+  "name": "@digital-monster/infra",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AWS CDK (TypeScript) app that provisions the digital monster stack: DynamoDB, API Gateway + Lambda, S3 + CloudFront, and least-privilege Bedrock IAM.",
+  "bin": {
+    "infra": "bin/app.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "synth": "cdk synth",
+    "deploy": "cdk deploy --all --require-approval never",
+    "destroy": "cdk destroy --all",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@digital-monster/shared": "*",
+    "aws-cdk-lib": "^2.150.0",
+    "constructs": "^10.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.15",
+    "aws-cdk": "^2.150.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}
