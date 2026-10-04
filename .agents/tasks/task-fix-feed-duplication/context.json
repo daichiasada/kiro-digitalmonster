@@ -1,0 +1,22 @@
+{
+  "project_type": "TypeScript monorepo (npm workspaces): React+Vite frontend, AWS Lambda backend, shared pure-logic package, CDK infra. This bug is frontend-only.",
+  "language": "TypeScript",
+  "build_system": "npm workspaces. Root `npm run build` builds shared -> backend -> frontend -> infra. Frontend build is `tsc && vite build` in packages/frontend.",
+  "test_framework": "Shared: node:test via `npm test` (root, baseline 47 passing). Frontend: dependency-free pure-helper tests in packages/frontend/src/game-ui.test.ts run with `node --experimental-strip-types --test src/game-ui.test.ts` (baseline 50 passing). No React/DOM test harness exists; component behavior is NOT unit-testable here.",
+  "build_command": "npm run build (from repo root)",
+  "test_command": "npm test (from repo root, shared) AND cd packages/frontend && npm test (frontend ui-helpers)",
+  "verification_instructions": "1) npm run build at root must succeed. 2) npm test at root (shared) stays green (47). 3) cd packages/frontend && npm test stays green (50). 4) Manual/Playwright verification against local `npm run dev` or the live site: click Feed once and repeatedly; confirm exactly ONE sprite SVG and ONE .sprite-bounce-layer remain in .sprite-wrap after the animation completes, and that the feed emoji 🍖 (#10) and the SpeechBubble (#11) still work.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "npm install at repo root (workspaces). Node >= 20. Network OPEN_INTERNET. Playwright power available; `npx playwright install` may be needed for browser automation.",
+  "environment_constraints": "OPEN_INTERNET. No React/DOM unit-test harness, so the duplication fix cannot be covered by a React render test; verify via build + existing pure-helper tests + Playwright/manual DOM inspection. Do NOT add new runtime dependencies. Keep JA output and i18n intact.",
+  "contribution_requirements": "Work on a feature branch fix/feed-monster-duplication off main. Do NOT push or open PRs (orchestrator handles that). Do NOT touch backup/previous-main. Keep well-separated commits. Preserve the issue #10 feed animation and issue #11 SpeechBubble behavior.",
+  "key_patterns": "ROOT CAUSE (confirmed by live reproduction): In packages/frontend/src/App.tsx, inside .sprite-wrap, two SIBLING elements receive the SAME React key when a care FX is active: the bounce-layer div uses key={careFx?.key ?? \"idle\"} and the care-fx <span> uses key={careFx.key}. When careFx is set (e.g. {action:'feed', key:1}), BOTH siblings get key `1`. React keys must be unique among siblings; the collision corrupts reconciliation so when careFx later reverts to null (via handleFxEnd / fallback timer) the old bounce-layer node is NOT unmounted, leaving TWO .sprite-bounce-layer divs (two sprite SVGs) permanently in the DOM = the duplicated monster. A single Feed click reproduces it (1 -> 2 SVGs, stays at 2). Minimal fix: give the bounce-layer a key that CANNOT collide with the numeric careFx.key, e.g. key={careFx === null ? \"idle\" : `fx-${careFx.key}`} (string-namespaced), so the two siblings never share a key. Verify the bounce still remounts/re-fires on repeated same-action clicks (that behavior must be preserved).",
+  "relevant_files": [
+    "packages/frontend/src/App.tsx (the .sprite-wrap subtree: bounce-layer div key, care-fx span key, SpeechBubble, zzz/dirt overlays, triggerCareFx/handleFxEnd/fxTimer)",
+    "packages/frontend/src/styles.css (.sprite-bounce-layer, .sprite-bounce-layer.reacting, .care-fx animations - reference only, likely no change needed)",
+    "packages/frontend/src/state/useMonster.ts (runCareAction two-commit cycle, commit - reference only; state produces a single monster, confirmed not the cause)",
+    "packages/shared/src/game.ts (feed() returns a single NEW monster - confirmed correct, no change)",
+    "packages/frontend/src/ui-helpers.ts and src/game-ui.test.ts (pure-helper test pattern; careEffect lives here)"
+  ],
+  "directory_structure": "packages/shared (pure game logic + types), packages/backend (Lambda handlers incl saveMonster.ts single-record by design), packages/frontend (React UI: App.tsx, components/, assets/monsters/ SVG sprites, state/useMonster.ts, ui-helpers.ts, styles.css), infra (CDK)."
+}

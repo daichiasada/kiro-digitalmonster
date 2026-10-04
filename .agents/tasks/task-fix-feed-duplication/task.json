@@ -1,0 +1,7 @@
+{
+  "task_id": "task-fix-feed-duplication",
+  "task_description": "Fix GitHub issue #18: feeding the monster (餌やり / Feed) makes the monster appear to multiply (multiple sprites shown on screen). Root cause confirmed via live Playwright reproduction: a duplicate React key collision among sibling elements in .sprite-wrap in packages/frontend/src/App.tsx (the bounce-layer div and the care-fx span share the numeric careFx.key when a care FX is active), which corrupts reconciliation and leaves an orphaned, un-unmounted sprite layer in the DOM. Fix is frontend-only; expected behavior is exactly one monster at all times with feed only reducing hunger, restoring a little HP, and playing the feed animation.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001"],
+  "blocked_reason": null
+}
