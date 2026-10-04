@@ -6,6 +6,10 @@ dist/
 build/
 *.tsbuildinfo
 
+# Compiled CDK output (infra runs via ts-node; tsc build emits throwaway JS)
+infra/bin/*.js
+infra/lib/*.js
+
 # CDK
 cdk.out/
 infra/cdk.out/
