@@ -5,6 +5,7 @@
  * built-in test runner (see game-ui.test.ts).
  */
 import type { BattleWinner, GrowthStage, Monster } from "@ddm/shared";
+import type { Lang } from "./i18n.ts";
 
 /** Japanese display label per growth stage. */
 const STAGE_LABELS_JA: Record<GrowthStage, string> = {
@@ -14,9 +15,28 @@ const STAGE_LABELS_JA: Record<GrowthStage, string> = {
   ultimate: "完全体",
 };
 
+/** English display label per growth stage. */
+const STAGE_LABELS_EN: Record<GrowthStage, string> = {
+  baby: "Baby",
+  rookie: "Rookie",
+  champion: "Champion",
+  ultimate: "Ultimate",
+};
+
 /** Human-friendly Japanese stage label. */
 export function stageLabelJa(stageId: GrowthStage): string {
   return STAGE_LABELS_JA[stageId] ?? stageId;
+}
+
+/**
+ * Human-friendly, language-aware stage label. For `lang==='ja'` this is
+ * byte-identical to {@link stageLabelJa}.
+ */
+export function stageLabel(stageId: GrowthStage, lang: Lang): string {
+  if (lang === "en") {
+    return STAGE_LABELS_EN[stageId] ?? stageId;
+  }
+  return stageLabelJa(stageId);
 }
 
 /** Whether the monster can chat (everything except the baby stage). */
@@ -31,6 +51,20 @@ export function canChat(stageId: GrowthStage): boolean {
  * chat.ts (the baby branch returns this exact `reply` with modelId 'none').
  */
 export const BABY_SPEECH_TEXT = "…！（まだ言葉を話せないみたい。もっと育ててあげよう！）";
+
+/**
+ * English counterpart to {@link BABY_SPEECH_TEXT}, shown for the baby stage
+ * when the UI language is English. Not sent to the backend; purely cosmetic.
+ */
+export const BABY_SPEECH_TEXT_EN = "…! (It can't talk yet. Let's raise it more!)";
+
+/**
+ * Language-aware baby canned reply. `lang==='ja'` returns the exact JA string
+ * ({@link BABY_SPEECH_TEXT}); `lang==='en'` returns {@link BABY_SPEECH_TEXT_EN}.
+ */
+export function babySpeechText(lang: Lang): string {
+  return lang === "en" ? BABY_SPEECH_TEXT_EN : BABY_SPEECH_TEXT;
+}
 
 /**
  * Return the text of the most recent monster line in a chat log, or null when
@@ -83,6 +117,26 @@ export function winnerLabelJa(winner: BattleWinner): string {
   }
 }
 
+/** English headline for a finished battle, keyed by winner. */
+function winnerLabelEn(winner: BattleWinner): string {
+  switch (winner) {
+    case "player":
+      return "Victory! 🎉";
+    case "enemy":
+      return "Defeat… 💥";
+    default:
+      return "Draw 🤝";
+  }
+}
+
+/**
+ * Language-aware battle headline. `lang==='ja'` is byte-identical to
+ * {@link winnerLabelJa}.
+ */
+export function winnerLabel(winner: BattleWinner, lang: Lang): string {
+  return lang === "en" ? winnerLabelEn(winner) : winnerLabelJa(winner);
+}
+
 // Matches a per-turn attack line emitted by @ddm/shared simulateBattle, e.g.
 //   "T1: でじたん hits 野生の幼年期モンスター for 11 (enemy HP 7)"
 const TURN_LINE_RE =
@@ -112,6 +166,40 @@ export function battleLogLineJa(line: string): string {
 /** Localize an entire battle log. */
 export function battleLogJa(log: readonly string[]): string[] {
   return log.map(battleLogLineJa);
+}
+
+/**
+ * English rendering of a single battle-log line. Reuses the same regexes as
+ * {@link battleLogLineJa}; unknown lines are returned unchanged.
+ */
+function battleLogLineEn(line: string): string {
+  const turn = TURN_LINE_RE.exec(line);
+  if (turn !== null) {
+    const [, n, attacker, defender, dmg, side, hp] = turn;
+    const whose = side === "enemy" ? "enemy" : "player";
+    return `Turn ${n}: ${attacker} attacks! ${defender} takes ${dmg} damage (${whose} HP ${hp})`;
+  }
+  const result = RESULT_LINE_RE.exec(line);
+  if (result !== null) {
+    return `Result: ${winnerLabelEn(result[1] as BattleWinner)}`;
+  }
+  return line;
+}
+
+/**
+ * Language-aware localization of a single battle-log line. `lang==='ja'` is
+ * byte-identical to {@link battleLogLineJa}.
+ */
+export function battleLogLine(line: string, lang: Lang): string {
+  return lang === "en" ? battleLogLineEn(line) : battleLogLineJa(line);
+}
+
+/**
+ * Language-aware localization of an entire battle log. `lang==='ja'` is
+ * byte-identical to {@link battleLogJa}.
+ */
+export function battleLogList(log: readonly string[], lang: Lang): string[] {
+  return log.map((line) => battleLogLine(line, lang));
 }
 
 /**
@@ -207,6 +295,20 @@ export function formatMinutesJa(ms: number): string {
 }
 
 /**
+ * Language-aware whole-minute duration string. `lang==='ja'` is byte-identical
+ * to {@link formatMinutesJa}; `lang==='en'` returns e.g. `"2 min"`.
+ */
+export function formatMinutes(ms: number, lang: Lang): string {
+  if (lang !== "en") {
+    return formatMinutesJa(ms);
+  }
+  if (!Number.isFinite(ms) || ms < 0) {
+    return "0 min";
+  }
+  return `${Math.floor(ms / 60000)} min`;
+}
+
+/**
  * A care action the player can perform on the monster. `sleep` and `wake` are
  * the two halves of the sleep toggle button so each shows a matching cue.
  */
@@ -255,4 +357,32 @@ export function moodLabelJa(monster: Pick<Monster, "isSleeping" | "dirty" | "hun
     return "お腹がすいてきた";
   }
   return "ごきげん";
+}
+
+/** English mood string, mirroring the priority order of {@link moodLabelJa}. */
+function moodLabelEn(monster: Pick<Monster, "isSleeping" | "dirty" | "hungryLevel">): string {
+  if (monster.isSleeping) {
+    return "Sleeping soundly";
+  }
+  if (monster.dirty) {
+    return "Dirty";
+  }
+  if (monster.hungryLevel >= 7) {
+    return "Very hungry";
+  }
+  if (monster.hungryLevel >= 3) {
+    return "Getting hungry";
+  }
+  return "Happy";
+}
+
+/**
+ * Language-aware mood string. `lang==='ja'` is byte-identical to
+ * {@link moodLabelJa}.
+ */
+export function moodLabel(
+  monster: Pick<Monster, "isSleeping" | "dirty" | "hungryLevel">,
+  lang: Lang,
+): string {
+  return lang === "en" ? moodLabelEn(monster) : moodLabelJa(monster);
 }

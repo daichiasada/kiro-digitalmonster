@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Wire the i18n layer from FEAT-001 into the whole frontend UI: mount I18nProvider, add a JA / EN language toggle in the header, and replace every hard-coded Japanese UI string in App.tsx and all components with t()/lang-aware helper calls so the entire visible UI (buttons, labels, status, evolution conditions, battle results/log, chat, speech bubble, evolution banner, aria-labels) renders in the selected language and switches synchronously. Persistence and default come from FEAT-001 (localStorage 'ddm.lang', default 'ja'). This feature does NOT touch chat-AI language (FEAT-003). JA output must remain byte-identical to today so the existing demo is unchanged when lang='ja'. Depends on FEAT-001.",
+  "status": "pending",
+  "steps": [
+    "In packages/frontend/src/main.tsx: wrap <App /> with <I18nProvider> from ./i18n.ts so the whole tree can call useI18n().",
+    "In packages/frontend/src/App.tsx: call useI18n(). Replace the header h1 text 'デジタルモンスター育成' with t('app.title'). Add a language toggle control in <header className=\"app-header\"> next to/below the title: two buttons (or a segmented control) labeled 'JA' and 'EN' that call setLang('ja')/setLang('en'); mark the active one (e.g. aria-pressed and an 'active' class). Replace loading text '読み込み中…', the null-monster text 'モンスターを準備できませんでした。', and the footer '進化条件: トレーニング回数 ＋ 経過時間 ／ セーブは自動です' with t() lookups. For the SpeechBubble baby text, replace BABY_SPEECH_TEXT with babySpeechText(lang) so the baby bubble is localized. Keep the care-fx logic unchanged.",
+    "In packages/frontend/src/components/CarePanel.tsx: accept the current lang (via useI18n() inside the component, or as a prop from App) and replace 'お世話' (also the aria-label), '餌やり', 'トレーニング', '睡眠'/'起こす' toggle labels, '清掃', and the care-hint paragraph with t() lookups. Keep emojis and button class names unchanged.",
+    "In packages/frontend/src/components/StatsPanel.tsx: localize 'きぶん: ' prefix (use moodLabel(monster, lang) for the value), the aria-label 'ステータス', the stat labels '攻撃'/'防御' (HP stays 'HP'), 'トレーニング回数: ', the evolution block title '進化条件', the final-stage line '最終段階（{stageLabel(stage, lang)}）', '次の段階: {nextLabel for lang}', the 'トレーニング {cur}/{req}' line label, and the '経過 {formatMinutes(elapsed, lang)}/{formatMinutes(required, lang)}' line label. Use evolutionProgress's nextLabelJa/nextLabelEn (or stageLabel) per lang. Numbers/stat values stay as-is.",
+    "In packages/frontend/src/components/BattlePanel.tsx: localize 'バトル' (heading + aria-label), the button '⚔️ 野生のモンスターと戦う', and switch the enemy name and log/winner rendering to lang-aware helpers: enemyName uses stageLabel(stage, lang) with a localized 'wild {label} monster' template (JA stays '野生の{label}モンスター'), log lines use battleLogLine(..., lang) and the winner headline uses winnerLabel(winner, lang). Keep the structured-English intermediate string the component builds for battleLogLine (it already round-trips through the parser), but ensure the player/enemy names injected are the localized display names so lines read naturally.",
+    "In packages/frontend/src/components/ChatPanel.tsx: localize '会話' (heading + aria-label), the disabled hint, the empty-log prompt '話しかけてみよう！', the input placeholder 'メッセージを入力', the input aria-label 'メッセージ', and the '送信' button. Keep the modelId display as-is.",
+    "In packages/frontend/src/components/EvolutionBanner.tsx: localize '進化した！ {stage} になった！' (use stageLabel(stageId, lang)) and the close-button aria-label '閉じる'. Compose the EN sentence naturally (e.g. 'Evolved! Became {Stage}!').",
+    "In packages/frontend/src/components/SpeechBubble.tsx: it is presentational and receives text from App; no string changes needed beyond confirming App now passes babySpeechText(lang). Leave as-is if no literals exist.",
+    "Add minimal CSS in packages/frontend/src/styles.css for the header language toggle (e.g. a .lang-toggle container and active-state styling) consistent with the existing dark theme; do not restructure existing rules.",
+    "Manually sanity check by building the frontend (`npm run build -w @ddm/frontend`) and, if practical, running the existing e2e/serve helper under .agents/tasks/task-digital-monster/ is NOT required; rely on the build + the FEAT-001 unit tests. Ensure no remaining hard-coded Japanese user-facing literal exists in App.tsx or components (search for Japanese characters in those files and confirm each remaining one is a dictionary value, a code comment, or a non-UI string)."
+  ],
+  "acceptance_criteria": [
+    "main.tsx wraps App in I18nProvider; App renders a JA/EN toggle in the header that calls setLang and visibly marks the active language.",
+    "Switching the toggle to EN re-renders the ENTIRE visible UI in English (header, loading/error, care buttons+hint, stats labels+mood, evolution-condition block, battle heading/button/enemy name/log/winner, chat heading/hint/placeholder/empty-prompt/send, speech bubble baby text, evolution banner) and switching back to JA restores the exact original Japanese.",
+    "The selected language persists across reloads via localStorage key 'ddm.lang' and defaults to 'ja' on first load.",
+    "No user-facing hard-coded Japanese string literal remains in App.tsx or any component in packages/frontend/src/components (verified by inspection); aria-labels are also localized.",
+    "`npm run build` from repo root exits 0 and all FEAT-001 tests still pass (JA output unchanged)."
+  ],
+  "verification": [
+    "From repo root: `npm run build` exits 0 (frontend tsc + vite build included).",
+    "From repo root: `npm test` (shared) and `cd packages/frontend && env -u NODE_OPTIONS node --experimental-strip-types --test src/game-ui.test.ts` both pass with 0 failures.",
+    "grep for CJK characters in packages/frontend/src/App.tsx and packages/frontend/src/components/*.tsx and confirm every match is inside i18n.ts dictionary usage, a comment, or a non-UI identifier (no stray UI literal)."
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

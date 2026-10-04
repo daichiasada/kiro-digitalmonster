@@ -5,6 +5,8 @@ export interface StageConfig {
   id: GrowthStage;
   /** Japanese display label. */
   labelJa: string;
+  /** English display label. */
+  labelEn: string;
   /** Whether the monster can chat at this stage. */
   canChat: boolean;
   /** Which Bedrock model tier powers chat at this stage. */
@@ -36,6 +38,7 @@ export const STAGES: readonly StageConfig[] = [
   {
     id: "baby",
     labelJa: "幼年期",
+    labelEn: "Baby",
     canChat: false,
     bedrockModelKey: "none",
     baseStats: { hp: 20, maxHp: 20, atk: 5, def: 3 },
@@ -45,6 +48,7 @@ export const STAGES: readonly StageConfig[] = [
   {
     id: "rookie",
     labelJa: "成長期",
+    labelEn: "Rookie",
     canChat: true,
     bedrockModelKey: "haiku",
     baseStats: { hp: 40, maxHp: 40, atk: 10, def: 6 },
@@ -54,6 +58,7 @@ export const STAGES: readonly StageConfig[] = [
   {
     id: "champion",
     labelJa: "成熟期",
+    labelEn: "Champion",
     canChat: true,
     bedrockModelKey: "sonnet",
     baseStats: { hp: 70, maxHp: 70, atk: 18, def: 12 },
@@ -63,6 +68,7 @@ export const STAGES: readonly StageConfig[] = [
   {
     id: "ultimate",
     labelJa: "完全体",
+    labelEn: "Ultimate",
     canChat: true,
     bedrockModelKey: "opus",
     baseStats: { hp: 110, maxHp: 110, atk: 28, def: 20 },
@@ -129,12 +135,16 @@ export interface EvolutionProgress {
   currentStageId: GrowthStage;
   /** Japanese label of the current stage. */
   currentLabelJa: string;
+  /** English label of the current stage. */
+  currentLabelEn: string;
   /** True when the monster is at the terminal stage (no further evolution). */
   isFinalStage: boolean;
   /** Stage the monster evolves into next, or null at the final stage. */
   nextStageId: GrowthStage | null;
   /** Japanese label of the next stage, or null at the final stage. */
   nextLabelJa: string | null;
+  /** English label of the next stage, or null at the final stage. */
+  nextLabelEn: string | null;
   /** Completed training sessions so far. */
   trainingCurrent: number;
   /** Training sessions required to advance, or null at the final stage. */
@@ -165,9 +175,11 @@ export function evolutionProgress(monster: Monster, now: number): EvolutionProgr
     return {
       currentStageId: current.id,
       currentLabelJa: current.labelJa,
+      currentLabelEn: current.labelEn,
       isFinalStage: true,
       nextStageId: null,
       nextLabelJa: null,
+      nextLabelEn: null,
       trainingCurrent: monster.trainingCount,
       trainingRequired: null,
       trainingMet: true,
@@ -184,9 +196,11 @@ export function evolutionProgress(monster: Monster, now: number): EvolutionProgr
   return {
     currentStageId: current.id,
     currentLabelJa: current.labelJa,
+    currentLabelEn: current.labelEn,
     isFinalStage: false,
     nextStageId: next?.id ?? null,
     nextLabelJa: next?.labelJa ?? null,
+    nextLabelEn: next?.labelEn ?? null,
     trainingCurrent: monster.trainingCount,
     trainingRequired: requirement.minTrainingCount,
     trainingMet,

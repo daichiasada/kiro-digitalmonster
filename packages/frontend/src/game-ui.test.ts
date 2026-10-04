@@ -11,21 +11,31 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   BABY_SPEECH_TEXT,
+  BABY_SPEECH_TEXT_EN,
+  babySpeechText,
   battleLogJa,
+  battleLogLine,
   battleLogLineJa,
+  battleLogList,
   canChat,
   careEffect,
+  formatMinutes,
   formatMinutesJa,
   hpPercent,
   latestMonsterReply,
+  moodLabel,
   moodLabelJa,
   parseBattleEvents,
   playerStartHpFromLog,
+  stageLabel,
   stageLabelJa,
   statBarPercent,
+  winnerLabel,
   winnerLabelJa,
 } from "./ui-helpers.ts";
 import type { CareAction } from "./ui-helpers.ts";
+import { DEFAULT_LANG, MESSAGES, t } from "./i18n.ts";
+import type { Lang, MessageKey } from "./i18n.ts";
 
 test("stageLabelJa maps each stage to its Japanese label", () => {
   assert.equal(stageLabelJa("baby"), "幼年期");
@@ -294,4 +304,135 @@ test("battleLogJa localizes a full log", () => {
     "1ターン目: でじたん の攻撃！ 野生の幼年期モンスター に 9 ダメージ（相手の残りHP 0）",
     "結果: 勝利！ 🎉",
   ]);
+});
+
+// --- i18n / language-aware helpers ----------------------------------------
+
+const SAMPLE_MONSTERS: ReadonlyArray<{ isSleeping: boolean; dirty: boolean; hungryLevel: number }> = [
+  { isSleeping: true, dirty: true, hungryLevel: 9 },
+  { isSleeping: false, dirty: true, hungryLevel: 9 },
+  { isSleeping: false, dirty: false, hungryLevel: 8 },
+  { isSleeping: false, dirty: false, hungryLevel: 4 },
+  { isSleeping: false, dirty: false, hungryLevel: 0 },
+];
+
+const SAMPLE_LOG = [
+  "T1: でじたん hits 野生の幼年期モンスター for 11 (enemy HP 7)",
+  "T2: 野生の幼年期モンスター hits でじたん for 2 (player HP 18)",
+  "Result: player",
+];
+
+test("stageLabel('en') returns the English stage labels", () => {
+  assert.equal(stageLabel("baby", "en"), "Baby");
+  assert.equal(stageLabel("rookie", "en"), "Rookie");
+  assert.equal(stageLabel("champion", "en"), "Champion");
+  assert.equal(stageLabel("ultimate", "en"), "Ultimate");
+});
+
+test("stageLabel('ja') is byte-identical to stageLabelJa", () => {
+  for (const id of ["baby", "rookie", "champion", "ultimate"] as const) {
+    assert.equal(stageLabel(id, "ja"), stageLabelJa(id));
+  }
+});
+
+test("winnerLabel('ja') equals winnerLabelJa and ('en') returns English headlines", () => {
+  for (const w of ["player", "enemy", "draw"] as const) {
+    assert.equal(winnerLabel(w, "ja"), winnerLabelJa(w));
+  }
+  assert.equal(winnerLabel("player", "en"), "Victory! 🎉");
+  assert.equal(winnerLabel("enemy", "en"), "Defeat… 💥");
+  assert.equal(winnerLabel("draw", "en"), "Draw 🤝");
+});
+
+test("battleLogLine('ja') equals battleLogLineJa for every sample line", () => {
+  for (const line of SAMPLE_LOG) {
+    assert.equal(battleLogLine(line, "ja"), battleLogLineJa(line));
+  }
+});
+
+test("battleLogLine('en') renders English turn and result lines", () => {
+  assert.equal(
+    battleLogLine("T1: でじたん hits 野生の幼年期モンスター for 11 (enemy HP 7)", "en"),
+    "Turn 1: でじたん attacks! 野生の幼年期モンスター takes 11 damage (enemy HP 7)",
+  );
+  assert.equal(
+    battleLogLine("T2: 野生の幼年期モンスター hits でじたん for 2 (player HP 18)", "en"),
+    "Turn 2: 野生の幼年期モンスター attacks! でじたん takes 2 damage (player HP 18)",
+  );
+  assert.equal(battleLogLine("Result: player", "en"), "Result: Victory! 🎉");
+  assert.equal(battleLogLine("Result: enemy", "en"), "Result: Defeat… 💥");
+  assert.equal(battleLogLine("Result: draw", "en"), "Result: Draw 🤝");
+});
+
+test("battleLogLine('en') returns unknown lines unchanged", () => {
+  assert.equal(battleLogLine("something unexpected", "en"), "something unexpected");
+});
+
+test("battleLogList('ja') equals battleLogJa", () => {
+  assert.deepEqual(battleLogList(SAMPLE_LOG, "ja"), battleLogJa(SAMPLE_LOG));
+});
+
+test("formatMinutes('ja') equals formatMinutesJa and ('en') returns '{n} min'", () => {
+  for (const ms of [0, 60000, 150000, -1, Number.NaN]) {
+    assert.equal(formatMinutes(ms, "ja"), formatMinutesJa(ms));
+  }
+  assert.equal(formatMinutes(0, "en"), "0 min");
+  assert.equal(formatMinutes(60000, "en"), "1 min");
+  assert.equal(formatMinutes(150000, "en"), "2 min");
+  assert.equal(formatMinutes(-1, "en"), "0 min");
+  assert.equal(formatMinutes(Number.NaN, "en"), "0 min");
+});
+
+test("moodLabel('ja') equals moodLabelJa for all states", () => {
+  for (const m of SAMPLE_MONSTERS) {
+    assert.equal(moodLabel(m, "ja"), moodLabelJa(m));
+  }
+});
+
+test("moodLabel('en') maps the same priority order to English", () => {
+  assert.equal(moodLabel(SAMPLE_MONSTERS[0], "en"), "Sleeping soundly");
+  assert.equal(moodLabel(SAMPLE_MONSTERS[1], "en"), "Dirty");
+  assert.equal(moodLabel(SAMPLE_MONSTERS[2], "en"), "Very hungry");
+  assert.equal(moodLabel(SAMPLE_MONSTERS[3], "en"), "Getting hungry");
+  assert.equal(moodLabel(SAMPLE_MONSTERS[4], "en"), "Happy");
+});
+
+test("babySpeechText returns the correct canned reply per language", () => {
+  assert.equal(babySpeechText("ja"), BABY_SPEECH_TEXT);
+  assert.equal(babySpeechText("en"), BABY_SPEECH_TEXT_EN);
+  assert.notEqual(BABY_SPEECH_TEXT_EN, BABY_SPEECH_TEXT);
+});
+
+test("MESSAGES.ja and MESSAGES.en have identical key sets", () => {
+  const jaKeys = Object.keys(MESSAGES.ja).sort();
+  const enKeys = Object.keys(MESSAGES.en).sort();
+  assert.deepEqual(jaKeys, enKeys);
+});
+
+test("t() returns the dictionary value for a known key", () => {
+  assert.equal(t("ja", "app.title"), "デジタルモンスター育成");
+  assert.equal(t("en", "app.title"), "Digital Monster Raising");
+});
+
+test("t() falls back to the JA value when a language is missing the key", () => {
+  // Force a missing EN key via a cast to exercise the fallback path.
+  const bogus = "nonexistent.key" as MessageKey;
+  // When the key is absent from BOTH dictionaries, t() returns the key itself.
+  assert.equal(t("en", bogus), "nonexistent.key");
+  assert.equal(t("ja", bogus), "nonexistent.key");
+});
+
+test("t() never returns undefined for any defined key in any language", () => {
+  const langs: Lang[] = ["ja", "en"];
+  for (const lang of langs) {
+    for (const key of Object.keys(MESSAGES.ja) as MessageKey[]) {
+      const value = t(lang, key);
+      assert.equal(typeof value, "string");
+      assert.ok(value.length > 0, `${lang}:${key} is empty`);
+    }
+  }
+});
+
+test("DEFAULT_LANG is 'ja'", () => {
+  assert.equal(DEFAULT_LANG, "ja");
 });
