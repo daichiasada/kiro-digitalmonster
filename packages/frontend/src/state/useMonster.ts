@@ -38,6 +38,12 @@ import { useI18n } from "../i18n.ts";
 /** How often (ms) to re-apply time passage so hunger/age tick live. */
 const TIME_TICK_MS = 15_000;
 
+/**
+ * Default name given to a freshly hatched baby. Shared by BOTH the mount hatch
+ * and {@link UseMonsterState.reset} so the two paths can never drift.
+ */
+export const DEFAULT_MONSTER_NAME = "でじたん";
+
 /** A single chat line for the conversation log. */
 export interface ChatLine {
   role: "player" | "monster";
@@ -63,6 +69,8 @@ export interface UseMonsterState {
   battle: () => Promise<void>;
   sendChat: (message: string) => Promise<void>;
   dismissEvolution: () => void;
+  /** Reset the current monster back to a fresh baby egg under the same id. */
+  reset: () => Promise<void>;
 }
 
 /**
@@ -122,7 +130,7 @@ export function useMonster(): UseMonsterState {
         let loaded = await api.getMonster(monsterId);
         if (loaded === null) {
           // Hatch a new egg locally and persist it.
-          const hatchling = createMonster(monsterId, "でじたん", now);
+          const hatchling = createMonster(monsterId, DEFAULT_MONSTER_NAME, now);
           loaded = await api.saveMonster(hatchling).catch(() => hatchling);
         }
         const advanced = advance(loaded, now);
@@ -271,6 +279,39 @@ export function useMonster(): UseMonsterState {
 
   const dismissEvolution = useCallback(() => setJustEvolvedTo(null), []);
 
+  /**
+   * Reset the monster back to a fresh baby egg under the SAME monster id, then
+   * persist it (overwrites the single DynamoDB record via api.saveMonster).
+   * Mirrors the optimistic -> commit -> save -> commit shape of runCareAction.
+   */
+  const reset = useCallback(async () => {
+    const current = monsterRef.current;
+    if (current === null || busy) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const fresh = createMonster(current.id, DEFAULT_MONSTER_NAME, Date.now());
+    // Going from a later stage back to baby must NOT fire a spurious evolution
+    // banner, so align prevStageRef with the fresh baby BEFORE commit() and
+    // dismiss any banner currently showing.
+    prevStageRef.current = fresh.stageId;
+    setJustEvolvedTo(null);
+    // Clear transient UI state that belonged to the old monster.
+    setBattleLog([]);
+    setLastBattle(null);
+    setChatLog([]);
+    commit(fresh);
+    try {
+      const saved = await api.saveMonster(fresh);
+      commit(saved);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "保存に失敗しました");
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, commit]);
+
   return {
     monster,
     loading,
@@ -288,5 +329,6 @@ export function useMonster(): UseMonsterState {
     battle,
     sendChat,
     dismissEvolution,
+    reset,
   };
 }

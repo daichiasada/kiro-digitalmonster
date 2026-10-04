@@ -28,6 +28,17 @@ export function App() {
   const [careFx, setCareFx] = useState<{ action: CareAction; key: number } | null>(null);
   const fxTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Two-step confirm for the destructive reset action so a single accidental
+  // click cannot wipe progress. First click reveals the prompt; Confirm resets,
+  // Cancel dismisses.
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const resetDisabled = game.busy || game.loading || game.monster === null;
+
+  const handleReset = useCallback(() => {
+    void game.reset();
+    setConfirmingReset(false);
+  }, [game.reset]);
+
   const clearFxTimer = useCallback(() => {
     if (fxTimer.current !== null) {
       clearTimeout(fxTimer.current);
@@ -79,25 +90,58 @@ export function App() {
     <div className="app">
       <header className="app-header">
         <h1>{t("app.title")}</h1>
-        <div className="lang-toggle" role="group" aria-label="Language">
+        <div className="header-controls">
           <button
             type="button"
-            className={`lang-btn${lang === "ja" ? " active" : ""}`}
-            aria-pressed={lang === "ja"}
-            onClick={() => setLang("ja")}
+            className="reset-btn"
+            disabled={resetDisabled}
+            onClick={() => setConfirmingReset(true)}
           >
-            JA
+            {t("reset.button")}
           </button>
-          <button
-            type="button"
-            className={`lang-btn${lang === "en" ? " active" : ""}`}
-            aria-pressed={lang === "en"}
-            onClick={() => setLang("en")}
-          >
-            EN
-          </button>
+          <div className="lang-toggle" role="group" aria-label="Language">
+            <button
+              type="button"
+              className={`lang-btn${lang === "ja" ? " active" : ""}`}
+              aria-pressed={lang === "ja"}
+              onClick={() => setLang("ja")}
+            >
+              JA
+            </button>
+            <button
+              type="button"
+              className={`lang-btn${lang === "en" ? " active" : ""}`}
+              aria-pressed={lang === "en"}
+              onClick={() => setLang("en")}
+            >
+              EN
+            </button>
+          </div>
         </div>
       </header>
+
+      {confirmingReset && (
+        <div className="reset-confirm" role="alertdialog" aria-label={t("reset.button")}>
+          <p className="reset-confirm-text">{t("reset.confirmPrompt")}</p>
+          <div className="reset-confirm-actions">
+            <button
+              type="button"
+              className="reset-btn confirm"
+              disabled={resetDisabled}
+              onClick={handleReset}
+            >
+              {t("reset.confirm")}
+            </button>
+            <button
+              type="button"
+              className="reset-cancel-btn"
+              onClick={() => setConfirmingReset(false)}
+            >
+              {t("reset.cancel")}
+            </button>
+          </div>
+        </div>
+      )}
 
       <EvolutionBanner stageId={game.justEvolvedTo} onDismiss={game.dismissEvolution} />
 
