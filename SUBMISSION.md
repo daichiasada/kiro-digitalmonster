@@ -105,6 +105,11 @@ AWS 公式ドキュメントと CDK ガイダンスの MCP サーバーをワー
 - クラウド構成（IaC）: [`infra/`](./infra/) — とくに [`infra/lib/digital-monster-stack.ts`](./infra/lib/digital-monster-stack.ts)（S3+CloudFront、HTTP API v2、DynamoDB、Bedrock IAM スコープ）
 - デプロイ手順: [`README.md`](./README.md) の「🚀 デプロイ手順 / Deploy (one command path)」
 
+> このスタックは `npm install` → `npm run build` → `cd infra && npx cdk bootstrap && npx cdk deploy`
+> のフローで **実際にクラウドへデプロイ済み** です（`npm run build` グリーン、`cdk deploy` 成功、
+> CloudFront URL で稼働確認済み）。URL はデプロイのたびに払い出されるため README には固定値を
+> 記載していません。詳細は [`README.md`](./README.md) の「✅ ビルド・デプロイ検証状況」を参照。
+>
 > デモビデオでは、ローカル開発（`npm run dev` でフロントのみローカル起動）と、クラウドへの
 > `cdk deploy` による本番相当環境（CloudFront URL でそのまま遊べる）の違いを示します。
 
