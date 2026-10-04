@@ -1,7 +1,14 @@
 {
   "task_id": "task-evolution-conditions-ui",
   "task_description": "GitHub issue #8: make evolution conditions visible in the UI. Show current and next growth stage, the requirements for the next evolution (training count + elapsed time), and the player's current progress (e.g. 'トレーニング 3/6', '経過 2分/5分'). The final stage (完全体) shows a '最終段階' message. Implemented via a pure, unit-tested helper in @ddm/shared plus a Japanese minutes formatter in the frontend, rendered in StatsPanel. Japanese-only UI; no new runtime dependencies.",
-  "status": "in_progress",
+  "status": "completed",
   "feature_order": ["FEAT-001"],
-  "blocked_reason": null
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build OK (shared/backend/frontend/infra). Shared node:test 47/47 (+5 new evolutionProgress tests). Frontend ui-helpers 13/13 (+1 new formatMinutesJa test). Tests exercise the real helpers: evolutionProgress AND-gate output, consistency with evolveStage, final-stage null handling, elapsedMs clamping, and formatMinutesJa floor/guards; they would fail if the new code were reverted. No Dockerfile build step applicable to this change."
+  }
 }
