@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMonster } from "./state/useMonster.ts";
-import { careEffect, type CareAction } from "./ui-helpers.ts";
+import { careEffect, playerStartHpFromLog, type CareAction } from "./ui-helpers.ts";
 import { MonsterSprite } from "./assets/monsters/MonsterSprite.tsx";
 import { StatsPanel } from "./components/StatsPanel.tsx";
 import { CarePanel } from "./components/CarePanel.tsx";
@@ -124,6 +124,19 @@ export function App() {
               log={game.battleLog}
               result={game.lastBattle}
               onBattle={game.battle}
+              playerName={game.monster.name}
+              playerStageId={game.monster.stageId}
+              playerMaxHp={game.monster.stats.maxHp}
+              // useMonster.battle() commits the UPDATED (post-battle) monster, so
+              // game.monster.stats.hp is already the END HP once the result lands
+              // and is NOT a reliable pre-battle value. The sim starts from the
+              // player's CURRENT HP (often below max for a damaged-but-alive
+              // monster), so starting the bar at full would snap on the first
+              // enemy hit (or stay wrong if the player is never hit). Recover the
+              // true pre-battle HP from the log: the first player-defender event
+              // gives defenderHpAfter + dmg; fall back to full only when the
+              // player is never hit. See playerStartHpFromLog.
+              playerStartHp={playerStartHpFromLog(game.battleLog, game.monster.stats.maxHp)}
             />
             <ChatPanel
               stageId={game.monster.stageId}

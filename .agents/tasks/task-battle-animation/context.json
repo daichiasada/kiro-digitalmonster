@@ -1,0 +1,27 @@
+{
+  "project_type": "TypeScript monorepo (npm workspaces): React+Vite frontend (Japanese UI), AWS Lambda backend, shared pure-logic package, CDK infra.",
+  "language": "TypeScript",
+  "build_system": "npm workspaces. Root `npm run build` builds @ddm/shared, @ddm/backend, @ddm/frontend (tsc + vite build), and infra in sequence.",
+  "test_framework": "Node built-in test runner with --experimental-strip-types. Shared: `node --test --experimental-strip-types src/__tests__/*.ts` (baseline 47). Frontend ui-helpers: `node --experimental-strip-types --test src/game-ui.test.ts` (baseline 17 tests), kept DOM/React-free so it runs under Node.",
+  "build_command": "npm run build  (run from repo root /projects/sandbox/kiro-digitalmonster)",
+  "test_command": "npm test (root -> shared, baseline 47) AND `npm test -w @ddm/frontend` for the ui-helpers tests (baseline 17).",
+  "verification_instructions": "1) From repo root run `npm run build` and confirm all four workspaces compile (frontend tsc has no errors). 2) Run `npm test` (shared, 47 pass). 3) Run `npm test -w @ddm/frontend` and confirm all ui-helpers tests pass including the new battle-event parser tests. The new parser lives in ui-helpers.ts (pure, no React) so it is covered by game-ui.test.ts.",
+  "snapshot_or_generated_files": "null (no checked-in snapshots; infra/cdk.out is generated but not part of this task).",
+  "setup_instructions": "From repo root run `npm install` once (workspaces). Node >=20 required (uses --experimental-strip-types).",
+  "environment_constraints": "Network OPEN_INTERNET. No new runtime dependencies allowed. Frontend ui-helpers test file (game-ui.test.ts) MUST stay DOM/React-free so it runs under the Node test runner. Do NOT touch backup/previous-main branches.",
+  "contribution_requirements": "Work on a feature branch off main (feat/battle-animation). Commit locally only; do NOT push or open PRs (orchestrator handles that). Keep UI Japanese-only (i18n deferred to issue #12). Respect prefers-reduced-motion if easy (an existing pattern exists in styles.css).",
+  "key_patterns": "Pure testable helpers live in packages/frontend/src/ui-helpers.ts; their tests in packages/frontend/src/game-ui.test.ts. Battle log lines are deterministic strings emitted by packages/shared/src/battle.ts: per-turn `T{n}: {attacker} hits {defender} for {dmg} (enemy HP {hp})` or `(player HP {hp})` where the HP token names whose HP remains after that hit (enemy = player attacked; player = enemy attacked); final line `Result: {winner}`. Existing regexes TURN_LINE_RE and RESULT_LINE_RE in ui-helpers.ts already match these exactly and should be reused/extended by the new parser. battleLogLineJa / winnerLabelJa already localize lines. Care-action animations (issue #10) already use a pattern of: CSS keyframes in styles.css, a transient overlay keyed by a counter in App.tsx that remounts to re-fire, timer cleanup on unmount, and a reduced-motion @media block (styles.css ~line 269).",
+  "relevant_files": [
+    "packages/frontend/src/ui-helpers.ts (ADD pure battle-event parser here; reuse TURN_LINE_RE/RESULT_LINE_RE)",
+    "packages/frontend/src/game-ui.test.ts (ADD parser tests; keep React-free)",
+    "packages/frontend/src/components/BattlePanel.tsx (REWRITE to animate: sprites, HP bars, damage popups, line-by-line log)",
+    "packages/frontend/src/App.tsx (passes BattlePanel props: busy, log, result, onBattle; also has player stageId/stats available via game.monster)",
+    "packages/frontend/src/state/useMonster.ts (exposes battleLog, lastBattle, busy, battle(); note commit() applies the updated monster so game.monster.stats.hp becomes the post-battle HP)",
+    "packages/frontend/src/assets/monsters/MonsterSprite.tsx (renders a stage sprite given stageId/size/title; reuse for enemy)",
+    "packages/frontend/src/styles.css (ADD battle animation keyframes/classes near the `--- battle ---` section ~line 461; reduced-motion @media ~line 269)",
+    "packages/shared/src/battle.ts (REFERENCE ONLY: log line format)",
+    "packages/shared/src/stages.ts (REFERENCE: baseStats per stage; enemy maxHp = round(stage.baseStats.maxHp*0.9))",
+    "packages/backend/src/handlers/battle.ts (REFERENCE: enemy name `野生の{labelJa}モンスター`, enemy stats derived from stage baseStats*0.9, same stageId as player)"
+  ],
+  "directory_structure": "packages/shared (pure domain logic + types + stages + battle sim), packages/backend (Lambda handlers), packages/frontend (React app: App.tsx root, components/, state/useMonster.ts hook, assets/monsters/ sprites, ui-helpers.ts pure helpers, game-ui.test.ts, styles.css), infra (CDK)."
+}
