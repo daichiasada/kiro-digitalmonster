@@ -33,7 +33,7 @@ import {
 } from "@ddm/shared";
 import * as api from "../api.ts";
 import { getOrCreateMonsterId } from "../api.ts";
-import { useI18n } from "../i18n.ts";
+import { t, useI18n } from "../i18n.ts";
 
 /** How often (ms) to re-apply time passage so hunger/age tick live. */
 const TIME_TICK_MS = 15_000;
@@ -305,8 +305,21 @@ export function useMonster(): UseMonsterState {
     try {
       const saved = await api.saveMonster(fresh);
       commit(saved);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "保存に失敗しました");
+    } catch {
+      // Reset is destructive: the fresh baby was committed optimistically but
+      // never persisted, so the backend still holds `current`. Roll the UI
+      // back to the pre-reset snapshot so a reload won't silently undo a reset
+      // the user believes happened; instead the UI reflects reality (the reset
+      // did not persist). The transient battle/chat state cleared above stays
+      // cleared on rollback (acceptable, it only affects the current session).
+      //
+      // Align prevStageRef with `current` and keep justEvolvedTo null so
+      // re-committing the (later-stage) old monster does NOT fire a spurious
+      // evolution banner.
+      prevStageRef.current = current.stageId;
+      setJustEvolvedTo(null);
+      commit(current);
+      setError(t(langRef.current, "reset.saveFailed"));
     } finally {
       setBusy(false);
     }
