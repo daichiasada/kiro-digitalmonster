@@ -1,11 +1,12 @@
 import type { Monster } from "@ddm/shared";
 import { evolutionProgress } from "@ddm/shared";
+import { useI18n } from "../i18n.ts";
 import {
-  formatMinutesJa,
+  formatMinutes,
   hpPercent,
-  moodLabelJa,
+  moodLabel,
   statBarPercent,
-  stageLabelJa,
+  stageLabel,
 } from "../ui-helpers.ts";
 
 /** Reference max values used only to scale the ATK/DEF bars visually. */
@@ -16,8 +17,9 @@ export interface StatsPanelProps {
   monster: Monster;
 }
 
-/** Shows HP / ATK / DEF bars and the Japanese stage + mood labels. */
+/** Shows HP / ATK / DEF bars and the localized stage + mood labels. */
 export function StatsPanel({ monster }: StatsPanelProps) {
+  const { lang, t } = useI18n();
   const { stats } = monster;
   const hp = hpPercent(stats.hp, stats.maxHp);
   const atk = statBarPercent(stats.atk, ATK_REFERENCE);
@@ -27,15 +29,15 @@ export function StatsPanel({ monster }: StatsPanelProps) {
   const prog = evolutionProgress(monster, now);
 
   return (
-    <section className="panel stats-panel" aria-label="ステータス">
+    <section className="panel stats-panel" aria-label={t("aria.stats")}>
       <header className="panel-head">
         <h2>{monster.name}</h2>
-        <span className="stage-badge">{stageLabelJa(monster.stageId)}</span>
+        <span className="stage-badge">{stageLabel(monster.stageId, lang)}</span>
       </header>
-      <p className="mood">きぶん: {moodLabelJa(monster)}</p>
+      <p className="mood">{t("stats.mood")}{moodLabel(monster, lang)}</p>
 
       <div className="stat-row">
-        <span className="stat-label">HP</span>
+        <span className="stat-label">{t("stats.hp")}</span>
         <div className="bar">
           <div className="bar-fill hp" style={{ width: `${hp}%` }} />
         </div>
@@ -45,7 +47,7 @@ export function StatsPanel({ monster }: StatsPanelProps) {
       </div>
 
       <div className="stat-row">
-        <span className="stat-label">攻撃</span>
+        <span className="stat-label">{t("stats.atk")}</span>
         <div className="bar">
           <div className="bar-fill atk" style={{ width: `${atk}%` }} />
         </div>
@@ -53,35 +55,37 @@ export function StatsPanel({ monster }: StatsPanelProps) {
       </div>
 
       <div className="stat-row">
-        <span className="stat-label">防御</span>
+        <span className="stat-label">{t("stats.def")}</span>
         <div className="bar">
           <div className="bar-fill def" style={{ width: `${def}%` }} />
         </div>
         <span className="stat-value">{stats.def}</span>
       </div>
 
-      <p className="train-count">トレーニング回数: {monster.trainingCount}</p>
+      <p className="train-count">{t("stats.trainingCount")}{monster.trainingCount}</p>
 
       <div className="evolution-progress">
-        <h3 className="evolution-title">進化条件</h3>
+        <h3 className="evolution-title">{t("stats.evolveTitle")}</h3>
         {prog.isFinalStage ? (
-          <p className="evolution-final">最終段階（{stageLabelJa(monster.stageId)}）</p>
+          <p className="evolution-final">
+            {t("stats.finalStage").replace("{stage}", stageLabel(monster.stageId, lang))}
+          </p>
         ) : (
           <>
             <p className="evolution-next">
-              次の段階: {prog.nextLabelJa}
+              {t("stats.nextStage")}{lang === "en" ? prog.nextLabelEn : prog.nextLabelJa}
             </p>
             <p className={`evolution-req${prog.trainingMet ? " met" : " unmet"}`}>
               <span className="evolution-check" aria-hidden="true">
                 {prog.trainingMet ? "✓" : "・"}
               </span>
-              トレーニング {prog.trainingCurrent}/{prog.trainingRequired}
+              {t("stats.training")}{prog.trainingCurrent}/{prog.trainingRequired}
             </p>
             <p className={`evolution-req${prog.ageMet ? " met" : " unmet"}`}>
               <span className="evolution-check" aria-hidden="true">
                 {prog.ageMet ? "✓" : "・"}
               </span>
-              経過 {formatMinutesJa(prog.elapsedMs)}/{formatMinutesJa(prog.requiredMs ?? 0)}
+              {t("stats.elapsed")}{formatMinutes(prog.elapsedMs, lang)}/{formatMinutes(prog.requiredMs ?? 0, lang)}
             </p>
           </>
         )}

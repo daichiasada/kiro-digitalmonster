@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMonster } from "./state/useMonster.ts";
+import { useI18n } from "./i18n.ts";
 import {
-  BABY_SPEECH_TEXT,
+  babySpeechText,
   canChat,
   careEffect,
   latestMonsterReply,
@@ -19,6 +20,7 @@ import { EvolutionBanner } from "./components/EvolutionBanner.tsx";
 /** Root game screen wiring the state hook to the UI panels. */
 export function App() {
   const game = useMonster();
+  const { lang, setLang, t } = useI18n();
 
   // Transient "last care action" signal used to drive a short, non-blocking
   // overlay animation over the sprite. The counter forces React to remount the
@@ -76,7 +78,25 @@ export function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>デジタルモンスター育成</h1>
+        <h1>{t("app.title")}</h1>
+        <div className="lang-toggle" role="group" aria-label="Language">
+          <button
+            type="button"
+            className={`lang-btn${lang === "ja" ? " active" : ""}`}
+            aria-pressed={lang === "ja"}
+            onClick={() => setLang("ja")}
+          >
+            JA
+          </button>
+          <button
+            type="button"
+            className={`lang-btn${lang === "en" ? " active" : ""}`}
+            aria-pressed={lang === "en"}
+            onClick={() => setLang("en")}
+          >
+            EN
+          </button>
+        </div>
       </header>
 
       <EvolutionBanner stageId={game.justEvolvedTo} onDismiss={game.dismissEvolution} />
@@ -84,9 +104,9 @@ export function App() {
       {game.error !== null && <p className="app-error" role="alert">{game.error}</p>}
 
       {game.loading ? (
-        <p className="loading">読み込み中…</p>
+        <p className="loading">{t("app.loading")}</p>
       ) : game.monster === null ? (
-        <p className="loading">モンスターを準備できませんでした。</p>
+        <p className="loading">{t("app.loadError")}</p>
       ) : (
         <main className="game-grid">
           <div className="stage-area">
@@ -107,7 +127,7 @@ export function App() {
                   non-verbal cue WITHOUT sending a request (and never pending);
                   otherwise mirror the live chat state. */}
               <SpeechBubble
-                text={canChat(game.monster.stageId) ? latestMonsterReply(game.chatLog) : BABY_SPEECH_TEXT}
+                text={canChat(game.monster.stageId) ? latestMonsterReply(game.chatLog) : babySpeechText(lang)}
                 pending={canChat(game.monster.stageId) ? game.chatPending : false}
               />
               {game.monster.isSleeping && <span className="zzz" aria-hidden="true">💤</span>}
@@ -165,7 +185,7 @@ export function App() {
       )}
 
       <footer className="app-footer">
-        <small>進化条件: トレーニング回数 ＋ 経過時間 ／ セーブは自動です</small>
+        <small>{t("app.footer")}</small>
       </footer>
     </div>
   );
