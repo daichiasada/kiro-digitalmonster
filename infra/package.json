@@ -1,0 +1,26 @@
+{
+  "name": "@ddm/infra",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AWS CDK (TypeScript) infrastructure for the Digital Monster game: DynamoDB, Lambda, HTTP API, Bedrock IAM, S3 + CloudFront.",
+  "bin": {
+    "infra": "bin/app.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "synth": "cdk synth",
+    "deploy": "cdk deploy",
+    "bootstrap": "cdk bootstrap",
+    "destroy": "cdk destroy"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.150.0",
+    "constructs": "^10.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "aws-cdk": "^2.150.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0"
+  }
+}
