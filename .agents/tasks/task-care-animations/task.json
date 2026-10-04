@@ -1,0 +1,20 @@
+{
+  "task_id": "task-care-animations",
+  "task_description": "Issue #10: Add short, non-blocking visual feedback animations to the four care actions (餌やり/トレーニング/睡眠/清掃) in the React frontend. Feed shows food approaching the monster, train shows a 気合い puff + sprite bounce, sleep shows an animated 💤 bubble, clean shows ✨ sparkles, and the sprite gives a light reaction for every action. A pure action->effect mapping lives in ui-helpers.ts with unit tests; the wiring and CSS keyframes live in App.tsx and styles.css. Frontend-only; no new deps; Japanese UI preserved. Branch feat/care-animations; orchestrator pushes + opens PR.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "Review 2026-10-04-165302 (NEEDS_CHANGES) addressed. npm run build exit 0 (frontend tsc + vite build). npm test (shared) exit 0 (47 pass). npm run test -w @ddm/frontend exit 0 (17 pass incl updated/new careEffect tests covering the new wake action). careEffect tests assert concrete className/emoji/durationMs per action and that sleep/wake cues differ. No Dockerfile for the frontend path; docker build not applicable."
+  },
+  "review": {
+    "result": "APPROVED",
+    "passes": 2,
+    "latest_review_file": ".agents/tasks/task-care-animations/2026-10-04-165728-review.md",
+    "summary": "v1 NEEDS_CHANGES (busy-gate FX, wake-shows-sleep-cue, bounce re-fire); all 3 fixed in commit 44bb94d; v2 APPROVED with one non-blocking note (FX reads render-state vs action ref, unreachable due to disabled={busy} buttons)."
+  }
+}

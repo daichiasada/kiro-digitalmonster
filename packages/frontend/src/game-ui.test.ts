@@ -13,6 +13,7 @@ import {
   battleLogJa,
   battleLogLineJa,
   canChat,
+  careEffect,
   formatMinutesJa,
   hpPercent,
   moodLabelJa,
@@ -20,6 +21,7 @@ import {
   statBarPercent,
   winnerLabelJa,
 } from "./ui-helpers.ts";
+import type { CareAction } from "./ui-helpers.ts";
 
 test("stageLabelJa maps each stage to its Japanese label", () => {
   assert.equal(stageLabelJa("baby"), "幼年期");
@@ -101,6 +103,36 @@ test("battleLogLineJa localizes the result line for each winner", () => {
 
 test("battleLogLineJa returns unknown lines unchanged", () => {
   assert.equal(battleLogLineJa("something unexpected"), "something unexpected");
+});
+
+test("careEffect maps each care action to its exact visual-effect descriptor", () => {
+  assert.deepEqual(careEffect("feed"), { className: "fx-feed", emoji: "🍖", durationMs: 700 });
+  assert.deepEqual(careEffect("train"), { className: "fx-train", emoji: "💪", durationMs: 600 });
+  assert.deepEqual(careEffect("sleep"), { className: "fx-sleep", emoji: "💤", durationMs: 700 });
+  assert.deepEqual(careEffect("wake"), { className: "fx-wake", emoji: "⏰", durationMs: 600 });
+  assert.deepEqual(careEffect("clean"), { className: "fx-clean", emoji: "✨", durationMs: 700 });
+});
+
+test("careEffect gives sleep and wake distinct cues", () => {
+  // The sleep button is a toggle, so waking must not show the 💤 sleep cue.
+  assert.notEqual(careEffect("sleep").emoji, careEffect("wake").emoji);
+  assert.notEqual(careEffect("sleep").className, careEffect("wake").className);
+});
+
+test("careEffect returns a distinct className and emoji per action", () => {
+  const actions: CareAction[] = ["feed", "train", "sleep", "wake", "clean"];
+  const classNames = actions.map((a) => careEffect(a).className);
+  const emojis = actions.map((a) => careEffect(a).emoji);
+  assert.equal(new Set(classNames).size, actions.length);
+  assert.equal(new Set(emojis).size, actions.length);
+});
+
+test("careEffect durations are short and non-blocking", () => {
+  const actions: CareAction[] = ["feed", "train", "sleep", "wake", "clean"];
+  for (const action of actions) {
+    const { durationMs } = careEffect(action);
+    assert.ok(durationMs > 0 && durationMs <= 1000, `${action} duration out of range`);
+  }
 });
 
 test("battleLogJa localizes a full log", () => {

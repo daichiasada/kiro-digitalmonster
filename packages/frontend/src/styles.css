@@ -122,6 +122,174 @@ body {
   left: 18px;
 }
 
+/* --- care action feedback animations --- */
+/* Wrapper around the sprite; remounted (keyed) per action in App.tsx so the
+   bounce restarts on every click, including rapid repeats of the same action. */
+.sprite-bounce-layer {
+  display: grid;
+  place-items: center;
+}
+
+/* Short sprite reaction (bounce) applied for every care action. */
+.sprite-bounce-layer.reacting {
+  animation: sprite-bounce 0.4s ease-out;
+}
+
+/* Transient overlay emoji centered over the sprite. */
+.care-fx {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  font-size: 2.4rem;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  will-change: transform, opacity;
+}
+
+/* 餌やり: 🍖 appears above and drifts down toward the sprite center. */
+.care-fx.fx-feed {
+  animation: fx-feed 0.7s ease-in forwards;
+}
+
+/* トレーニング: 💪 puffs outward and fades (sprite bounce handled above). */
+.care-fx.fx-train {
+  animation: fx-train 0.6s ease-out forwards;
+}
+
+/* 睡眠: 💤 floats up as a bubble. */
+.care-fx.fx-sleep {
+  animation: fx-sleep 0.7s ease-out forwards;
+}
+
+/* 起こす: ⏰ pops and shakes to signal waking up. */
+.care-fx.fx-wake {
+  animation: fx-wake 0.6s ease-out forwards;
+}
+
+/* 清掃: ✨ sparkles and fades. */
+.care-fx.fx-clean {
+  animation: fx-clean 0.7s ease-out forwards;
+}
+
+@keyframes sprite-bounce {
+  0% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-10px);
+  }
+  55% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(-4px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fx-feed {
+  0% {
+    transform: translate(-50%, -140%) scale(0.8);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -40%) scale(1.1);
+    opacity: 0;
+  }
+}
+
+@keyframes fx-train {
+  0% {
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0;
+  }
+  30% {
+    transform: translate(-50%, -70%) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -90%) scale(1.4);
+    opacity: 0;
+  }
+}
+
+@keyframes fx-sleep {
+  0% {
+    transform: translate(-50%, -40%) scale(0.7);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-30%, -120%) scale(1.1);
+    opacity: 0;
+  }
+}
+
+@keyframes fx-wake {
+  0% {
+    transform: translate(-50%, -60%) scale(0.6) rotate(-12deg);
+    opacity: 0;
+  }
+  30% {
+    transform: translate(-50%, -70%) scale(1.2) rotate(12deg);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(-50%, -70%) scale(1.1) rotate(-10deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -80%) scale(1.2) rotate(0deg);
+    opacity: 0;
+  }
+}
+
+@keyframes fx-clean {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+    opacity: 0;
+  }
+  35% {
+    transform: translate(-50%, -50%) scale(1.3) rotate(20deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.6) rotate(-10deg);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sprite-bounce-layer.reacting {
+    animation: none;
+  }
+
+  .care-fx {
+    /* Keep a brief fade so the cue is still visible without motion. */
+    animation: fx-reduced-fade 0.3s ease-out forwards !important;
+    transform: translate(-50%, -50%);
+  }
+
+  @keyframes fx-reduced-fade {
+    0% {
+      opacity: 0;
+    }
+    40% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+}
+
 /* --- stats --- */
 .panel-head {
   display: flex;

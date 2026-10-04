@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Add short, non-blocking visual feedback animations for each care action (餌やり/トレーニング/睡眠/清掃) in the frontend. When the player triggers a care action, a transient effect overlay plays over the sprite (feed: a 🍖 appears and drifts toward the monster; train: a 気合い/💪 puff with a sprite bounce; sleep: an animated 💤 bubble; clean: ✨ sparkles), and the monster sprite gives a light reaction (bounce/shake) for every action. Effects are driven by a transient state flag + a counter key so repeating the same action re-triggers, and are cleared on animationend or a timeout. Consumes careEffect from FEAT-001.",
+  "status": "completed",
+  "steps": [
+    "Decide where the transient 'last care action' signal lives. Preferred: keep it local to App.tsx by wrapping the care handlers passed to CarePanel so they set a React state like `{ action: CareAction, key: number }` (increment key each trigger so the same action re-fires), then call the real game.feed/train/sleep/clean. This avoids changing useMonster's public API. (Alternative: surface a `lastCareAction`/counter from useMonster.ts; only do this if cleaner.)",
+    "In App.tsx, import careEffect (and CareAction) from ./ui-helpers.ts. Render a transient effect overlay inside .sprite-wrap (next to the existing .zzz/.dirt spans) only while an effect is active: an element using the careEffect(action).className plus the careEffect(action).emoji, keyed by the counter so React remounts it on repeat. Also apply a sprite reaction class (bounce/shake) to the .sprite-wrap or a wrapper around <MonsterSprite> while active.",
+    "Clear the effect on animationend (onAnimationEnd handler) and/or a setTimeout fallback of careEffect(action).durationMs. Ensure cleanup on unmount (clear any pending timeout). Do not block or disable actions beyond the existing game.busy gating; do not add artificial delays to the care actions themselves.",
+    "In packages/frontend/src/styles.css, add @keyframes and the effect classes referenced by careEffect (fx-feed, fx-train, fx-sleep, fx-clean) plus a sprite reaction keyframe (e.g. a short bounce/shake). Follow the existing patterns: there is already a `pop` keyframe used by .evolution-banner, and .sprite-wrap/.zzz/.dirt positioned overlays. Position the effect overlay absolutely within .sprite-wrap. Keep each animation short (~0.4-0.8s). feed should drift the 🍖 toward the sprite center; clean should sparkle/fade ✨; train should puff 💪 and bounce the sprite; sleep should float a 💤 bubble.",
+    "Optional nice-to-have: wrap the animations in a `@media (prefers-reduced-motion: reduce)` block that disables or shortens them. Only add if straightforward.",
+    "Keep all visible text Japanese-only. Overlay content is emoji + optional Japanese like 気合い; do not introduce English UI strings or i18n scaffolding."
+  ],
+  "acceptance_criteria": [
+    "Triggering 餌やり/トレーニング/睡眠/清掃 each plays a distinct short overlay animation over the sprite, and the sprite itself gives a light bounce/shake reaction for every action.",
+    "Repeating the same care action re-triggers its animation (counter/key based, not stuck after first play).",
+    "The effect clears itself after the animation (animationend or durationMs timeout) with no lingering overlay and no leaked timers on unmount.",
+    "No new runtime dependencies added; UI remains Japanese-only.",
+    "`npm run build` (root) passes (frontend tsc + vite build) and `npm run test -w @ddm/frontend` passes."
+  ],
+  "verification": [
+    "cd /projects/sandbox/kiro-digitalmonster && npm run build  (exit 0; frontend tsc + vite build succeed)",
+    "cd /projects/sandbox/kiro-digitalmonster && npm run test -w @ddm/frontend  (all pass)",
+    "cd /projects/sandbox/kiro-digitalmonster && npm test  (shared 42 pass, no regression)",
+    "Grep styles.css to confirm @keyframes and the fx-feed/fx-train/fx-sleep/fx-clean classes referenced by careEffect exist (sanity, not a substitute for build)."
+  ],
+  "blocked_reason": null,
+  "findings": "Kept the transient care signal LOCAL to App.tsx (no change to useMonster's public API). Added useState<{action: CareAction; key: number} | null>; wrapped game.feed/train/sleep/clean in handlers that increment the key each trigger (so repeating the same action re-fires), then call the real care fn with no added delay or busy-gating change. Overlay <span key={careFx.key} className='care-fx <fx-class>'> renders inside .sprite-wrap alongside .zzz/.dirt, showing careEffect().emoji; cleared on onAnimationEnd and via a setTimeout(durationMs + 50) fallback, with the timer cleared on unmount (useEffect returning clearFxTimer) so no timer leaks. .sprite-wrap gets a 'reacting' class driving a short sprite-bounce keyframe for every action. styles.css: added care-fx base + fx-feed (🍖 drifts down to center), fx-train (💪 puff + sprite bounce), fx-sleep (💤 floats up), fx-clean (✨ sparkle/fade), sprite-bounce keyframe, and a prefers-reduced-motion block that disables the bounce and shortens the overlay to a brief fade. UI stays Japanese/emoji-only; no new deps. Verified: npm run build exit 0 (tsc + vite build); npm run test -w @ddm/frontend 16 pass/0 fail; npm test (shared) 47 pass/0 fail (baseline is 47, not 42 as briefing noted, no regression). package-lock.json untouched."
+}
