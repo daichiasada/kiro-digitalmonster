@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Establish a green baseline on a fresh feature branch before any changes. Confirm the existing build and the shared + frontend test suites pass so later features have a known-good reference and the exact pre-change test totals are recorded.",
+  "status": "completed",
+  "steps": [
+    "From /projects/sandbox/kiro-digitalmonster on branch main, create and check out a new branch: `git checkout -b feat/evolution-branching`. Do NOT touch backup/previous-main branches.",
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" so node v22.23.3 / npm 11.x are on PATH.",
+    "Run `npm run build` at the repo root and confirm it completes without errors (shared tsc, backend bundle, frontend Vite build).",
+    "Run `npm test` at the repo root and record the passing counts. Expected baselines after #41: shared node:test = 94 passing; frontend game-ui.test.ts = 90 passing. Record the actual numbers in findings.",
+    "Confirm the working tree is clean on the new branch (only the branch switch, no file edits)."
+  ],
+  "acceptance_criteria": [
+    "Branch feat/evolution-branching exists and is checked out, based on current main.",
+    "`npm run build` exits 0 with no errors.",
+    "`npm test` exits 0; shared and frontend suites both pass, with the exact passing counts recorded in findings as the baseline."
+  ],
+  "verification": [
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && cd /projects/sandbox/kiro-digitalmonster && npm run build",
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && cd /projects/sandbox/kiro-digitalmonster && npm test",
+    "git branch --show-current  (expect feat/evolution-branching)"
+  ],
+  "blocked_reason": null,
+  "findings": "Baseline established on branch feat/evolution-branching, created off main at 5f6ae7b (Merge PR #49 battle-enhancements). Node v22.23.3 / npm 11.4.2 via exported PATH.\n\nBUILD: `npm run build` at repo root exited 0 with no errors. Built @ddm/shared (tsc), @ddm/backend (tsc bundle), @ddm/frontend (tsc + vite build; 56 modules, dist/assets/index-*.js 196.80 kB), infra (tsc).\n\nTESTS (exact passing counts):\n- Root `npm test` runs ONLY `npm run test -w @ddm/shared` -> shared node:test: tests 94, pass 94, fail 0 (matches expected baseline of 94).\n- Frontend suite is NOT part of root `npm test`; ran separately via `npm test -w @ddm/frontend` -> game-ui.test.ts node:test: tests 90, pass 90, fail 0 (matches expected baseline of 90).\n\nNOTE for later features: root `npm test` does not include the frontend suite, so run `npm test -w @ddm/frontend` explicitly to validate frontend changes. Working tree clean except untracked .agents/tasks/task-evolution-branching/ (no source edits). No new dependencies added. Branch switch only; no commit made (setup chore)."
+}

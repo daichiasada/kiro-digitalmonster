@@ -11,6 +11,7 @@ import type {
   EvolutionProgress,
   GrowthStage,
   Monster,
+  MonsterForm,
   Stats,
 } from "@ddm/shared";
 import { AFFECTION_MAX, HUNGRY_CAUTION_LEVEL, MAX_HUNGRY_LEVEL, affectionBand } from "@ddm/shared";
@@ -47,6 +48,23 @@ export function stageLabel(stageId: GrowthStage, lang: Lang): string {
     return STAGE_LABELS_EN[stageId] ?? stageId;
   }
   return stageLabelJa(stageId);
+}
+
+/**
+ * Localized label for an evolution variant (issue #38), mirroring
+ * {@link stageLabel}. The three branch variants (attack / defense / mischief)
+ * are sourced from the i18n keys `form.attack` / `form.defense` /
+ * `form.mischief` (JA 攻撃 / 防御 / やんちゃ, EN Attack / Defense / Mischief) so
+ * JA and EN stay in one place. The default "base" form is not a branch target
+ * and has no label, so it returns an empty string; the StatsPanel evolution
+ * hint only renders when a concrete (non-base) variant is predicted, so a
+ * "base" result cannot leak an empty hint. React/DOM-free so it is testable.
+ */
+export function formLabel(form: MonsterForm, lang: Lang): string {
+  if (form === "base") {
+    return "";
+  }
+  return t(lang, `form.${form}` as const);
 }
 
 /** Whether the monster can chat (everything except the baby stage). */

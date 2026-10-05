@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import type { BattleResult, Difficulty, GrowthStage } from "@ddm/shared";
+import type { BattleResult, Difficulty, GrowthStage, MonsterForm } from "@ddm/shared";
 import { generateEnemy } from "@ddm/shared";
 import { MonsterSprite } from "../assets/monsters/MonsterSprite.tsx";
 import { useI18n } from "../i18n.ts";
@@ -29,6 +29,13 @@ export interface BattlePanelProps {
   playerName: string;
   /** Player's growth stage; the enemy mirrors it (same stage sprite). */
   playerStageId: GrowthStage;
+  /**
+   * Player's evolution-branch variant (issue #38), used only for the PLAYER
+   * sprite's accent. Defaults to "base" so legacy/base monsters render exactly
+   * as before. The generated enemy has no branch, so the enemy sprite always
+   * renders "base" regardless of this prop.
+   */
+  playerForm?: MonsterForm;
   /** Player's max HP, used as the full value of the player's HP bar. */
   playerMaxHp: number;
   /** Player's HP at the start of the bar animation (see App.tsx note). */
@@ -68,6 +75,7 @@ export function BattlePanel({
   onBattle,
   playerName,
   playerStageId,
+  playerForm = "base",
   playerMaxHp,
   playerStartHp,
 }: BattlePanelProps) {
@@ -378,7 +386,7 @@ export function BattlePanel({
         <span className="battle-preview-title">{t("battle.preview")}</span>
         <div className="battle-preview-body">
           <div className="battle-preview-sprite" aria-hidden="true">
-            <MonsterSprite stageId={playerStageId} size={88} />
+            <MonsterSprite stageId={playerStageId} size={88} form={playerForm} />
           </div>
           <div className="battle-preview-info">
             <span className="battle-preview-name">{previewName}</span>
@@ -437,7 +445,7 @@ export function BattlePanel({
           <div className="battle-stage" aria-hidden="true">
             <div className={`combatant player ${playerMotion}`}>
               <div className="combatant-sprite">
-                <MonsterSprite stageId={playerStageId} size={110} />
+                <MonsterSprite stageId={playerStageId} size={110} form={playerForm} />
                 {pop !== null && pop.side === "player" && (
                   <span key={`p-${pop.key}`} className="damage-pop">
                     -{pop.dmg}

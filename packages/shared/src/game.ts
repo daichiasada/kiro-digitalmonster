@@ -1,5 +1,6 @@
-import type { ChatRequest, GrowthStage, Monster, Stats } from "./types.ts";
-import { STAGES, evolveStage, getStage } from "./stages.ts";
+import type { ChatRequest, GrowthStage, Monster, MonsterForm, Stats } from "./types.ts";
+import { STAGES, evolveStage, formBaseStats, getStage } from "./stages.ts";
+import { chooseEvolutionForm } from "./evolution.ts";
 
 /** One in-game "tick" of time passage, in milliseconds. */
 const TICK_MS = 60 * 1000;
@@ -209,6 +210,46 @@ export function normalizeAffection(monster: Monster): Monster {
   return next;
 }
 
+/* --------------------------------------------------------------------------
+ * Evolution form (issue #38) — optional-with-default backward-compat helpers,
+ * MIRRORING `affectionOf`/`normalizeAffection` (#42) and `battleRecordOf`/
+ * `normalizeBattleRecord` (#41). The default form is always "base", the
+ * neutral canonical variant used for the baby tier and for legacy saves.
+ * ------------------------------------------------------------------------ */
+
+/** The set of known MonsterForm values, used to validate/normalize `form`. */
+const KNOWN_FORMS: readonly MonsterForm[] = ["base", "attack", "defense", "mischief"];
+
+/** The canonical default form (neutral; byte-identical stats to pre-#38). */
+export const FORM_DEFAULT: MonsterForm = "base";
+
+/** True iff `value` is a known MonsterForm string. */
+function isKnownForm(value: unknown): value is MonsterForm {
+  return typeof value === "string" && (KNOWN_FORMS as readonly string[]).includes(value);
+}
+
+/**
+ * Read a monster's evolution form, defaulting a missing/undefined/unknown
+ * value to `FORM_DEFAULT` ("base"). Use this everywhere a monster's form is
+ * read so legacy saves (no `form` field) and corrupted values behave like a
+ * fresh neutral monster. Mirrors `affectionOf` / `battleRecordOf`.
+ */
+export function formOf(monster: Monster): MonsterForm {
+  return isKnownForm(monster.form) ? monster.form : FORM_DEFAULT;
+}
+
+/**
+ * Return a NEW monster whose `form` is `formOf(monster)` — the default is
+ * filled in for legacy saves and an unknown value is clamped to "base". Clones
+ * stats + careCounters like `normalizeAffection`; idempotent and non-mutating.
+ * Used by the load path to normalize pre-#38 saves.
+ */
+export function normalizeForm(monster: Monster): Monster {
+  const next = cloneMonster(monster);
+  next.form = formOf(monster);
+  return next;
+}
+
 /**
  * Classify an affection value into a tone/level band using
  * AFFECTION_COLD_THRESHOLD / AFFECTION_WARM_THRESHOLD:
@@ -291,21 +332,35 @@ function applyAllEvolutions(monster: Monster, now: number): void {
     if (newStage === monster.stageId) {
       return;
     }
-    applyEvolution(monster, newStage);
+    applyEvolution(monster, newStage, now);
   }
 }
 
-/** Rebase a monster onto a new stage, boosting its base stats. */
-function applyEvolution(monster: Monster, stageId: Monster["stageId"]): void {
-  const stage = getStage(stageId);
+/**
+ * Rebase a monster onto a new stage, boosting its base stats (issue #38:
+ * branching). When advancing into a non-baby tier the evolution FORM is chosen
+ * from care tendencies via the shared, pure `chooseEvolutionForm`, persisted on
+ * `monster.form`, and the stat block is rebased onto that variant's base stats
+ * (`formBaseStats`) rather than the plain stage baseStats. The baby tier is
+ * never a branch target (forward-only progression), so it keeps form "base".
+ *
+ * The HP-ratio preservation and max-with-current atk/def behavior are
+ * unchanged from the pre-#38 engine; only the base-stat SOURCE changes from
+ * `stage.baseStats` to `formBaseStats(stageId, form)` (which equals
+ * `stage.baseStats` for "base").
+ */
+function applyEvolution(monster: Monster, stageId: Monster["stageId"], now: number): void {
   monster.stageId = stageId;
+  const form: MonsterForm = stageId === "baby" ? FORM_DEFAULT : chooseEvolutionForm(monster, now);
+  monster.form = form;
+  const baseStats = formBaseStats(stageId, form);
   // Keep current HP ratio when rebasing to the new (larger) stat block.
   const ratio = monster.stats.maxHp > 0 ? monster.stats.hp / monster.stats.maxHp : 1;
   monster.stats = normalizeStats({
-    maxHp: stage.baseStats.maxHp,
-    hp: stage.baseStats.maxHp * ratio,
-    atk: Math.max(stage.baseStats.atk, monster.stats.atk),
-    def: Math.max(stage.baseStats.def, monster.stats.def),
+    maxHp: baseStats.maxHp,
+    hp: baseStats.maxHp * ratio,
+    atk: Math.max(baseStats.atk, monster.stats.atk),
+    def: Math.max(baseStats.def, monster.stats.def),
   });
 }
 
@@ -503,6 +558,19 @@ export function validateMonster(value: unknown): value is Monster {
     }
   }
 
+  // BACKWARD COMPAT (issue #38): `form` is OPTIONAL-with-default, following the
+  // exact same precedent as `affection` (#42) and `battleRecord` (#41) above.
+  // Saves persisted before #38 have no `form` field, so requiring it would
+  // reject every legacy monster. Policy: ACCEPT a monster whose `form` is
+  // absent/undefined/null (legacy) OR a known MonsterForm string, and REJECT
+  // only when it is present-but-invalid (not a known variant). The load path
+  // runs `normalizeForm` after this guard to backfill "base" for legacy saves.
+  if (m.form !== undefined && m.form !== null) {
+    if (!isKnownForm(m.form)) {
+      return false;
+    }
+  }
+
   if (typeof stats !== "object" || stats === null) {
     return false;
   }
@@ -557,6 +625,15 @@ export interface ChatContext {
    * reads this together with `affectionBand` to pick the reply tone.
    */
   affection: number;
+  /**
+   * The monster's evolution form (issue #38), taken from the loaded server
+   * record via `formOf` when present, else defaulted to `FORM_DEFAULT`
+   * ("base") because client chat requests do not carry form. The chat handler
+   * reads this to append a per-variant tone line to the system prompt. "base"
+   * (and legacy no-form saves, which `formOf` maps to "base") appends nothing,
+   * keeping the neutral prompt byte-identical to pre-#38.
+   */
+  form: MonsterForm;
 }
 
 /**
@@ -578,6 +655,7 @@ export function chooseChatContext(
       name: loaded.name,
       fromServer: true,
       affection: affectionOf(loaded),
+      form: formOf(loaded),
     };
   }
   const stageId = asGrowthStage(request.stageId) ?? "baby";
@@ -585,7 +663,7 @@ export function chooseChatContext(
     typeof request.monsterName === "string" && request.monsterName.trim() !== ""
       ? request.monsterName
       : "モンスター";
-  return { stageId, name, fromServer: false, affection: AFFECTION_INITIAL };
+  return { stageId, name, fromServer: false, affection: AFFECTION_INITIAL, form: FORM_DEFAULT };
 }
 
 /** Fraction of maxHp a fainted monster is revived to, so it is never stranded. */
@@ -629,6 +707,9 @@ export function createMonster(id: string, name: string, now: number = Date.now()
     dirty: false,
     hungryLevel: 0,
     affection: AFFECTION_INITIAL,
+    // Fresh babies are the neutral "base" form (issue #38); a variant is only
+    // assigned when the monster evolves into a non-baby tier.
+    form: FORM_DEFAULT,
     // Fresh monsters start with a zeroed battle record (issue #41). Defined
     // inline (not imported from battle-enhancements.ts) to avoid a circular
     // import, since battle-enhancements.ts imports from this module.

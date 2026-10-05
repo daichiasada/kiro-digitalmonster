@@ -74,6 +74,11 @@ const JA_MESSAGES = {
   "stats.nextStage": "次の段階: ",
   "stats.training": "トレーニング ",
   "stats.elapsed": "経過 ",
+  // Evolution branch hint + variant labels (issue #38)
+  "stats.evolveHint": "今の育て方だと{form}型に進化しそう",
+  "form.attack": "攻撃",
+  "form.defense": "防御",
+  "form.mischief": "やんちゃ",
 
   // Battle panel
   "battle.title": "バトル",
@@ -204,6 +209,11 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   "stats.nextStage": "Next stage: ",
   "stats.training": "Training ",
   "stats.elapsed": "Elapsed ",
+  // Evolution branch hint + variant labels (issue #38)
+  "stats.evolveHint": "Current care is steering toward the {form}-type evolution",
+  "form.attack": "Attack",
+  "form.defense": "Defense",
+  "form.mischief": "Mischief",
 
   // Battle panel
   "battle.title": "Battle",

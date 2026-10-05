@@ -709,6 +709,14 @@ body {
   font-weight: 700;
 }
 
+/* Evolution branch hint (issue #38): accessible plain-text line, not
+   color-only — it reads as a full sentence naming the predicted form. */
+.evolution-hint {
+  margin: 8px 0 0;
+  color: var(--accent);
+  font-size: 0.82rem;
+}
+
 /* --- care --- */
 .care-buttons {
   display: grid;

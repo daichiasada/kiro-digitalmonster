@@ -1,0 +1,14 @@
+{
+  "task_id": "task-evolution-branching",
+  "task_description": "Issue #38: evolution branching by care quality. Keep linear tiers (baby->rookie->champion->ultimate) but add 2-3 evolution VARIANTS per step chosen from care tendencies (training count, overfeeding, cleanliness, battle win rate, etc.): e.g. trained -> attack-type, well-rested -> defense-type, neglected -> mischief-type. Representation: keep stageId as the tier and add an optional Monster.form ('base'|'attack'|'defense'|'mischief'), backward-compat-defaulted to 'base' for pre-#38 saves (mirroring #42 affection / #41 battleRecord). The branch decision is a shared, pure, deterministic, total function unit-tested so every branch is reachable; each variant gets its own baseStats, SVG sprite, and chat system-prompt tone; and the StatsPanel shows a next-evolution hint derived from the same shared function.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build passes (tsc + vite, all 4 workspaces). Shared node:test 117 pass/0 fail (94 baseline +23). Frontend game-ui.test.ts 99 pass/0 fail (90 baseline +9). New shared evolution-branching.test.ts (325 lines) directly exercises chooseEvolutionForm/formOf/normalizeForm/validateMonster/formBaseStats/predictedNextForm and an end-to-end train()->evolve, proving all three branches reachable, ties deterministic (attack>defense>mischief), totality on a zeroed legacy monster, and base-form stats byte-identical to pre-#38; these would fail if the implementation were reverted. Frontend tests exercise formLabel and the composed StatsPanel hint derived from predictedNextForm. FEAT-003 chat-tone wiring is verified by build + byte-identical diff review + shared chooseChatContext.form tests (buildSystemPrompt is not exported/network-free, so no direct unit test, as documented). No Dockerfile build run (no project Docker build target for this change). No new runtime dependencies. Redeploy: frontend yes; backend Lambda yes (chat.ts + bundled @ddm/shared changed)."
+  }
+}

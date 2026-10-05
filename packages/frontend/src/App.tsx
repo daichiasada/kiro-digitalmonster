@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import { evolutionProgress } from "@ddm/shared";
+import { evolutionProgress, formOf } from "@ddm/shared";
 import { useMonster } from "./state/useMonster.ts";
 import { useI18n } from "./i18n.ts";
 import {
@@ -353,7 +353,7 @@ export function App() {
                 key={careFx === null ? "idle" : `fx-${careFx.key}`}
                 className={`sprite-bounce-layer ${careFx !== null ? "reacting" : ""}`}
               >
-                <MonsterSprite stageId={game.monster.stageId} size={200} />
+                <MonsterSprite stageId={game.monster.stageId} size={200} form={formOf(game.monster)} />
               </div>
               {/* Latest spoken reply shown as a bubble over the sprite. For a
                   baby (幼年期) the monster can't chat, so surface the canned
@@ -423,6 +423,7 @@ export function App() {
               onBattle={game.battle}
               playerName={game.monster.name}
               playerStageId={game.monster.stageId}
+              playerForm={formOf(game.monster)}
               playerMaxHp={game.monster.stats.maxHp}
               // useMonster.battle() commits the UPDATED (post-battle) monster, so
               // game.monster.stats.hp is already the END HP once the result lands

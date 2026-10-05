@@ -1,12 +1,20 @@
 import type { Ref } from "react";
 import type { Monster } from "@ddm/shared";
-import { AFFECTION_MAX, MAX_HUNGRY_LEVEL, affectionOf, battleRecordOf, evolutionProgress } from "@ddm/shared";
+import {
+  AFFECTION_MAX,
+  MAX_HUNGRY_LEVEL,
+  affectionOf,
+  battleRecordOf,
+  evolutionProgress,
+  predictedNextForm,
+} from "@ddm/shared";
 import { useI18n } from "../i18n.ts";
 import {
   affectionLevelLabel,
   affectionPercent,
   battleRecordSummary,
   evolutionReqAriaLabel,
+  formLabel,
   formatMinutes,
   fullnessPercent,
   hpPercent,
@@ -47,6 +55,16 @@ export function StatsPanel({ monster, onRename, renameButtonRef }: StatsPanelPro
 
   const now = Date.now();
   const prog = evolutionProgress(monster, now);
+  // Evolution-branch hint (issue #38): the predicted next form comes from the
+  // SAME shared predictedNextForm/chooseEvolutionForm the engine uses to assign
+  // the form, so this hint can never contradict the real outcome. It is null at
+  // the final stage or when the next tier is baby; a "base" prediction has no
+  // variant label and is skipped so no empty hint leaks. Composed as accessible
+  // plain text (not color-only) from the localized variant label.
+  const predicted = prog.isFinalStage ? null : predictedNextForm(monster, now);
+  const predictedLabel = predicted !== null ? formLabel(predicted, lang) : "";
+  const evolveHint =
+    predictedLabel !== "" ? t("stats.evolveHint").replace("{form}", predictedLabel) : "";
 
   return (
     <section className="panel stats-panel" aria-label={t("aria.stats")}>
@@ -169,6 +187,7 @@ export function StatsPanel({ monster, onRename, renameButtonRef }: StatsPanelPro
               <span className="visually-hidden">{evolutionReqAriaLabel(prog.ageMet, lang)}: </span>
               {t("stats.elapsed")}{formatMinutes(prog.elapsedMs, lang)}/{formatMinutes(prog.requiredMs ?? 0, lang)}
             </p>
+            {evolveHint !== "" && <p className="evolution-hint">{evolveHint}</p>}
           </>
         )}
       </div>

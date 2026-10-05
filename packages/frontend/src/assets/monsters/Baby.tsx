@@ -2,11 +2,20 @@
  * 幼年期 (baby) sprite: a small egg with a tiny hatchling peeking out.
  * Smallest and simplest of the four stages.
  */
+import type { MonsterForm } from "@ddm/shared";
+
 export interface MonsterSpriteProps {
   /** Pixel size of the (square) SVG viewport. */
   size?: number;
   /** Accessible label. */
   title?: string;
+  /**
+   * Evolution branch variant (issue #38). Rookie/Champion/Ultimate overlay a
+   * small per-variant accent for the three branch forms; `undefined`/`"base"`
+   * keeps the pre-#38 look byte-identical. The baby stage always renders base
+   * (it has no branch yet), so it accepts the prop but ignores it.
+   */
+  form?: MonsterForm;
 }
 
 export function Baby({ size = 160, title = "幼年期のAIモンスター" }: MonsterSpriteProps) {

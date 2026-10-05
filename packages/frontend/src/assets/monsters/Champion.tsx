@@ -3,8 +3,9 @@
  * More detailed, more menacing, with wings the rookie lacked.
  */
 import type { MonsterSpriteProps } from "./Baby.tsx";
+import { FormAccent } from "./formAccent.tsx";
 
-export function Champion({ size = 160, title = "成熟期のAIモンスター" }: MonsterSpriteProps) {
+export function Champion({ size = 160, title = "成熟期のAIモンスター", form }: MonsterSpriteProps) {
   return (
     <svg
       width={size}
@@ -57,6 +58,8 @@ export function Champion({ size = 160, title = "成熟期のAIモンスター" }
       <path d="M84 84 Q100 94 116 84" fill="none" stroke="#1b0a3a" strokeWidth="3" strokeLinecap="round" />
       <path d="M90 86 L94 93 L98 86 Z" fill="#ffffff" />
       <path d="M102 86 L106 93 L110 86 Z" fill="#ffffff" />
+      {/* per-variant accent (issue #38); null for base/undefined */}
+      <FormAccent form={form} stage="champion" />
     </svg>
   );
 }

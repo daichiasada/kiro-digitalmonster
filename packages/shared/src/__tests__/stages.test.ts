@@ -1,8 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { STAGES, evolutionProgress, evolveStage, getStage, stageIndex } from "../stages.ts";
+import {
+  STAGES,
+  evolutionProgress,
+  evolveStage,
+  formBaseStats,
+  getStage,
+  stageIndex,
+} from "../stages.ts";
 import { createMonster, train } from "../game.ts";
+import { chooseEvolutionForm } from "../evolution.ts";
 import {
   BEDROCK_MODEL_IDS,
   modelKeyForStage,
@@ -76,8 +84,13 @@ test("training enough and letting time pass actually evolves via train()", () =>
   // One more train AFTER enough time -> should evolve.
   m = train(m, T0 + req.minAgeMs + 1000);
   assert.equal(m.stageId, "rookie");
-  // Stats rebased to at least rookie base.
-  assert.ok(m.stats.maxHp >= getStage("rookie").baseStats.maxHp);
+  // issue #38: the TIER advances to rookie; the stats are rebased onto the
+  // branch variant the monster's care profile selected (a lightly-trained,
+  // otherwise-neglected baby takes the "mischief" branch). Assert against the
+  // chosen variant's base stats rather than the plain stage baseStats.
+  const form = chooseEvolutionForm(m, T0 + req.minAgeMs + 1000);
+  assert.equal(m.form, form, "evolution persisted the chosen branch form");
+  assert.equal(m.stats.maxHp, formBaseStats("rookie", form).maxHp);
 });
 
 test("evolutionProgress for a fresh baby reports the rookie requirement unmet", () => {

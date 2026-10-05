@@ -4,8 +4,9 @@
  * detailed and most menacing of the four stages.
  */
 import type { MonsterSpriteProps } from "./Baby.tsx";
+import { FormAccent } from "./formAccent.tsx";
 
-export function Ultimate({ size = 160, title = "完全体のAIモンスター" }: MonsterSpriteProps) {
+export function Ultimate({ size = 160, title = "完全体のAIモンスター", form }: MonsterSpriteProps) {
   return (
     <svg
       width={size}
@@ -75,6 +76,8 @@ export function Ultimate({ size = 160, title = "完全体のAIモンスター" }
       <path d="M86 80 L90 90 L94 80 Z" fill="#ffffff" />
       <path d="M98 80 L102 90 L106 80 Z" fill="#ffffff" />
       <path d="M110 80 L114 90 L118 80 Z" fill="#ffffff" />
+      {/* per-variant accent (issue #38); null for base/undefined */}
+      <FormAccent form={form} stage="ultimate" />
     </svg>
   );
 }

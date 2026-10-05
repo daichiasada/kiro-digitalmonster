@@ -18,6 +18,25 @@ export type GrowthStage = "baby" | "rookie" | "champion" | "ultimate";
 export type BedrockModelKey = "none" | "haiku" | "sonnet" | "opus";
 
 /**
+ * Evolution FORM / branch (issue #38 — お世話の質による進化分岐).
+ *
+ * The linear growth TIER (baby -> rookie -> champion -> ultimate) is kept in
+ * `Monster.stageId`; `form` is an ORTHOGONAL axis describing WHICH variant a
+ * monster evolved into based on how it was raised:
+ * - "base"      : the neutral canonical form. Used for the baby tier (which
+ *                 never branches) and as the backward-compat default for
+ *                 legacy pre-#38 saves. Its per-tier stats/sprite/prompt are
+ *                 BYTE-IDENTICAL to the pre-#38 game.
+ * - "attack"    : 攻撃型 — raised with heavy training / a high battle win rate.
+ * - "defense"   : 防御型 — raised well-rested, well-fed, clean and affectionate.
+ * - "mischief"  : やんちゃ型 — raised somewhat neglected (hungry, dirty, distant).
+ *
+ * The variant a monster takes at each non-baby evolution is chosen by the
+ * pure, deterministic `chooseEvolutionForm` function in evolution.ts.
+ */
+export type MonsterForm = "base" | "attack" | "defense" | "mischief";
+
+/**
  * Battle difficulty the player chooses before challenging an enemy (issue #41).
  * Maps to the JA labels 弱い (easy) / 普通 (normal) / 強い (hard). A harder enemy
  * is stronger but yields a bigger reward on a win (強い相手ほど上昇が大きい).
@@ -99,6 +118,17 @@ export interface Monster {
    * simply absent (mirrors how #42 handled the optional `affection` field).
    */
   battleRecord?: BattleRecord;
+  /**
+   * Evolution form / branch (issue #38). See {@link MonsterForm}.
+   *
+   * OPTIONAL on legacy saves: monsters persisted before #38 have no `form`
+   * field. On load it is defaulted to `"base"` via `normalizeForm` / `formOf`,
+   * and `validateMonster` accepts a monster whose `form` is simply absent
+   * (mirrors how #42 handled the optional `affection` field and #41 the
+   * optional `battleRecord`). A fresh baby starts as `"base"`; the variant is
+   * assigned when the monster evolves into a non-baby tier.
+   */
+  form?: MonsterForm;
 }
 
 /* --------------------------------------------------------------------------
