@@ -1,0 +1,7 @@
+{
+  "task_id": "task-monster-zukan",
+  "task_description": "Issue #39: persistent monster zukan (collection of reached appearances = tier x form). Survives reset (separate ddm.zukan localStorage key). Records first-seen timestamp, days raised, and name at first discovery of each appearance. Accessible JA/EN modal opened from a header button, with undiscovered entries shown as silhouettes and a discovered/total count. Pure collection logic (canonical set, entry keying, first-seen merge, counts) in @ddm/shared and unit-tested; frontend-only, additive, no Monster-type/backend/infra change.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

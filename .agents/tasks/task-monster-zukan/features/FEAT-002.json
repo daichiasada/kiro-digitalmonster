@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Frontend persistence glue + lifecycle hook-in: guarded localStorage read/write for the zukan under the NEW key `ddm.zukan` (separate from the monster so it SURVIVES reset), and record discovery from the live monster whenever its appearance (stageId x form) changes, from useMonster's commit path. Prove reset() does not clear the zukan. Unit-test the pure storage helpers in game-ui.test.ts.",
+  "status": "pending",
+  "steps": [
+    "In packages/frontend/src/ui-helpers.ts add the zukan storage layer MIRRORING the existing pet-record pattern (petStorageKey/readPetRecordRaw/writePetRecord). Import the pure core from @ddm/shared: { sanitizeZukan, recordAppearance, type Zukan }. Export: ZUKAN_STORAGE_KEY = 'ddm.zukan'; readZukanRaw(): string | null (guarded, returns null when localStorage undefined/blocked/absent, never throws); parseZukan(raw: string | null): Zukan (JSON.parse in try/catch then sanitizeZukan; returns {} on null/malformed) — PURE and unit-testable; readZukan(): Zukan = parseZukan(readZukanRaw()); writeZukan(zukan: Zukan): void (guarded localStorage.setItem(JSON.stringify), never throws). Do NOT import these from shared's storage (shared has none); the glue lives here.",
+    "Still in ui-helpers.ts, add a thin pure helper recordMonsterAppearance(zukan: Zukan, monster, now): Zukan that just delegates to the shared recordAppearance (re-exported for the hook so useMonster imports one function). Optional: or import recordAppearance directly in the hook. Keep whichever is cleaner but ensure the hook calls the shared pure merge.",
+    "In packages/frontend/src/state/useMonster.ts wire discovery into the lifecycle. The cleanest hook-in: in the commit() useCallback (which runs on EVERY monster change incl. mount, care actions, evolution, time-tick, battle), after setting monsterRef/setMonster, update the zukan when the appearance may have changed. Track previous appearance key in a useRef (prevAppearanceKeyRef) initialized null; compute key = monsterAppearanceKey(next) via shared; if key !== prevAppearanceKeyRef.current, read current zukan from storage, call recordAppearance(zukan, next, Date.now()), and if the returned zukan differs (new entry added) writeZukan it; set prevAppearanceKeyRef.current = key. Import monsterAppearanceKey + recordAppearance from @ddm/shared and the storage helpers from ../ui-helpers.ts. This records the FRESH baby (baby:base) on first load and each new tier x form as the monster evolves. Do it inside commit so every path (initial mount setMonster, time-tick, care, reset) is covered; note the initial mount path uses setMonster directly (not commit) in two places — ALSO record there, or refactor those to funnel through commit; prefer recording in commit AND adding a one-line record on the mount's direct setMonster so the very first appearance is captured even though mount bypasses commit. Keep it minimal and guarded (never throw).",
+    "CRITICAL backward-compat / acceptance: do NOT change reset() to touch the zukan. reset() calls createMonster + commit(fresh); because commit records appearances but NEVER deletes, and reset writes NOTHING to ZUKAN_STORAGE_KEY, the zukan survives reset. After the fresh baby is committed, commit will (re)record baby:base which already exists -> no-op. Add a short code comment in reset() stating the zukan is intentionally left untouched so resets preserve the collection (issue #39 acceptance). Do NOT add any removeItem/clear of ddm.zukan anywhere.",
+    "In packages/frontend/src/game-ui.test.ts add tests for the PURE parse/merge glue (do NOT touch localStorage in tests — keep them DOM-free). Import parseZukan (and recordMonsterAppearance if added) plus shared helpers. Cover: parseZukan(null)==={}; parseZukan('not json')==={}; parseZukan of a valid serialized zukan round-trips the canonical entries and drops non-canonical/malformed ones (delegates to sanitizeZukan); and a small end-to-end merge: start from {}, recordMonsterAppearance for a baby then an evolved monster yields 2 entries, re-recording the baby is a no-op. Add the new imports to the existing import block.",
+    "Run full verification: export PATH; npm run build (whole monorepo must pass incl. frontend tsc); npm test (shared, still green); npm test -w @ddm/frontend (now above 99, all passing)."
+  ],
+  "acceptance_criteria": [
+    "ddm.zukan is read/written via guarded helpers that never throw; key constant ZUKAN_STORAGE_KEY === 'ddm.zukan'.",
+    "The zukan is a SEPARATE localStorage key from the monster save; reset() does not read, write, or clear it (verified by code inspection + a comment in reset()).",
+    "useMonster records an appearance into ddm.zukan whenever the live monster's (stageId x form) changes, including the initial baby and each evolution; re-encountering an existing appearance is a no-op.",
+    "parseZukan is pure (JSON parse + sanitizeZukan) and unit-tested in game-ui.test.ts; `npm test -w @ddm/frontend` passes with a higher-than-99 count.",
+    "`npm run build` passes for the whole monorepo (frontend tsc included)."
+  ],
+  "verification": [
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm run build",
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm test",
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm test -w @ddm/frontend"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
