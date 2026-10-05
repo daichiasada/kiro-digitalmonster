@@ -1,0 +1,14 @@
+{
+  "task_id": "task-background-theming",
+  "task_description": "Issue #43: time-of-day and state-aware stage background. Switch the stage background gradient by device local time (morning/day/evening/night), dim when sleeping, show a subtle grime vignette when dirty, and shift the theme per growth stage. Pure unit-tested timeOfDay helper + data-attributes/classes + pure CSS. Hard acceptance: respect prefers-reduced-motion, WCAG AA text contrast on every phase, no mobile perf regression. Frontend-only; redeploy frontend after merge.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build exit 0 (TS strict). Shared tests 152/152, frontend 123/123 (120 baseline + 3 new timeOfDay boundary tests). The 3 new tests exercise the real timeOfDay helper across every phase boundary (4,5,9,10,16,17,19,20,23,0), Date inputs, and non-finite fallback, and would fail if the hour ranges were wrong, so they are meaningful. No Dockerfile for the frontend package, so docker_build skipped. Semantic review v1 verdict APPROVED with no blocking issues."
+  }
+}

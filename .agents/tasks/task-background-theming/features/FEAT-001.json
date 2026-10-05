@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Establish a green baseline before changing anything. Install deps if needed, build the monorepo, and run both test suites so any later failure is attributable to this task's changes. This is an existing project so baseline verification comes first.",
+  "status": "completed",
+  "steps": [
+    "Run `export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"` so node v22.23.3 / npm 11.4.2 are on PATH for all subsequent commands.",
+    "From repo root /projects/sandbox/kiro-digitalmonster, run `npm install` only if node_modules is missing (it is likely already present).",
+    "Run `npm run build` from repo root and confirm it compiles cleanly (TS strict).",
+    "Run `npm test` (shared) and confirm the baseline passes (expected 152 tests).",
+    "Run `npm test -w @ddm/frontend` and confirm the baseline passes (expected 120 tests).",
+    "Create and check out a new branch off main: `git checkout -b feat/background-theming`. Do NOT touch backup/previous-main branches."
+  ],
+  "acceptance_criteria": [
+    "`npm run build` exits 0 with no TypeScript errors.",
+    "`npm test` (shared) passes with 152 tests.",
+    "`npm test -w @ddm/frontend` passes with 120 tests.",
+    "Current branch is feat/background-theming, branched from main."
+  ],
+  "verification": [
+    "Run `npm run build` from repo root; confirm exit 0.",
+    "Run `npm test` and `npm test -w @ddm/frontend`; confirm both green at baseline counts.",
+    "Run `git branch --show-current` and confirm it prints feat/background-theming."
+  ],
+  "blocked_reason": null,
+  "findings": "Baseline verified green on node v22.23.3 / npm 11.4.2. node_modules already present, so npm install skipped. `npm run build` exited 0 with no TypeScript errors (shared, backend, frontend tsc+vite, infra all clean; vite built 63 modules). `npm test` (shared) passed 152/152 (0 fail). `npm test -w @ddm/frontend` passed 120/120 (0 fail), matching expected baselines exactly. Created and checked out branch feat/background-theming off main (git branch --show-current confirms). No code changes and no commits made in this feature, per plan. Only the .agents task-state dir is untracked. Backup/previous-main branches left untouched."
+}

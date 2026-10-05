@@ -1,0 +1,22 @@
+{
+  "project_type": "Monorepo: @ddm/shared (pure TS game logic), @ddm/backend (AWS Lambda), @ddm/frontend (React + Vite, JA/EN i18n). This task touches ONLY the frontend.",
+  "language": "TypeScript",
+  "build_system": "npm workspaces at repo root. Node toolchain may need: export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" (node v22.23.3, npm 11.4.2 confirmed available).",
+  "test_framework": "Pure helpers tested with node:test (flat test(...) calls, assert/strict) in packages/frontend/src/game-ui.test.ts. Shared package also uses node:test.",
+  "build_command": "npm run build (from repo root /projects/sandbox/kiro-digitalmonster)",
+  "test_command": "npm test (shared, baseline 152 after #37) AND npm test -w @ddm/frontend (baseline 120 after #37)",
+  "verification_instructions": "1) export PATH for node. 2) From repo root run `npm run build` (must compile cleanly, TS strict). 3) Run `npm test` and `npm test -w @ddm/frontend`; frontend count should grow by the number of new timeOfDay boundary tests, shared stays 152. 4) No runtime deps added.",
+  "snapshot_or_generated_files": "null - no snapshots or generated files for this change.",
+  "setup_instructions": "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"; from repo root run `npm install` only if node_modules missing (likely already present); then `npm run build` and the two test commands to confirm a green baseline.",
+  "environment_constraints": "Network OPEN_INTERNET. CANNOT push or open PRs - commit locally on a feature branch only; orchestrator pushes/opens PR/merges/redeploys. Do NOT touch backup/previous-main branches.",
+  "contribution_requirements": "Branch off main named feat/background-theming. Well-separated commits. Keep JA i18n byte-identical for existing keys; purely visual change likely needs NO new i18n strings (sleeping/dirty badges already have aria labels badge.sleeping/badge.dirty). No new runtime dependencies. Never use em dashes in content.",
+  "key_patterns": "Pure, DOM/React-free helpers live in packages/frontend/src/ui-helpers.ts and are unit-tested in game-ui.test.ts via node:test flat test() calls. Existing examples of pure time/day helpers: dayStamp(now:number). Existing reduced-motion handling: multiple @media (prefers-reduced-motion: reduce) blocks in styles.css that set animation:none while preserving final static state. Existing sleeping hook: .sprite-wrap.sleeping { filter: brightness(0.8) saturate(0.8); }. Existing dirty badge: .sprite-wrap .dirt (💢). CSS custom properties in :root (--bg #0f1830, --panel #1b2a4a, --panel-2 #223359, --text #eef3ff, --muted #a9b6d6). GrowthStage order: baby -> rookie -> champion -> ultimate.",
+  "relevant_files": [
+    "packages/frontend/src/ui-helpers.ts (ADD pure timeOfDay helper near dayStamp; study CareEffect pattern)",
+    "packages/frontend/src/game-ui.test.ts (ADD boundary tests following existing flat test() style; study dayStamp/careEffect tests)",
+    "packages/frontend/src/App.tsx (wire data-timeofday/data-stage/is-sleeping/is-dirty onto a stage container; recompute hour on an interval effect)",
+    "packages/frontend/src/styles.css (ADD gradients per data-timeofday + per data-stage, sleeping dim, dirty vignette; respect prefers-reduced-motion; study .stage-area/.sprite-wrap and existing reduced-motion blocks)",
+    "packages/frontend/src/state/useMonster.ts (reference only: TIME_TICK_MS = 15_000 interval pattern; monster has stageId, isSleeping, dirty)"
+  ],
+  "directory_structure": "packages/frontend/src holds App.tsx, styles.css, ui-helpers.ts, game-ui.test.ts, i18n.ts, state/useMonster.ts, components/*, assets/*. App shell: .app > header + main.game-grid (left .stage-area with .sprite-wrap + ChatPanel; right .controls-area). The .sprite-wrap already toggles a `sleeping` class and renders 💤/💢/🍖 badges and care-fx overlay."
+}
