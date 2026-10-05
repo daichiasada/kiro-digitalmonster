@@ -41,6 +41,7 @@ import { getOrCreateMonsterId } from "../api.ts";
 import {
   canPet,
   nextPetRecord,
+  petCapReachedLabel,
   petsRemaining as computePetsRemaining,
   readPetRecord,
   readPetRecordRaw,
@@ -86,6 +87,12 @@ export interface UseMonsterState {
   pet: () => Promise<void>;
   /** Pets remaining today under the per-day cap; recomputed after each pet. */
   petsRemaining: number;
+  /**
+   * Transient, non-error notice shown when the player tries to pet after the
+   * per-day cap is reached (the pet() no-op). Null when there is nothing to
+   * say. Cleared on a successful pet or on a fresh-day reset.
+   */
+  petNotice: string | null;
   battle: () => Promise<void>;
   sendChat: (message: string) => Promise<void>;
   dismissEvolution: () => void;
@@ -135,6 +142,8 @@ export function useMonster(): UseMonsterState {
   const [petsRemaining, setPetsRemaining] = useState<number>(() =>
     computePetsRemaining(readPetRecord(readPetRecordRaw(), Date.now()), Date.now()),
   );
+  // Transient non-error notice shown when petting is attempted at the daily cap.
+  const [petNotice, setPetNotice] = useState<string | null>(null);
 
   // Mutable ref so action callbacks always see the latest monster without
   // being re-created on every render.
@@ -280,11 +289,17 @@ export function useMonster(): UseMonsterState {
     const record = readPetRecord(readPetRecordRaw(), now);
     if (!canPet(record, now)) {
       // Keep state honest with storage even on a no-op (e.g. a new day reset).
-      setPetsRemaining(computePetsRemaining(record, now));
+      const remaining = computePetsRemaining(record, now);
+      setPetsRemaining(remaining);
+      // Surface a non-error notice so hitting the cap is no longer a silent
+      // no-op; a fresh-day reset (remaining > 0 after readPetRecord) clears it.
+      setPetNotice(remaining <= 0 ? petCapReachedLabel(langRef.current) : null);
       return;
     }
     setBusy(true);
     setError(null);
+    // A successful pet clears any lingering cap notice.
+    setPetNotice(null);
     const optimistic = petLogic(current, now);
     commit(optimistic);
     // Persist the per-day counter immediately so the cap survives reloads even
@@ -350,11 +365,21 @@ export function useMonster(): UseMonsterState {
         // A successful (non-baby) chat deepens the bond: raise affection by
         // AFFECTION_GAIN_CHAT via the shared helper, then persist. Read the
         // latest monster from the ref so we don't clobber concurrent updates.
+        // The save is awaited and reconciled with the server copy, and a
+        // failure surfaces an error, mirroring the pet/care paths so a dropped
+        // save no longer silently loses the +1 gain. The save is handled in its
+        // OWN try/catch so a dropped save does NOT trigger the outer catch's
+        // "couldn't reply" line (the reply above already arrived successfully).
         const latest = monsterRef.current;
         if (latest !== null) {
           const bumped = gainAffectionFromChat(latest, Date.now());
           commit(bumped);
-          api.saveMonster(bumped).catch(() => undefined);
+          try {
+            const saved = await api.saveMonster(bumped);
+            commit(saved);
+          } catch (saveErr) {
+            setError(saveErr instanceof Error ? saveErr.message : "保存に失敗しました");
+          }
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "会話に失敗しました";
@@ -474,6 +499,7 @@ export function useMonster(): UseMonsterState {
     clean,
     pet,
     petsRemaining,
+    petNotice,
     battle,
     sendChat,
     dismissEvolution,

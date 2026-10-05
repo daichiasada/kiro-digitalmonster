@@ -35,6 +35,18 @@ function buildSystemPrompt(context: ChatContext, lang: Lang): string {
   // Affection drives TONE. chooseChatContext defaults this to AFFECTION_INITIAL
   // (FEAT-001); guard here too for safety. The neutral band appends NOTHING so
   // the default prompt stays byte-identical to the pre-#42 behavior.
+  //
+  // INTENTIONAL (issue #42 review follow-up): the tone reflects the affection
+  // the monster had ENTERING this turn, not including the +1 gain that this
+  // same chat earns. The gain is applied + persisted by the client AFTER a
+  // successful reply (useMonster.sendChat → gainAffectionFromChat), so the
+  // NEXT turn's prompt (which reloads the persisted monster) picks it up.
+  // We deliberately do NOT persist the gain here: keeping the client as the
+  // SINGLE writer of the chat gain keeps the write path simple and avoids a
+  // double-count (client + server) of the same interaction. The practical
+  // impact is at most a one-turn lag in tone, and only in the rare case where
+  // this chat's +1 (AFFECTION_GAIN_CHAT) is the delta that crosses a band
+  // boundary (a cosmetic edge that self-corrects on the following turn).
   const affection = Number.isFinite(context.affection) ? context.affection : AFFECTION_INITIAL;
   const band = affectionBand(affection);
 

@@ -23,6 +23,7 @@ import {
   busyStatusLabel,
   canChat,
   canPet,
+  canPetNow,
   careEffect,
   dayStamp,
   evolutionReqAriaLabel,
@@ -33,6 +34,8 @@ import {
   isHungerCaution,
   latestMonsterReply,
   nextPetRecord,
+  petCapReachedLabel,
+  petSpriteLabel,
   petsRemaining,
   readPetRecord,
   moodLabel,
@@ -750,4 +753,33 @@ test("nextPetRecord increments today's count and resets on a new day", () => {
     nextPetRecord({ day: "2026-10-04", count: PET_DAILY_CAP }, now),
     { day: today, count: 1 },
   );
+});
+
+test("canPetNow is true only when a finite, positive number of pets remain", () => {
+  assert.equal(canPetNow(PET_DAILY_CAP), true);
+  assert.equal(canPetNow(1), true);
+  assert.equal(canPetNow(0), false);
+  assert.equal(canPetNow(-1), false);
+  // Non-finite input is treated as "unavailable" defensively.
+  assert.equal(canPetNow(Number.NaN), false);
+  assert.equal(canPetNow(Number.POSITIVE_INFINITY), false);
+});
+
+test("petSpriteLabel invites petting while pets remain, else shows the cap message", () => {
+  // Pets remaining -> the "なでる" action label (JA/EN).
+  assert.equal(petSpriteLabel(1, "ja"), t("ja", "action.petAria"));
+  assert.equal(petSpriteLabel(PET_DAILY_CAP, "ja"), "なでる");
+  assert.equal(petSpriteLabel(1, "en"), t("en", "action.petAria"));
+  assert.equal(petSpriteLabel(PET_DAILY_CAP, "en"), "Pet");
+  // Cap reached (0 or less) -> the cap-reached message (JA/EN), NOT "なでる".
+  assert.equal(petSpriteLabel(0, "ja"), t("ja", "action.petCapReached"));
+  assert.equal(petSpriteLabel(0, "ja"), "きょうはもう十分なでたよ");
+  assert.equal(petSpriteLabel(0, "en"), t("en", "action.petCapReached"));
+  assert.equal(petSpriteLabel(0, "en"), "You've petted it enough for today");
+  assert.notEqual(petSpriteLabel(0, "ja"), petSpriteLabel(1, "ja"));
+});
+
+test("petCapReachedLabel sources the cap message from the action.petCapReached key", () => {
+  assert.equal(petCapReachedLabel("ja"), t("ja", "action.petCapReached"));
+  assert.equal(petCapReachedLabel("en"), t("en", "action.petCapReached"));
 });

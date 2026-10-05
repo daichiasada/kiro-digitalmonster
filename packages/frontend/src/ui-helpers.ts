@@ -573,6 +573,37 @@ export function writePetRecord(record: PetRecord): void {
   }
 }
 
+/**
+ * Whether petting is still available today, derived purely from the number of
+ * pets remaining under the per-day cap. `remaining <= 0` means the cap has been
+ * reached, so the sprite should stop inviting petting. Non-finite input is
+ * treated as "unavailable" defensively.
+ */
+export function canPetNow(remaining: number): boolean {
+  return Number.isFinite(remaining) && remaining > 0;
+}
+
+/**
+ * Accessible label (used for BOTH `aria-label` and `title`) for the pet target
+ * sprite. While petting is available it reads the "なでる" action label; once
+ * the per-day cap is reached it switches to the cap-reached message so a
+ * screen-reader or hover user is told the sprite is no longer pettable today,
+ * instead of still being invited to pet. React/DOM-free so it is unit-testable.
+ */
+export function petSpriteLabel(remaining: number, lang: Lang): string {
+  return canPetNow(remaining) ? t(lang, "action.petAria") : t(lang, "action.petCapReached");
+}
+
+/**
+ * Localized cap-reached message surfaced when the player tries to pet after the
+ * per-day cap has been used up (JA きょうはもう十分なでたよ / EN You've petted it
+ * enough for today). Thin wrapper over the "action.petCapReached" i18n key so
+ * the feedback text is sourced from the same pure, unit-tested layer.
+ */
+export function petCapReachedLabel(lang: Lang): string {
+  return t(lang, "action.petCapReached");
+}
+
 // --- Accessibility labels (not color-only) ---------------------------------
 
 /**

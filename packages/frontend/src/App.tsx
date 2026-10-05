@@ -9,6 +9,7 @@ import {
   careEffect,
   isHungerCaution,
   latestMonsterReply,
+  petSpriteLabel,
   playerStartHpFromLog,
   readOnboarded,
   shouldShowOnboarding,
@@ -199,9 +200,12 @@ export function App() {
   // Pet (なでる): clicking or pressing Enter/Space on the sprite pets the
   // monster, raising affection and playing the heart-pop FX. When the per-day
   // cap is reached (game.petsRemaining === 0) petting gives no further
-  // affection — gate here so the FX stays honest and pet() is not called.
+  // affection: skip the heart-pop FX (keep the visual honest) but STILL call
+  // game.pet() so the hook surfaces the non-error cap notice instead of a
+  // silent no-op. game.pet() re-checks the cap and no-ops the affection gain.
   const handlePet = useCallback(() => {
     if (game.petsRemaining <= 0) {
+      void game.pet();
       return;
     }
     triggerCareFx("pet", game.pet);
@@ -306,6 +310,14 @@ export function App() {
 
       {game.error !== null && <p className="app-error" role="alert">{game.error}</p>}
 
+      {/* Non-error notice (e.g. the daily pet cap was reached). Polite live
+          region so screen-reader users hear it without it hijacking focus. */}
+      {game.petNotice !== null && (
+        <p className="app-notice" role="status" aria-live="polite">
+          {game.petNotice}
+        </p>
+      )}
+
       {game.loading ? (
         <p className="loading">{t("app.loading")}</p>
       ) : game.monster === null ? (
@@ -323,8 +335,14 @@ export function App() {
               className={`sprite-wrap ${game.monster.isSleeping ? "sleeping" : ""}`}
               role="button"
               tabIndex={0}
-              aria-label={t("action.petAria")}
-              title={t("action.pet")}
+              // When the per-day pet cap is reached the sprite's accessible
+              // label/title switch to the cap-reached message and the element
+              // reports aria-disabled, so a screen-reader or hover user is no
+              // longer invited to pet. The click/key handlers still fire so the
+              // non-error cap notice is surfaced (handlePet gates the gain).
+              aria-label={petSpriteLabel(game.petsRemaining, lang)}
+              aria-disabled={game.petsRemaining <= 0}
+              title={petSpriteLabel(game.petsRemaining, lang)}
               onClick={handlePet}
               onKeyDown={handleSpriteKeyDown}
             >

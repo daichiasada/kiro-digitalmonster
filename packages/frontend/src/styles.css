@@ -196,6 +196,16 @@ body {
   color: #ffd4d4;
 }
 
+/* Non-error notice (e.g. the daily pet cap reached). Softer than .app-error. */
+.app-notice {
+  text-align: center;
+  padding: 12px 16px;
+  background: rgba(255, 183, 197, 0.14);
+  border: 1px solid rgba(255, 183, 197, 0.5);
+  border-radius: 10px;
+  color: #ffe3ea;
+}
+
 .game-grid {
   display: grid;
   grid-template-columns: 1fr;
