@@ -430,6 +430,28 @@ export function isHungerCaution(hungryLevel: number): boolean {
   return hungryLevel >= HUNGRY_CAUTION_LEVEL;
 }
 
+// --- Accessibility labels (not color-only) ---------------------------------
+
+/**
+ * Accessible met/unmet label for an evolution-condition row, so the state is
+ * conveyed by text (not just the ✓/・ glyph and color). Returns the localized
+ * "evolution.met" string when `met`, otherwise the "evolution.unmet" string
+ * (JA 達成/未達成, EN met/not met). React/DOM-free so it can be unit-tested.
+ */
+export function evolutionReqAriaLabel(met: boolean, lang: Lang): string {
+  return t(lang, met ? "evolution.met" : "evolution.unmet");
+}
+
+/**
+ * Localized "working / busy" status label surfaced while a care or battle
+ * action is in flight (JA 処理中… / EN Working…). Thin wrapper over the
+ * "status.busy" i18n key kept here so the busy affordance can source its text
+ * from the same pure, unit-tested layer as the rest of the UI copy.
+ */
+export function busyStatusLabel(lang: Lang): string {
+  return t(lang, "status.busy");
+}
+
 // --- First-run onboarding hint ---------------------------------------------
 
 /** localStorage key under which the "onboarding seen" flag is persisted. */

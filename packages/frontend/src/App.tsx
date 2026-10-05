@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { evolutionProgress } from "@ddm/shared";
 import { useMonster } from "./state/useMonster.ts";
 import { useI18n } from "./i18n.ts";
@@ -40,6 +41,66 @@ export function App() {
   const [confirmingReset, setConfirmingReset] = useState(false);
   const resetDisabled = game.busy || game.loading || game.monster === null;
 
+  // Focus management for the reset confirm dialog (role=alertdialog). On open
+  // we move focus to the Confirm button; a simple two-button trap keeps Tab /
+  // Shift+Tab cycling between Confirm and Cancel; Escape cancels; and focus is
+  // restored to the reset trigger button on close.
+  const resetTriggerRef = useRef<HTMLButtonElement>(null);
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+  const cancelBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (confirmingReset) {
+      // Move focus into the dialog once it is mounted. Prefer Confirm; fall
+      // back to Cancel when Confirm is disabled (e.g. a reset already in
+      // flight) so focus still lands inside the dialog for the trap/Escape.
+      const target = confirmBtnRef.current?.disabled
+        ? cancelBtnRef.current
+        : confirmBtnRef.current;
+      target?.focus();
+    }
+  }, [confirmingReset]);
+
+  const closeResetConfirm = useCallback(() => {
+    setConfirmingReset(false);
+    // Restore focus to the trigger so keyboard users are not dropped at the
+    // top of the document after the dialog closes.
+    resetTriggerRef.current?.focus();
+  }, []);
+
+  const handleResetDialogKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeResetConfirm();
+        return;
+      }
+      if (event.key !== "Tab") {
+        return;
+      }
+      // Two-button focus trap: keep Tab / Shift+Tab cycling between the
+      // Confirm and Cancel buttons so focus never leaves the dialog.
+      const confirm = confirmBtnRef.current;
+      const cancel = cancelBtnRef.current;
+      if (confirm === null || cancel === null) {
+        return;
+      }
+      const first = confirm.disabled ? cancel : confirm;
+      const last = cancel;
+      const activeEl = document.activeElement;
+      if (event.shiftKey) {
+        if (activeEl === first) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else if (activeEl === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    },
+    [closeResetConfirm],
+  );
+
   // First-run onboarding hint. Lazy initializer reads localStorage once;
   // dismissing persists the "ddm.onboarded" flag so it never shows again.
   const [onboarded, setOnboarded] = useState(readOnboarded);
@@ -50,8 +111,8 @@ export function App() {
 
   const handleReset = useCallback(() => {
     void game.reset();
-    setConfirmingReset(false);
-  }, [game.reset]);
+    closeResetConfirm();
+  }, [game.reset, closeResetConfirm]);
 
   const clearFxTimer = useCallback(() => {
     if (fxTimer.current !== null) {
@@ -106,6 +167,7 @@ export function App() {
         <h1>{t("app.title")}</h1>
         <div className="header-controls">
           <button
+            ref={resetTriggerRef}
             type="button"
             className="reset-btn"
             disabled={resetDisabled}
@@ -135,10 +197,17 @@ export function App() {
       </header>
 
       {confirmingReset && (
-        <div className="reset-confirm" role="alertdialog" aria-label={t("reset.button")}>
+        <div
+          className="reset-confirm"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label={t("reset.button")}
+          onKeyDown={handleResetDialogKeyDown}
+        >
           <p className="reset-confirm-text">{t("reset.confirmPrompt")}</p>
           <div className="reset-confirm-actions">
             <button
+              ref={confirmBtnRef}
               type="button"
               className="reset-btn confirm"
               disabled={resetDisabled}
@@ -147,9 +216,10 @@ export function App() {
               {t("reset.confirm")}
             </button>
             <button
+              ref={cancelBtnRef}
               type="button"
               className="reset-cancel-btn"
-              onClick={() => setConfirmingReset(false)}
+              onClick={closeResetConfirm}
             >
               {t("reset.cancel")}
             </button>

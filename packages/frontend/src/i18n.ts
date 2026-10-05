@@ -71,6 +71,13 @@ const JA_MESSAGES = {
   "battle.lose": "敗北… 💥",
   "battle.draw": "引き分け 🤝",
 
+  // Action status / busy feedback (care + battle)
+  "status.busy": "処理中…",
+
+  // Evolution condition accessible met/unmet labels (not color-only)
+  "evolution.met": "達成",
+  "evolution.unmet": "未達成",
+
   // Chat panel
   "chat.title": "会話",
   "chat.disabledHint":
@@ -157,6 +164,13 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   "battle.win": "Victory! 🎉",
   "battle.lose": "Defeat… 💥",
   "battle.draw": "Draw 🤝",
+
+  // Action status / busy feedback (care + battle)
+  "status.busy": "Working…",
+
+  // Evolution condition accessible met/unmet labels (not color-only)
+  "evolution.met": "met",
+  "evolution.unmet": "not met",
 
   // Chat panel
   "chat.title": "Chat",

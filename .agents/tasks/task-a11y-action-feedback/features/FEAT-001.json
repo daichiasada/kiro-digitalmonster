@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Environment setup and baseline verification (frontend-only task). Confirm the toolchain resolves and the existing build + both test suites are green before making changes, and create the feature branch.",
+  "status": "completed",
+  "steps": [
+    "From /projects/sandbox/kiro-digitalmonster, ensure node/npm resolve: export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\".",
+    "Create and switch to a feature branch off main: git checkout -b feat/a11y-action-feedback (do NOT touch backup/previous-main; do NOT push).",
+    "Run `npm run build` from the repo root and confirm it succeeds.",
+    "Run `npm test` and confirm shared tests pass (baseline 47).",
+    "Run `npm test -w @ddm/frontend` and confirm frontend ui-helpers tests pass (baseline 59)."
+  ],
+  "acceptance_criteria": [
+    "Branch feat/a11y-action-feedback exists and is checked out.",
+    "`npm run build` exits 0.",
+    "`npm test` reports 47 passing shared tests.",
+    "`npm test -w @ddm/frontend` reports 59 passing frontend tests."
+  ],
+  "verification": [
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm run build",
+    "npm test",
+    "npm test -w @ddm/frontend"
+  ],
+  "blocked_reason": null,
+  "findings": "Baseline green on branch feat/a11y-action-feedback (created off main @ d4a77e7). `npm run build` exited 0 (shared -> backend -> frontend tsc+vite -> infra; vite built 54 modules). `npm test` (shared): 47 pass, 0 fail. `npm test -w @ddm/frontend`: 59 pass, 0 fail. Node resolved via export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\". No source changes made. Branch not pushed, no PR."
+}

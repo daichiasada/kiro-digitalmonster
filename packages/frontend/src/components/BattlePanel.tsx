@@ -5,6 +5,7 @@ import { MonsterSprite } from "../assets/monsters/MonsterSprite.tsx";
 import { useI18n } from "../i18n.ts";
 import {
   battleLogLine,
+  busyStatusLabel,
   hpPercent,
   parseBattleEvents,
   stageLabel,
@@ -174,8 +175,18 @@ export function BattlePanel({
     active === null ? "" : active.attacker === "enemy" ? "attacking" : active.defender === "enemy" ? "hit" : "";
 
   return (
-    <section className="panel battle-panel" aria-label={t("aria.battle")}>
-      <h2>{t("battle.title")}</h2>
+    <section className="panel battle-panel" aria-label={t("aria.battle")} aria-busy={busy}>
+      <h2>
+        {t("battle.title")}
+        {busy && <span className="busy-spinner" aria-hidden="true" />}
+      </h2>
+      {/* Lightweight accessible busy feedback for the battle action, mirroring
+          CarePanel. The visually-hidden live region announces "処理中…"/"Working…"
+          while a battle is in flight; it is separate from the #9 playback
+          animation / result / log below so the two never interfere. */}
+      <span className="visually-hidden" role="status" aria-live="polite">
+        {busy ? busyStatusLabel(lang) : ""}
+      </span>
       <button type="button" className="battle-btn" onClick={onBattle} disabled={busy}>
         {t("battle.start")}
       </button>

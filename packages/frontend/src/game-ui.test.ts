@@ -17,8 +17,10 @@ import {
   battleLogLine,
   battleLogLineJa,
   battleLogList,
+  busyStatusLabel,
   canChat,
   careEffect,
+  evolutionReqAriaLabel,
   formatMinutes,
   formatMinutesJa,
   fullnessPercent,
@@ -563,6 +565,29 @@ test("onboardingCta clamps remaining training and minutes to >= 0", () => {
   const prog = evolutionProgress(makeMonster({ bornAt: 0, trainingCount: 5 }), now);
   assert.equal(onboardingCta(prog, "ja"), "成長期まで あと トレーニング0回・0分");
   assert.equal(onboardingCta(prog, "en"), "To reach Rookie: 0 more training, 0 min");
+});
+
+// --- Accessibility label helpers -------------------------------------------
+
+test("evolutionReqAriaLabel returns the exact met/unmet strings per language", () => {
+  assert.equal(evolutionReqAriaLabel(true, "ja"), "達成");
+  assert.equal(evolutionReqAriaLabel(false, "ja"), "未達成");
+  assert.equal(evolutionReqAriaLabel(true, "en"), "met");
+  assert.equal(evolutionReqAriaLabel(false, "en"), "not met");
+});
+
+test("evolutionReqAriaLabel matches the i18n evolution keys", () => {
+  assert.equal(evolutionReqAriaLabel(true, "ja"), t("ja", "evolution.met"));
+  assert.equal(evolutionReqAriaLabel(false, "ja"), t("ja", "evolution.unmet"));
+  assert.equal(evolutionReqAriaLabel(true, "en"), t("en", "evolution.met"));
+  assert.equal(evolutionReqAriaLabel(false, "en"), t("en", "evolution.unmet"));
+});
+
+test("busyStatusLabel returns the localized working string", () => {
+  assert.equal(busyStatusLabel("ja"), "処理中…");
+  assert.equal(busyStatusLabel("en"), "Working…");
+  assert.equal(busyStatusLabel("ja"), t("ja", "status.busy"));
+  assert.equal(busyStatusLabel("en"), t("en", "status.busy"));
 });
 
 test("onboardingCta returns the final-stage line at the ultimate stage", () => {
