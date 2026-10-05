@@ -20,6 +20,7 @@ import {
   HUNGRY_CAUTION_LEVEL,
   MAX_CHAT_TURNS,
   MAX_HUNGRY_LEVEL,
+  TICK_MS,
   affectionBand,
   recordAppearance,
   sanitizeZukan,
@@ -759,13 +760,14 @@ export function isHungerCaution(hungryLevel: number): boolean {
 }
 
 /**
- * Milliseconds per hunger tick. SOURCE OF TRUTH is the shared game.ts
- * `TICK_MS` (= 60_000), which `applyTimePassage` uses to raise `hungryLevel`
- * by `floor((now - lastUpdatedAt) / TICK_MS)` while awake. That constant is
- * NOT exported from @ddm/shared, so it is mirrored here for the pure
- * client-side projection math. KEEP THIS IN SYNC with shared game.ts TICK_MS.
+ * Milliseconds per hunger tick, DERIVED from the shared game.ts `TICK_MS`
+ * (= 60_000) rather than hand-copied, so a change to the shared cadence can
+ * never silently desync the client-side projection. `applyTimePassage` uses
+ * the same constant to raise `hungryLevel` by `floor((now - lastUpdatedAt) /
+ * TICK_MS)` while awake, which is exactly the model {@link msUntilHungerCaution}
+ * inverts.
  */
-export const HUNGER_TICK_MS = 60_000;
+export const HUNGER_TICK_MS = TICK_MS;
 
 /**
  * The subset of monster fields needed to project when hunger would next reach
@@ -795,6 +797,15 @@ export interface HungerProjectionInput {
  *     monster has had `(now - lastUpdatedAt)` elapsing toward the next tick, so
  *     `target = lastUpdatedAt + levelsRemaining * tickMs` and the result is
  *     `Math.max(0, target - now)`.
+ *
+ * ANCHOR NOTE: this treats the live `hungryLevel` as the value exactly AT
+ * `lastUpdatedAt`. `applyTimePassage` only re-commits (re-anchoring
+ * `lastUpdatedAt` to `now`) when a field actually changes, so between hunger
+ * increments the anchor is the last change time and this projection can be up
+ * to one tick OPTIMISTIC (firing slightly early) until the next commit. In the
+ * app the scheduling effect re-runs on every `hungryLevel`/`lastUpdatedAt`
+ * change, so each re-commit re-derives the time and it self-corrects; a care
+ * notification arriving at most ~one minute early is acceptable for this nudge.
  */
 export function msUntilHungerCaution(
   { hungryLevel, lastUpdatedAt, isSleeping }: HungerProjectionInput,

@@ -1,7 +1,23 @@
 {
   "task_id": "task-pwa-notifications",
   "task_description": "Issue #44: Make the AI Monster game installable (PWA: hand-rolled web app manifest + service worker, zero new deps) with a CloudFront-correct cache strategy that never strands users on stale HTML or a stale config.json/API URL, and add opt-in LOCAL browser notifications that fire when hunger is projected to reach the caution level. Permission is requested only from a user gesture (settings toggle, default OFF); the game works normally when notifications are off/denied/unsupported. New settings key notificationsEnabled is backward-compatible. Pure hunger-projection math is unit-tested. JA/EN parity throughout.",
-  "status": "in_progress",
+  "status": "completed",
   "feature_order": ["FEAT-001", "FEAT-002"],
-  "blocked_reason": null
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "Full `npm run build` succeeds (shared+backend+frontend tsc/vite+infra). Shared tests 152/152, frontend tests 146/146 (up from 135 baseline). dist contains manifest.webmanifest, sw.js, icon.svg at root. New tests exercise real logic: msUntilHungerCaution edge cases (already-at-caution->0, N-levels->N*tick, partial-elapsed reduction, sleeping->null, non-finite->null), backward-compatible parseSettings (missing key->false, explicit preserved, non-boolean coerced), and a HUNGER_TICK_MS===shared TICK_MS sync assertion; they would fail if the helper/parser were reverted. No Dockerfile for the frontend path, so docker build is not applicable."
+  },
+  "review_followups": {
+    "review_file": "2026-10-05-100836-review.md",
+    "fixed": [
+      "Issues 1 & 2 (blocking): App.tsx SW registration and notification icon now resolve against document.baseURI (absolute) instead of import.meta.env.BASE_URL. Under Vite base:'./' the latter is the relative string './', so new URL(path,'./') threw TypeError and the try/catch silently killed both SW registration and the notification. Verified the built bundle emits new URL(\"sw.js\",document.baseURI) and new URL(\"icon.svg\",document.baseURI), matching config.ts.",
+      "Issue 3 (non-blocking): exported TICK_MS from @ddm/shared (game.ts) and derived HUNGER_TICK_MS = TICK_MS in ui-helpers.ts (no more hand-copied literal). Added a test asserting HUNGER_TICK_MS === TICK_MS === 60_000.",
+      "Issue 4 (non-blocking): added an ANCHOR NOTE to msUntilHungerCaution documenting that the live hungryLevel is treated as the value at lastUpdatedAt and the projection can be up to one tick optimistic until the next re-commit, which the scheduling effect self-corrects."
+    ],
+    "declined": []
+  }
 }

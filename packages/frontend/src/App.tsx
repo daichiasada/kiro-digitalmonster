@@ -44,17 +44,21 @@ export function App() {
   // PWA service worker registration (issue #44). PRODUCTION-ONLY and
   // feature-detected so local `vite dev` is never affected (no SW caching to
   // confuse HMR). Registered on window 'load' to avoid competing with initial
-  // page work, with a relative 'sw.js' path (resolved against BASE_URL) so it
-  // works under CloudFront where base is "./". Any failure is a silent no-op:
-  // the game works fine without a SW, so registration must never throw into the
-  // UI (graceful degradation).
+  // page work, with a relative 'sw.js' path resolved against the page's
+  // ABSOLUTE base (document.baseURI) so it works under CloudFront where Vite's
+  // `base: "./"` would otherwise make import.meta.env.BASE_URL the RELATIVE
+  // string "./", and `new URL(path, "./")` throws TypeError on a non-absolute
+  // base. This mirrors the working pattern in config.ts (new URL("config.json",
+  // document.baseURI)). Any failure is a silent no-op: the game works fine
+  // without a SW, so registration must never throw into the UI (graceful
+  // degradation).
   useEffect(() => {
     if (!(import.meta.env.PROD && "serviceWorker" in navigator)) {
       return;
     }
     const register = () => {
       try {
-        const swUrl = new URL("sw.js", import.meta.env.BASE_URL ?? "/").toString();
+        const swUrl = new URL("sw.js", document.baseURI).toString();
         void navigator.serviceWorker.register(swUrl).catch(() => {});
       } catch {
         // Silent no-op: a missing/blocked SW must not break the app.
@@ -422,7 +426,13 @@ export function App() {
     const body = monsterName
       ? `${monsterName}: ${t("notify.hungryBody")}`
       : t("notify.hungryBody");
-    const icon = new URL("icon.svg", import.meta.env.BASE_URL ?? "/").toString();
+    // Resolve the notification icon against the page's ABSOLUTE base
+    // (document.baseURI), NOT import.meta.env.BASE_URL: under Vite's
+    // `base: "./"` the latter is the relative string "./", and
+    // `new URL("icon.svg", "./")` throws TypeError, which the surrounding
+    // try/catch would swallow, silently killing the notification. Mirrors
+    // config.ts.
+    const icon = new URL("icon.svg", document.baseURI).toString();
     const timer = setTimeout(() => {
       try {
         // Re-guard inside the timeout: permission could have been revoked while

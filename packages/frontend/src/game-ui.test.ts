@@ -88,6 +88,7 @@ import {
   HUNGRY_CAUTION_LEVEL,
   MAX_CHAT_TURNS,
   MAX_HUNGRY_LEVEL,
+  TICK_MS,
   battleRecordOf,
   createMonster,
   discoveredCount,
@@ -1575,4 +1576,14 @@ test("hungerCautionTargetTimestamp returns now + msUntil, or null when there is 
     ),
     null,
   );
+});
+
+// Guards against drift: HUNGER_TICK_MS must stay EQUAL to the shared TICK_MS
+// that applyTimePassage uses to raise hunger. HUNGER_TICK_MS now derives from
+// the exported shared constant, so this both documents the invariant and would
+// fail loudly if the derivation were ever replaced by a hand-copied literal
+// that fell out of sync (issue #44 review).
+test("HUNGER_TICK_MS stays in sync with the shared TICK_MS", () => {
+  assert.equal(HUNGER_TICK_MS, TICK_MS);
+  assert.equal(HUNGER_TICK_MS, 60_000);
 });
