@@ -2,8 +2,17 @@ import type { ChatRequest, GrowthStage, Monster, MonsterForm, Stats } from "./ty
 import { STAGES, evolveStage, formBaseStats, getStage } from "./stages.ts";
 import { chooseEvolutionForm } from "./evolution.ts";
 
-/** One in-game "tick" of time passage, in milliseconds. */
-const TICK_MS = 60 * 1000;
+/**
+ * One in-game "tick" of time passage, in milliseconds.
+ *
+ * Single source of truth for the hunger/dirtiness/neglect cadence used by
+ * `applyTimePassage` (hungryLevel rises by `floor((now - lastUpdatedAt) /
+ * TICK_MS)` while awake). Exported so the frontend hunger-projection math
+ * (ui-helpers.ts `HUNGER_TICK_MS`) derives from this value instead of
+ * hand-mirroring it, which would silently desync if this constant ever
+ * changed (issue #44 review).
+ */
+export const TICK_MS = 60 * 1000;
 
 /**
  * Upper bound on hungryLevel so it does not grow without limit.

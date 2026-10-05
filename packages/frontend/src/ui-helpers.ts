@@ -20,6 +20,7 @@ import {
   HUNGRY_CAUTION_LEVEL,
   MAX_CHAT_TURNS,
   MAX_HUNGRY_LEVEL,
+  TICK_MS,
   affectionBand,
   recordAppearance,
   sanitizeZukan,
@@ -566,6 +567,13 @@ export interface Settings {
   volume: number;
   /** App-level "reduce motion" toggle that forces the force-reduced-motion class. */
   reducedMotion: boolean;
+  /**
+   * Whether local "care needed" browser notifications are enabled (issue #44).
+   * Defaults OFF so no permission prompt or notification ever happens until the
+   * user explicitly opts in from the settings toggle (a user gesture). A stored
+   * blob predating this field parses back to `false` (see {@link parseSettings}).
+   */
+  notificationsEnabled: boolean;
 }
 
 /**
@@ -589,6 +597,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sfxEnabled: false,
   volume: DEFAULT_SOUND_VOLUME,
   reducedMotion: false,
+  notificationsEnabled: false,
 };
 
 /**
@@ -596,7 +605,9 @@ export const DEFAULT_SETTINGS: Settings = {
  * raw stored string (or null when absent), it:
  *   - returns a fresh copy of {@link DEFAULT_SETTINGS} when raw is null, the
  *     JSON is invalid, or it does not parse to an object;
- *   - coerces non-boolean `sfxEnabled` / `reducedMotion` to their defaults;
+ *   - coerces non-boolean `sfxEnabled` / `reducedMotion` /
+ *     `notificationsEnabled` to their defaults (a blob predating
+ *     `notificationsEnabled` parses it back to `false`, no throw);
  *   - clamps `volume` into [0, 1] via {@link clampVolume} (NaN/missing ->
  *     default);
  *   - fills any missing field from the defaults.
@@ -623,6 +634,10 @@ export function parseSettings(raw: string | null): Settings {
     volume: clampVolume(typeof parsed.volume === "number" ? parsed.volume : DEFAULT_SETTINGS.volume),
     reducedMotion:
       typeof parsed.reducedMotion === "boolean" ? parsed.reducedMotion : DEFAULT_SETTINGS.reducedMotion,
+    notificationsEnabled:
+      typeof parsed.notificationsEnabled === "boolean"
+        ? parsed.notificationsEnabled
+        : DEFAULT_SETTINGS.notificationsEnabled,
   };
 }
 
@@ -742,6 +757,96 @@ export function fullnessPercent(hungryLevel: number): number {
  */
 export function isHungerCaution(hungryLevel: number): boolean {
   return hungryLevel >= HUNGRY_CAUTION_LEVEL;
+}
+
+/**
+ * Milliseconds per hunger tick, DERIVED from the shared game.ts `TICK_MS`
+ * (= 60_000) rather than hand-copied, so a change to the shared cadence can
+ * never silently desync the client-side projection. `applyTimePassage` uses
+ * the same constant to raise `hungryLevel` by `floor((now - lastUpdatedAt) /
+ * TICK_MS)` while awake, which is exactly the model {@link msUntilHungerCaution}
+ * inverts.
+ */
+export const HUNGER_TICK_MS = TICK_MS;
+
+/**
+ * The subset of monster fields needed to project when hunger would next reach
+ * the caution threshold. Mirrors the shared Monster shape (hungryLevel rises
+ * over wall-clock time while awake; sleeping freezes it).
+ */
+export interface HungerProjectionInput {
+  hungryLevel: number;
+  lastUpdatedAt: number;
+  isSleeping: boolean;
+}
+
+/**
+ * PURE projection: how many milliseconds FROM `now` until the monster's
+ * `hungryLevel` would reach {@link HUNGRY_CAUTION_LEVEL}, assuming it keeps
+ * accumulating hunger at one level per {@link HUNGER_TICK_MS} (the shared
+ * `applyTimePassage` model). Used to schedule a local "care needed"
+ * notification; DOM/React-free so it is unit-testable, mirroring the
+ * {@link fullnessPercent} / {@link isHungerCaution} / {@link dayStamp} style.
+ *
+ * Behavior:
+ *   - `isSleeping` -> `null`: hunger does NOT rise while sleeping, so there is
+ *     no projected transition to schedule.
+ *   - non-finite `hungryLevel`, `lastUpdatedAt`, or `now` -> `null` (guard).
+ *   - already at/over caution (`hungryLevel >= HUNGRY_CAUTION_LEVEL`) -> `0`.
+ *   - otherwise: `levelsRemaining = HUNGRY_CAUTION_LEVEL - hungryLevel`, and the
+ *     monster has had `(now - lastUpdatedAt)` elapsing toward the next tick, so
+ *     `target = lastUpdatedAt + levelsRemaining * tickMs` and the result is
+ *     `Math.max(0, target - now)`.
+ *
+ * ANCHOR NOTE: this treats the live `hungryLevel` as the value exactly AT
+ * `lastUpdatedAt`. `applyTimePassage` only re-commits (re-anchoring
+ * `lastUpdatedAt` to `now`) when a field actually changes, so between hunger
+ * increments the anchor is the last change time and this projection can be up
+ * to one tick OPTIMISTIC (firing slightly early) until the next commit. In the
+ * app the scheduling effect re-runs on every `hungryLevel`/`lastUpdatedAt`
+ * change, so each re-commit re-derives the time and it self-corrects; a care
+ * notification arriving at most ~one minute early is acceptable for this nudge.
+ */
+export function msUntilHungerCaution(
+  { hungryLevel, lastUpdatedAt, isSleeping }: HungerProjectionInput,
+  now: number,
+  tickMs: number = HUNGER_TICK_MS,
+): number | null {
+  if (isSleeping) {
+    return null;
+  }
+  if (
+    !Number.isFinite(hungryLevel) ||
+    !Number.isFinite(lastUpdatedAt) ||
+    !Number.isFinite(now) ||
+    !Number.isFinite(tickMs)
+  ) {
+    return null;
+  }
+  if (hungryLevel >= HUNGRY_CAUTION_LEVEL) {
+    return 0;
+  }
+  const levelsRemaining = HUNGRY_CAUTION_LEVEL - hungryLevel;
+  const target = lastUpdatedAt + levelsRemaining * tickMs;
+  return Math.max(0, target - now);
+}
+
+/**
+ * Thin companion to {@link msUntilHungerCaution} returning an ABSOLUTE
+ * timestamp (`now + msUntil`) at which hunger is projected to reach caution,
+ * or `null` when there is no projected transition (sleeping / non-finite
+ * input). Convenient for scheduling. Pure and React/DOM-free.
+ */
+export function hungerCautionTargetTimestamp(
+  input: HungerProjectionInput,
+  now: number,
+  tickMs: number = HUNGER_TICK_MS,
+): number | null {
+  const ms = msUntilHungerCaution(input, now, tickMs);
+  if (ms === null) {
+    return null;
+  }
+  return now + ms;
 }
 
 // --- Affection (なつき度) gauge ---------------------------------------------

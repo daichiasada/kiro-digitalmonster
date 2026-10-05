@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  App icon for the PWA (manifest + apple-touch-icon). Hand-rolled, dependency-free.
+  An SVG keeps the asset tiny and crisp at every size, and `sizes:"any"` in the
+  manifest lets the UA scale it as needed. It is also declared
+  `purpose:"any maskable"`: the full-bleed #1b2a4a background (matching the dark
+  theme + index.html theme-color) fills the maskable safe zone, and the egg glyph
+  sits within the central ~80% so no important content is clipped when a platform
+  applies a circular / rounded mask.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="AI Monster">
+  <rect width="512" height="512" fill="#1b2a4a"/>
+  <!-- Egg body (within the central safe zone) -->
+  <ellipse cx="256" cy="276" rx="130" ry="160" fill="#f6d365"/>
+  <!-- Zig-zag shell band -->
+  <path d="M126 300 l26 -26 l26 26 l26 -26 l26 26 l26 -26 l26 26 l26 -26 l26 26 l26 -26 l26 26 v70 h-260 z" fill="#e8a33d"/>
+  <!-- Monster eyes peeking from the egg -->
+  <circle cx="222" cy="236" r="20" fill="#1b2a4a"/>
+  <circle cx="290" cy="236" r="20" fill="#1b2a4a"/>
+  <circle cx="228" cy="230" r="6" fill="#ffffff"/>
+  <circle cx="296" cy="230" r="6" fill="#ffffff"/>
+</svg>
