@@ -112,11 +112,11 @@
 <text x="455" y="172" font-size="10.5" fill="#4a4a4a">OAC (SigV4) &#183; serves static</text>
 <!-- Browser -> API Gateway -->
 <polyline points="230,370 350,370" fill="none" stroke="#4a4a4a" stroke-width="1.6" marker-end="url(#arrow)"/>
-<text x="236" y="362" font-size="10.5" fill="#4a4a4a">reads config.json &#8594; calls API</text>
+<text x="234" y="361" font-size="9.5" fill="#4a4a4a">reads config.json &#8594; calls API</text>
 
 <!-- API Gateway -> Lambdas -->
 <polyline points="422,360 500,268 540,268" fill="none" stroke="#4a4a4a" stroke-width="1.4" marker-end="url(#arrow)"/>
-<text x="430" y="300" font-size="9" fill="#4a4a4a">GET /monster/{monsterId}</text>
+<text x="426" y="291" font-size="9" fill="#4a4a4a">GET /monster/{monsterId}</text>
 <polyline points="422,368 500,358 540,358" fill="none" stroke="#4a4a4a" stroke-width="1.4" marker-end="url(#arrow)"/>
 <text x="446" y="352" font-size="9" fill="#4a4a4a">POST /monster</text>
 <polyline points="422,378 500,448 540,448" fill="none" stroke="#4a4a4a" stroke-width="1.4" marker-end="url(#arrow)"/>

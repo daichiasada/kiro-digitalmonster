@@ -58,7 +58,7 @@ Evolution conditions are a lightweight judgement based on **training count + ela
 | 成熟期 | Champion | Claude **Sonnet** | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
 | 完全体 | Ultimate | Claude **Opus** | `us.anthropic.claude-opus-4-5-20251101-v1:0` |
 
-The default model IDs are defined in `packages/shared/src/bedrock-models.ts` (`BEDROCK_MODEL_IDS`). These are Anthropic Claude **cross-region inference profile IDs** (with the `us.` prefix). Current-generation Claude models cannot be invoked on demand via bare foundation-model IDs; they must be called through an inference profile. Because IDs and availability vary by region/account, they are all overridable. See [Overriding model IDs](#-overriding-model-ids--bedrock-モデルidの上書き) for how.
+The default model IDs are defined in `packages/shared/src/bedrock-models.ts` (`BEDROCK_MODEL_IDS`). These are Anthropic Claude **cross-region inference profile IDs** (with the `us.` prefix). Current-generation Claude models cannot be invoked on demand via bare foundation-model IDs; they must be called through an inference profile. Because IDs and availability vary by region/account, they are all overridable. See [Overriding model IDs](#-overriding-model-ids) for how.
 
 ---
 
