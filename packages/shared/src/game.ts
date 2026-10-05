@@ -20,6 +20,72 @@ export const MAX_HUNGRY_LEVEL = 10;
  */
 export const HUNGRY_CAUTION_LEVEL = 7;
 
+/* --------------------------------------------------------------------------
+ * Affection (なつき度) — issue #42.
+ *
+ * Affection measures how bonded the monster is with the player. These
+ * exported constants are the SINGLE SOURCE OF TRUTH for the value domain and
+ * every increase/decrease rule; the frontend heart gauge and the backend chat
+ * tone both consume them rather than hardcoding duplicate numbers.
+ * ------------------------------------------------------------------------ */
+
+/** Lower bound on affection (0 = distant). Single source of truth for the floor. */
+export const AFFECTION_MIN = 0;
+
+/** Upper bound on affection (100 = deeply bonded). Single source of truth for the cap. */
+export const AFFECTION_MAX = 100;
+
+/**
+ * Affection a freshly created monster starts with, and the default used to
+ * backfill legacy saves that predate #42 (so an old monster loads as mildly
+ * bonded rather than at the cold floor).
+ */
+export const AFFECTION_INITIAL = 20;
+
+/** Affection gained each time the monster is fed. */
+export const AFFECTION_GAIN_FEED = 2;
+
+/** Affection gained each time the monster is trained. */
+export const AFFECTION_GAIN_TRAIN = 2;
+
+/** Affection gained each time the monster is put to sleep. */
+export const AFFECTION_GAIN_SLEEP = 1;
+
+/** Affection gained each time the monster is cleaned. */
+export const AFFECTION_GAIN_CLEAN = 2;
+
+/** Affection gained each time the monster is petted (なでる). */
+export const AFFECTION_GAIN_PET = 3;
+
+/** Affection gained each time the player chats with the monster. */
+export const AFFECTION_GAIN_CHAT = 1;
+
+/** Affection gained when the monster wins a battle. */
+export const AFFECTION_GAIN_BATTLE_WIN = 5;
+
+/**
+ * Affection lost per neglect tick in `applyTimePassage` (awake monster left
+ * untended). Applied once the monster is accumulating idle ticks.
+ */
+export const AFFECTION_DECAY_PER_NEGLECT = 1;
+
+/**
+ * EXTRA affection lost per tick while the monster is starving (hungryLevel at
+ * MAX_HUNGRY_LEVEL). This is on top of AFFECTION_DECAY_PER_NEGLECT.
+ */
+export const AFFECTION_PENALTY_STARVING = 1;
+
+/**
+ * Band boundaries used to classify affection into a tone/level (see
+ * `affectionBand`). A value < AFFECTION_COLD_THRESHOLD is "cold", a value >=
+ * AFFECTION_WARM_THRESHOLD is "warm", and anything in between is "neutral".
+ * Reused by the chat prompt tone and the UI heart-gauge label.
+ */
+export const AFFECTION_WARM_THRESHOLD = 60;
+
+/** Lower band boundary — below this the monster is classified "cold". */
+export const AFFECTION_COLD_THRESHOLD = 20;
+
 /**
  * Upper bound on a monster's display name length, in Unicode code points.
  *
@@ -94,6 +160,77 @@ function cloneMonster(monster: Monster): Monster {
 }
 
 /**
+ * Clamp an arbitrary number into the affection domain [AFFECTION_MIN,
+ * AFFECTION_MAX], returning an integer.
+ *
+ * A non-finite input (NaN / ±Infinity, e.g. a corrupted save) is treated as
+ * AFFECTION_INITIAL rather than being clamped to an edge, so bad data loads as
+ * the neutral starting value instead of 0 or 100.
+ */
+export function clampAffection(value: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return AFFECTION_INITIAL;
+  }
+  return clamp(Math.round(value), AFFECTION_MIN, AFFECTION_MAX);
+}
+
+/**
+ * Apply a delta to a current affection value, clamping the result into the
+ * valid domain. All affection increase/decrease rules go through this helper
+ * so clamping lives in exactly one place.
+ */
+export function adjustAffection(current: number, delta: number): number {
+  return clampAffection(current + delta);
+}
+
+/**
+ * Read a monster's affection, defaulting a missing/undefined value to
+ * AFFECTION_INITIAL and clamping a present one. Use this everywhere a
+ * monster's affection is read so legacy saves (no `affection` field) behave
+ * consistently with fresh monsters.
+ */
+export function affectionOf(monster: Monster): number {
+  const raw = monster.affection;
+  if (raw === undefined || raw === null) {
+    return AFFECTION_INITIAL;
+  }
+  return clampAffection(raw);
+}
+
+/**
+ * Return a NEW monster whose `affection` is `affectionOf(monster)` — i.e. the
+ * default is filled in for legacy saves and a present value is clamped. Cheap
+ * and idempotent (running it twice yields the same result). Used by the load
+ * path (FEAT-002) after `validateMonster` to normalize pre-#42 saves.
+ */
+export function normalizeAffection(monster: Monster): Monster {
+  const next = cloneMonster(monster);
+  next.affection = affectionOf(monster);
+  return next;
+}
+
+/**
+ * Classify an affection value into a tone/level band using
+ * AFFECTION_COLD_THRESHOLD / AFFECTION_WARM_THRESHOLD:
+ * - value < AFFECTION_COLD_THRESHOLD  => "cold"
+ * - value >= AFFECTION_WARM_THRESHOLD => "warm"
+ * - otherwise                          => "neutral"
+ *
+ * Reused by the chat prompt tone (backend) and the UI heart-gauge label so
+ * both agree on the band boundaries.
+ */
+export function affectionBand(value: number): "cold" | "neutral" | "warm" {
+  const v = clampAffection(value);
+  if (v < AFFECTION_COLD_THRESHOLD) {
+    return "cold";
+  }
+  if (v >= AFFECTION_WARM_THRESHOLD) {
+    return "warm";
+  }
+  return "neutral";
+}
+
+/**
  * Advance a monster's derived state by the real time elapsed since
  * lastUpdatedAt. Hunger and dirtiness rise over time; a very hungry monster
  * slowly loses HP. The monster may also evolve if it now meets the
@@ -116,6 +253,15 @@ export function applyTimePassage(monster: Monster, now: number): Monster {
         hp: next.stats.hp - ticks,
       });
     }
+    // Neglect erodes affection: an awake monster left untended loses affection
+    // every tick, and a starving one (hunger at MAX) loses an extra amount on
+    // top. adjustAffection clamps at AFFECTION_MIN so even a long offline gap
+    // can never drive affection negative. Sleeping does NOT decay (resting).
+    let affectionLoss = AFFECTION_DECAY_PER_NEGLECT * ticks;
+    if (next.hungryLevel >= MAX_HUNGRY_LEVEL) {
+      affectionLoss += AFFECTION_PENALTY_STARVING * ticks;
+    }
+    next.affection = adjustAffection(affectionOf(next), -affectionLoss);
   } else if (ticks > 0 && next.isSleeping) {
     // Sleeping recovers HP over time.
     next.stats = normalizeStats({
@@ -172,6 +318,7 @@ export function feed(monster: Monster, now: number = Date.now()): Monster {
   next.careCounters.feed += 1;
   next.hungryLevel = clamp(next.hungryLevel - 3, 0, MAX_HUNGRY_LEVEL);
   next.stats = normalizeStats({ ...next.stats, hp: next.stats.hp + 5 });
+  next.affection = adjustAffection(affectionOf(next), AFFECTION_GAIN_FEED);
   next.lastUpdatedAt = now;
   return next;
 }
@@ -189,6 +336,7 @@ export function train(monster: Monster, now: number = Date.now()): Monster {
     atk: next.stats.atk + 2,
     def: next.stats.def + 1,
   });
+  next.affection = adjustAffection(affectionOf(next), AFFECTION_GAIN_TRAIN);
   next.lastUpdatedAt = now;
 
   applyAllEvolutions(next, now);
@@ -202,6 +350,7 @@ export function sleep(monster: Monster, now: number = Date.now()): Monster {
   const next = cloneMonster(monster);
   next.careCounters.sleep += 1;
   next.isSleeping = true;
+  next.affection = adjustAffection(affectionOf(next), AFFECTION_GAIN_SLEEP);
   next.lastUpdatedAt = now;
   return next;
 }
@@ -223,6 +372,47 @@ export function clean(monster: Monster, now: number = Date.now()): Monster {
   const next = cloneMonster(monster);
   next.careCounters.clean += 1;
   next.dirty = false;
+  next.affection = adjustAffection(affectionOf(next), AFFECTION_GAIN_CLEAN);
+  next.lastUpdatedAt = now;
+  return next;
+}
+
+/**
+ * Pet / なでる the monster: raises affection by AFFECTION_GAIN_PET and bumps
+ * lastUpdatedAt. Returns a NEW monster; the input is not mutated.
+ *
+ * BOUNDARY: pet() itself is UNCAPPED and purely raises affection. The
+ * "once-per-day limit" from issue #42 is a UI concern enforced in the frontend
+ * (FEAT-002) via localStorage; it deliberately does NOT live on the Monster
+ * model, so no per-day counter is added to the type here.
+ */
+export function pet(monster: Monster, now: number = Date.now()): Monster {
+  const next = cloneMonster(monster);
+  next.affection = adjustAffection(affectionOf(next), AFFECTION_GAIN_PET);
+  next.lastUpdatedAt = now;
+  return next;
+}
+
+/**
+ * Record a battle win's affection gain: returns a NEW monster with affection
+ * raised by AFFECTION_GAIN_BATTLE_WIN. The backend battle handler (FEAT-002)
+ * calls this on a player win before persisting the updated monster. Input is
+ * not mutated.
+ */
+export function recordBattleWinAffection(monster: Monster, now: number = Date.now()): Monster {
+  const next = cloneMonster(monster);
+  next.affection = adjustAffection(affectionOf(next), AFFECTION_GAIN_BATTLE_WIN);
+  next.lastUpdatedAt = now;
+  return next;
+}
+
+/**
+ * Record a chat interaction's affection gain: returns a NEW monster with
+ * affection raised by AFFECTION_GAIN_CHAT. Input is not mutated.
+ */
+export function gainAffectionFromChat(monster: Monster, now: number = Date.now()): Monster {
+  const next = cloneMonster(monster);
+  next.affection = adjustAffection(affectionOf(next), AFFECTION_GAIN_CHAT);
   next.lastUpdatedAt = now;
   return next;
 }
@@ -272,6 +462,21 @@ export function validateMonster(value: unknown): value is Monster {
     return false;
   }
 
+  // BACKWARD COMPAT (issue #42): `affection` is OPTIONAL-with-default.
+  //
+  // Saves persisted before #42 (localStorage and DynamoDB records) have no
+  // `affection` field, so requiring it here would reject every legacy monster
+  // and lock players out of their save. Policy: ACCEPT a monster whose
+  // `affection` is absent (legacy) OR a finite number, and REJECT only when it
+  // is present but not a finite number (e.g. a string or NaN from a corrupted
+  // payload). The load path (FEAT-002) runs `normalizeAffection` after this
+  // guard to backfill AFFECTION_INITIAL for legacy saves.
+  if (m.affection !== undefined && m.affection !== null) {
+    if (typeof m.affection !== "number" || !Number.isFinite(m.affection)) {
+      return false;
+    }
+  }
+
   if (typeof stats !== "object" || stats === null) {
     return false;
   }
@@ -319,6 +524,13 @@ export interface ChatContext {
   stageId: GrowthStage;
   name: string;
   fromServer: boolean;
+  /**
+   * The monster's affection (なつき度), taken from the loaded server record
+   * via `affectionOf` when present, else defaulted to `AFFECTION_INITIAL`
+   * (client chat requests do not carry affection). The chat handler (FEAT-002)
+   * reads this together with `affectionBand` to pick the reply tone.
+   */
+  affection: number;
 }
 
 /**
@@ -335,14 +547,19 @@ export function chooseChatContext(
   request: Pick<ChatRequest, "stageId" | "monsterName">,
 ): ChatContext {
   if (loaded !== null) {
-    return { stageId: loaded.stageId, name: loaded.name, fromServer: true };
+    return {
+      stageId: loaded.stageId,
+      name: loaded.name,
+      fromServer: true,
+      affection: affectionOf(loaded),
+    };
   }
   const stageId = asGrowthStage(request.stageId) ?? "baby";
   const name =
     typeof request.monsterName === "string" && request.monsterName.trim() !== ""
       ? request.monsterName
       : "モンスター";
-  return { stageId, name, fromServer: false };
+  return { stageId, name, fromServer: false, affection: AFFECTION_INITIAL };
 }
 
 /** Fraction of maxHp a fainted monster is revived to, so it is never stranded. */
@@ -385,5 +602,6 @@ export function createMonster(id: string, name: string, now: number = Date.now()
     isSleeping: false,
     dirty: false,
     hungryLevel: 0,
+    affection: AFFECTION_INITIAL,
   };
 }
