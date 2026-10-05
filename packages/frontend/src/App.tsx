@@ -212,10 +212,10 @@ export function App() {
               pending={game.chatPending}
               onSend={game.sendChat}
             />
-            <StatsPanel monster={game.monster} />
           </div>
 
           <div className="controls-area">
+            <StatsPanel monster={game.monster} />
             <CarePanel
               monster={game.monster}
               busy={game.busy}

@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Environment setup and baseline verification. Create the feature branch and confirm the build and tests are green before any changes so the rebalance can be verified against a known-good baseline.",
+  "status": "completed",
+  "steps": [
+    "From /projects/sandbox/kiro-digitalmonster on branch main (clean, synced with origin/main), create and check out a new branch: `git checkout -b feat/wide-layout-balance`.",
+    "Export the toolchain PATH: `export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"` (node v22.23.3, npm 11.4.2 expected). Dependencies are already installed; if `npm run build` complains about missing modules, run `npm install` at the root first.",
+    "Run `npm run build` at the repo root and confirm it completes green (shared -> backend -> frontend -> infra).",
+    "Run `npm test` at the repo root and confirm shared tests pass (baseline 47/47).",
+    "Run `cd packages/frontend && npm test` and confirm the ui-helpers tests pass (baseline 55/55), then return to the repo root."
+  ],
+  "acceptance_criteria": [
+    "Branch feat/wide-layout-balance exists and is checked out, created from main.",
+    "`npm run build` at root completes without errors.",
+    "`npm test` at root reports shared 47/47 passing.",
+    "`cd packages/frontend && npm test` reports 55/55 passing."
+  ],
+  "verification": [
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm run build",
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm test",
+    "cd packages/frontend && export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm test"
+  ],
+  "blocked_reason": null,
+  "findings": "Baseline established on branch feat/wide-layout-balance (created from main at commit 900639f, clean/synced with origin/main). node v22.23.3, npm 11.4.2 (PATH export required). Dependencies already installed; no npm install needed. `npm run build` at root GREEN: shared(tsc) -> backend(tsc) -> frontend(tsc && vite build: 53 modules, dist/index.html 0.48kB, index CSS 14.07kB, index JS 180.21kB, built in 5.43s) -> infra(tsc), exit 0. `npm test` at root: shared 47/47 pass, 0 fail (1..47). `cd packages/frontend && npm test`: ui-helpers (src/game-ui.test.ts) 55/55 pass, 0 fail (1..55). All baselines match the plan exactly (shared 47/47, frontend 55/55). No source files changed; no commit needed for this setup/verification feature."
+}

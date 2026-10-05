@@ -1,0 +1,7 @@
+{
+  "task_id": "task-wide-layout-balance",
+  "task_description": "GitHub issue #30: Rebalance the wide-screen (>=760px) two-column layout so the right column is no longer short with a large empty bottom-right gap (caused by #19 moving the chat UI into the left column). Move StatsPanel into the right column (left = sprite + chat, right = stats + care + battle) and preserve the #19 single-column (<760px) stacking order sprite -> chat -> stats -> care -> battle. Layout/CSS + JSX element placement only; no logic/i18n/dependency changes. Verify wide + narrow with Playwright. Frontend-only (orchestrator redeploys).",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
