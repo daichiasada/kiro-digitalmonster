@@ -1,7 +1,14 @@
 {
   "task_id": "task-wide-layout-balance",
   "task_description": "GitHub issue #30: Rebalance the wide-screen (>=760px) two-column layout so the right column is no longer short with a large empty bottom-right gap (caused by #19 moving the chat UI into the left column). Move StatsPanel into the right column (left = sprite + chat, right = stats + care + battle) and preserve the #19 single-column (<760px) stacking order sprite -> chat -> stats -> care -> battle. Layout/CSS + JSX element placement only; no logic/i18n/dependency changes. Verify wide + narrow with Playwright. Frontend-only (orchestrator redeploys).",
-  "status": "in_progress",
+  "status": "completed",
   "feature_order": ["FEAT-001", "FEAT-002"],
-  "blocked_reason": null
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "Root npm run build green. Shared tests 47/47, frontend ui-helpers 55/55 - both unchanged from baseline (pure layout change, as intended; no test code was added or needed). Playwright screenshots (30-wide-1280.png, 30-narrow-420.png) confirm: wide = two balanced columns with StatsPanel moved to the right column filling the former empty bottom-right gap, no overflow; narrow = single column in the preserved #19 order sprite->chat->stats->care->battle. test_quality: no new tests expected or added for a CSS/JSX-placement change; existing 55 helper tests remain green. No Dockerfile relevant for this frontend change."
+  }
 }
