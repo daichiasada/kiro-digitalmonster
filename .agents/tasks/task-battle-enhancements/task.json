@@ -1,0 +1,7 @@
+{
+  "task_id": "task-battle-enhancements",
+  "task_description": "Implement issue #41 (バトルの強化): difficulty selection (弱い/普通/強い) scaling the enemy and the win reward; deterministic enemy generation + reward calc as shared pure functions (seed-param, unit-tested per difficulty branch + determinism); enemy preview before the fight generated client-side via the same shared generateEnemy so preview==actual fight; a persisted win/loss/draw + current win-streak record on the Monster with backward-compatible defaulting (mirroring #42 affection); a low-HP warning/confirm before fighting; all consistent with the existing #9 battle animation (log format + playerStartHp recovery) and with JA/EN i18n parity, no new runtime deps, prefers-reduced-motion respected.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null
+}

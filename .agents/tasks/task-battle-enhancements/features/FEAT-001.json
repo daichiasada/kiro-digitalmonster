@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Establish a green baseline before any changes: install deps if needed, run the existing build and both test suites, and create the working branch. This confirms the environment is sound so later features can trust that any failure they see is their own.",
+  "status": "completed",
+  "steps": [
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" so node/npm resolve.",
+    "From repo root /projects/sandbox/kiro-digitalmonster, if node_modules is missing run `npm install`.",
+    "Create and switch to a feature branch off main: `git checkout -b feat/battle-enhancements` (do NOT touch backup/previous-main branches).",
+    "Run `npm test` (shared) and confirm 75 tests pass.",
+    "Run `npm run test -w @ddm/frontend` and confirm 79 tests pass.",
+    "Run `npm run build` from root and confirm all packages (shared, backend, frontend, infra) build with no type errors."
+  ],
+  "acceptance_criteria": [
+    "Branch feat/battle-enhancements exists and is checked out.",
+    "`npm test` reports 75 passing, 0 failing.",
+    "`npm run test -w @ddm/frontend` reports 79 passing, 0 failing.",
+    "`npm run build` completes successfully."
+  ],
+  "verification": [
+    "npm test",
+    "npm run test -w @ddm/frontend",
+    "npm run build"
+  ],
+  "blocked_reason": null,
+  "findings": "Baseline green on branch feat/battle-enhancements (created off main @ a47e331). node v22.23.3 / npm 11.4.2 after PATH export; node_modules already present (no install needed). `npm test` (shared): 75 pass, 0 fail. `npm run test -w @ddm/frontend` (ui-helpers): 79 pass, 0 fail. `npm run build`: all four packages built with no type errors (shared tsc, backend tsc, frontend tsc && vite build -> 55 modules, infra tsc). No source changes made in this feature. Note: this task dir (.agents/tasks/task-battle-enhancements) was untracked at session start; committing it as the FEAT-001 chore baseline."
+}
