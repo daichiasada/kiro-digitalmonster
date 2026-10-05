@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   MAX_CHAT_MESSAGE_CHARS,
+  MAX_CHAT_SCAN,
   MAX_CHAT_TURNS,
   toAnthropicMessages,
   trimChatHistory,
@@ -52,6 +53,32 @@ test("malformed entries are dropped: non-object, bad role, empty/whitespace/non-
     { role: "player", text: "keep me" },
     { role: "monster", text: "also kept" },
   ]);
+});
+
+test("MAX_CHAT_SCAN is well above MAX_CHAT_TURNS so the tail guard never changes realistic results", () => {
+  assert.ok(MAX_CHAT_SCAN > MAX_CHAT_TURNS);
+});
+
+test("tail-scan guard: result is UNCHANGED vs. scanning the whole array for a huge input", () => {
+  // Far more than MAX_CHAT_SCAN turns of fully-valid alternating history. Only
+  // the bounded tail is inspected, but because we keep only the most recent
+  // MAX_CHAT_TURNS the output is identical to walking the entire array.
+  const count = MAX_CHAT_SCAN * 3; // 600 turns, oldest-first.
+  const history = alternating(count);
+  const result = trimChatHistory(history);
+  assert.equal(result.length, MAX_CHAT_TURNS);
+  // The kept window is still the LAST MAX_CHAT_TURNS of the full array.
+  assert.equal(result[0].text, `t${count - MAX_CHAT_TURNS}`);
+  assert.equal(result[result.length - 1].text, `t${count - 1}`);
+});
+
+test("tail-scan guard: a normal (small) history is unaffected", () => {
+  const history: ChatTurn[] = [
+    { role: "player", text: "hi" },
+    { role: "monster", text: "hello" },
+    { role: "player", text: "bye" },
+  ];
+  assert.deepEqual(trimChatHistory(history), history);
 });
 
 test("non-array / null / undefined input returns []", () => {

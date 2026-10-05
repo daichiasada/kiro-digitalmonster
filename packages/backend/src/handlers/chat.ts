@@ -5,6 +5,7 @@ import {
   affectionBand,
   chooseChatContext,
   getStage,
+  MAX_CHAT_MESSAGE_CHARS,
   resolveModelId,
   toAnthropicMessages,
   trimChatHistory,
@@ -213,11 +214,20 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   // (identical to the pre-#37 behavior).
   const history = trimChatHistory(body.history);
 
+  // Clamp the new user message server-side to the same per-turn ceiling that
+  // history turns receive (issue #37 review follow-up: finding 2). The
+  // empty/whitespace 400 above already rejects blank input; here we only bound
+  // the UPPER size so a single request can't ship an unbounded message past the
+  // per-turn limit. This matches pre-#37 behavior for normal-length messages
+  // (which are well under MAX_CHAT_MESSAGE_CHARS) and satisfies the
+  // "input-size bound" acceptance criterion for the live turn too.
+  const message = body.message.slice(0, MAX_CHAT_MESSAGE_CHARS);
+
   const requestPayload = {
     anthropic_version: "bedrock-2023-05-31",
     max_tokens: MAX_TOKENS,
     system: buildSystemPrompt(context, lang),
-    messages: toAnthropicMessages(history, body.message),
+    messages: toAnthropicMessages(history, message),
   };
 
   try {

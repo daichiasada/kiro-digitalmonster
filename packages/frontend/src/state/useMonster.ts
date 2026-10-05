@@ -505,6 +505,14 @@ export function useMonster(): UseMonsterState {
       // the client sends at most N turns; the server STILL re-validates and
       // truncates it (issue #37). Snapshot the log via the functional setState
       // so we never read a stale closure value.
+      //
+      // WARNING (issue #37 review follow-up: finding 3): this snapshot of
+      // `history` and `afterPlayer` MUST stay BEFORE the `await api.chat(...)`
+      // below. It is correct only because React runs the functional setState
+      // updater SYNCHRONOUSLY inside this event handler, so both locals are
+      // populated before we await. Do NOT move this block (or the api.chat
+      // call) such that the snapshot runs behind the await — a later async
+      // tick would read the stale initial `[]` values and send empty history.
       let history: ChatTurn[] = [];
       let afterPlayer: ChatLine[] = [];
       setChatLog((log) => {

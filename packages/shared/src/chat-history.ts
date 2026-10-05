@@ -28,6 +28,17 @@ export const MAX_CHAT_TURNS = 10;
  */
 export const MAX_CHAT_MESSAGE_CHARS = 2000;
 
+/**
+ * Upper bound on how many of the MOST RECENT raw entries {@link trimChatHistory}
+ * will inspect (issue #37 review follow-up: finding 1). Only the last
+ * MAX_CHAT_SCAN elements of an untrusted array are validated before truncation,
+ * so a pathologically large `history` is not fully walked server-side. This is
+ * set generously above {@link MAX_CHAT_TURNS} so that even if many entries in
+ * the tail are malformed (and dropped), enough valid turns remain to fill the
+ * MAX_CHAT_TURNS window — i.e. the result is UNCHANGED for any realistic input.
+ */
+export const MAX_CHAT_SCAN = 200;
+
 /** Narrow an unknown value to a plausible chat-turn-shaped object. */
 function isTurnLike(value: unknown): value is { role: unknown; text: unknown } {
   return typeof value === "object" && value !== null;
@@ -47,6 +58,11 @@ function isTurnLike(value: unknown): value is { role: unknown; text: unknown } {
  *  3. Each surviving entry's text is first trimmed, then clamped (sliced) to
  *     {@link MAX_CHAT_MESSAGE_CHARS} characters.
  *  4. Only the LAST {@link MAX_CHAT_TURNS} entries (the most recent) are kept.
+ *     As an input-size guard, only a bounded TAIL of the raw array is inspected
+ *     (see {@link MAX_CHAT_SCAN}) so a pathologically large array is not fully
+ *     walked server-side before truncation; this does not change the result for
+ *     any realistic input (the scanned tail always covers more than enough
+ *     candidate turns to fill MAX_CHAT_TURNS after malformed entries are dropped).
  *  5. For Anthropic alternation suitability, a leading `'monster'` turn is then
  *     dropped so the sequence can start with a `'player'` turn (the new user
  *     message is appended by the server AFTER this history). A history that is
@@ -57,8 +73,15 @@ export function trimChatHistory(history: unknown): ChatTurn[] {
     return [];
   }
 
+  // Input-size guard: only inspect a bounded TAIL of the raw array. We keep the
+  // most recent MAX_CHAT_TURNS anyway, so scanning only the last MAX_CHAT_SCAN
+  // raw entries cannot change the result for any realistic input while bounding
+  // the work done on a pathologically large array.
+  const scanStart = history.length > MAX_CHAT_SCAN ? history.length - MAX_CHAT_SCAN : 0;
+
   const cleaned: ChatTurn[] = [];
-  for (const entry of history) {
+  for (let i = scanStart; i < history.length; i += 1) {
+    const entry = history[i];
     if (!isTurnLike(entry)) {
       continue;
     }
