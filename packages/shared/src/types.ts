@@ -17,6 +17,30 @@ export type GrowthStage = "baby" | "rookie" | "champion" | "ultimate";
 /** Which Bedrock model tier a stage uses ("none" means the monster cannot chat). */
 export type BedrockModelKey = "none" | "haiku" | "sonnet" | "opus";
 
+/**
+ * Battle difficulty the player chooses before challenging an enemy (issue #41).
+ * Maps to the JA labels 弱い (easy) / 普通 (normal) / 強い (hard). A harder enemy
+ * is stronger but yields a bigger reward on a win (強い相手ほど上昇が大きい).
+ */
+export type Difficulty = "easy" | "normal" | "hard";
+
+/**
+ * Cumulative battle record for a monster (issue #41).
+ *
+ * `streak` is the CURRENT consecutive-win streak: it increments on a win and
+ * resets to 0 on a loss or a draw.
+ */
+export interface BattleRecord {
+  /** Total battles won. */
+  wins: number;
+  /** Total battles lost. */
+  losses: number;
+  /** Total battles drawn. */
+  draws: number;
+  /** Current consecutive-win streak (0 after a loss or draw). */
+  streak: number;
+}
+
 /** Combat / care statistics. Deliberately minimal: HP, ATK, DEF only. */
 export interface Stats {
   hp: number;
@@ -68,6 +92,13 @@ export interface Monster {
    * monster whose `affection` is simply absent (see game.ts for the policy).
    */
   affection?: number;
+  /**
+   * Cumulative battle record (issue #41). OPTIONAL on legacy pre-#41 saves;
+   * defaulted to an all-zeros record via `battleRecordOf` / `normalizeBattleRecord`
+   * on load, and `validateMonster` accepts a monster whose `battleRecord` is
+   * simply absent (mirrors how #42 handled the optional `affection` field).
+   */
+  battleRecord?: BattleRecord;
 }
 
 /* --------------------------------------------------------------------------
@@ -127,6 +158,15 @@ export interface BattleRequest {
   enemy: Monster;
   /** Optional seed for deterministic simulation (mostly for tests). */
   seed?: number;
+  /**
+   * Id of the monster to battle with (issue #41). The new POST body carries
+   * `{ monsterId, difficulty, seed }`; the server loads the real monster and
+   * generates the enemy via the shared `generateEnemy`. Optional for back-compat
+   * with the legacy `{ player, enemy }` shape.
+   */
+  monsterId?: string;
+  /** Chosen difficulty (issue #41). Defaults server-side when absent. */
+  difficulty?: Difficulty;
 }
 
 export type BattleWinner = "player" | "enemy" | "draw";

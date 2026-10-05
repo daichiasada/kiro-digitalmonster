@@ -477,6 +477,32 @@ export function validateMonster(value: unknown): value is Monster {
     }
   }
 
+  // BACKWARD COMPAT (issue #41): `battleRecord` is OPTIONAL-with-default,
+  // following the exact same precedent as `affection` (#42) above. Saves
+  // persisted before #41 have no `battleRecord` field, so requiring it would
+  // reject every legacy monster. Policy: ACCEPT a monster whose `battleRecord`
+  // is absent (legacy) OR an object whose present wins/losses/draws/streak
+  // members are finite numbers, and REJECT only when it is present-but-malformed
+  // (not an object, or a member that is a non-finite number / wrong type). The
+  // load path runs `normalizeBattleRecord` after this guard to backfill a
+  // zeroed record for legacy saves.
+  if (m.battleRecord !== undefined && m.battleRecord !== null) {
+    if (typeof m.battleRecord !== "object") {
+      return false;
+    }
+    const rec = m.battleRecord as Record<string, unknown>;
+    const member = (value: unknown): boolean =>
+      value === undefined || (typeof value === "number" && Number.isFinite(value));
+    if (
+      !member(rec.wins) ||
+      !member(rec.losses) ||
+      !member(rec.draws) ||
+      !member(rec.streak)
+    ) {
+      return false;
+    }
+  }
+
   if (typeof stats !== "object" || stats === null) {
     return false;
   }
@@ -603,5 +629,9 @@ export function createMonster(id: string, name: string, now: number = Date.now()
     dirty: false,
     hungryLevel: 0,
     affection: AFFECTION_INITIAL,
+    // Fresh monsters start with a zeroed battle record (issue #41). Defined
+    // inline (not imported from battle-enhancements.ts) to avoid a circular
+    // import, since battle-enhancements.ts imports from this module.
+    battleRecord: { wins: 0, losses: 0, draws: 0, streak: 0 },
   };
 }
