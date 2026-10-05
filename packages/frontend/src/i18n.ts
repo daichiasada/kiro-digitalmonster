@@ -210,7 +210,7 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   "stats.training": "Training ",
   "stats.elapsed": "Elapsed ",
   // Evolution branch hint + variant labels (issue #38)
-  "stats.evolveHint": "Current care is steering toward a {form}-type evolution",
+  "stats.evolveHint": "Current care is steering toward the {form}-type evolution",
   "form.attack": "Attack",
   "form.defense": "Defense",
   "form.mischief": "Mischief",

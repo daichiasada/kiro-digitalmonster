@@ -957,7 +957,7 @@ test("StatsPanel hint is derived from predictedNextForm for a training-heavy bab
   assert.equal(composeEvolveHint(monster, now, "ja"), "今の育て方だと攻撃型に進化しそう");
   assert.equal(
     composeEvolveHint(monster, now, "en"),
-    "Current care is steering toward a Attack-type evolution",
+    "Current care is steering toward the Attack-type evolution",
   );
 });
 
@@ -974,7 +974,7 @@ test("StatsPanel hint reflects a calm, affectionate baby (defense)", () => {
   assert.equal(composeEvolveHint(monster, now, "ja"), "今の育て方だと防御型に進化しそう");
   assert.equal(
     composeEvolveHint(monster, now, "en"),
-    "Current care is steering toward a Defense-type evolution",
+    "Current care is steering toward the Defense-type evolution",
   );
 });
 
@@ -987,7 +987,7 @@ test("StatsPanel hint reflects a neglected baby (mischief)", () => {
   assert.equal(composeEvolveHint(monster, now, "ja"), "今の育て方だとやんちゃ型に進化しそう");
   assert.equal(
     composeEvolveHint(monster, now, "en"),
-    "Current care is steering toward a Mischief-type evolution",
+    "Current care is steering toward the Mischief-type evolution",
   );
 });
 

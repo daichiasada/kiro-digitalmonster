@@ -32,7 +32,7 @@ export type BedrockModelKey = "none" | "haiku" | "sonnet" | "opus";
  * - "mischief"  : やんちゃ型 — raised somewhat neglected (hungry, dirty, distant).
  *
  * The variant a monster takes at each non-baby evolution is chosen by the
- * pure, deterministic `chooseEvolutionForm` function in game.ts.
+ * pure, deterministic `chooseEvolutionForm` function in evolution.ts.
  */
 export type MonsterForm = "base" | "attack" | "defense" | "mischief";
 
