@@ -1,0 +1,14 @@
+{
+  "task_id": "task-affection-param",
+  "task_description": "Issue #42: add an affection (なつき度) parameter to the AI Monster game. Define value domain + increase/decrease rules in @ddm/shared with unit tests (raised by care actions, chatting, battle wins; lowered by neglect/starving). Integrate into createMonster/feed/train/sleep/clean/applyTimePassage and battle-win. Add a pet/なでる sprite-click action with a per-day cap. Affection influences chat tone (JA+EN Bedrock system prompt). Accessible heart gauge in StatsPanel. Backward compatible: legacy saves with no affection default to the initial value and are not rejected by validateMonster. JA/EN parity, no new runtime deps, respect prefers-reduced-motion. Backend Lambda (chat.ts/battle.ts + bundled @ddm/shared) and frontend both change => both need redeploy.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build clean across all packages. Shared node:test 75/75 pass (baseline 52 + 23 new affection tests). Frontend game-ui.test.ts 76/76 pass (baseline 63 + 13 new). New shared tests assert exact per-action affection deltas, both-end clamping, neglect/starving decay, affectionBand boundaries, and validateMonster legacy-save acceptance; frontend tests cover affectionPercent, affectionLevelLabel (ja+en), and the pet daily-cap pure logic. These would fail if the implementation were reverted. No Dockerfile build run (not part of this repo's verification; frontend tsc+vite build covered by npm run build). No new runtime dependencies; neutral JA chat prompt confirmed byte-identical."
+  }
+}

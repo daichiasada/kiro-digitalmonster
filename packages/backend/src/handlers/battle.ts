@@ -1,6 +1,6 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import type { BattleRequest, BattleResult, Monster } from "@ddm/shared";
-import { getStage, reviveMonster, simulateBattle } from "@ddm/shared";
+import { getStage, recordBattleWinAffection, reviveMonster, simulateBattle } from "@ddm/shared";
 import { getMonster as loadMonster, putMonster } from "../dynamo.ts";
 import { error, handlePreflight, ok, parseBody } from "../lib/http.ts";
 
@@ -104,6 +104,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
         def: updated.stats.def + 1,
       },
     };
+    // A win also deepens the bond: raise affection by AFFECTION_GAIN_BATTLE_WIN
+    // via the shared helper (returns a NEW monster, clamped) before persisting.
+    updated = recordBattleWinAffection(updated, now);
   }
 
   updated = clampStats(updated);

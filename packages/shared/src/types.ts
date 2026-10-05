@@ -54,6 +54,20 @@ export interface Monster {
   dirty: boolean;
   /** 0 = full, higher = hungrier. Used only to flavour time passage. */
   hungryLevel: number;
+  /**
+   * Affection (なつき度): how deeply bonded the monster is with the player.
+   *
+   * Range is 0..100 (0 = distant, 100 = deeply bonded). Raised by care
+   * actions (feed/train/sleep/clean), chatting, the pet/なでる action, and
+   * battle wins; lowered by neglect and especially by being left starving
+   * (issue #42).
+   *
+   * OPTIONAL on legacy saves: monsters persisted before #42 have no
+   * `affection` field. On load it is defaulted to `AFFECTION_INITIAL` via
+   * `normalizeAffection` / `affectionOf`, and `validateMonster` accepts a
+   * monster whose `affection` is simply absent (see game.ts for the policy).
+   */
+  affection?: number;
 }
 
 /* --------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import type { ChatContext, ChatRequest, ChatResponse, Lang, Monster } from "@ddm/shared";
-import { chooseChatContext, getStage, resolveModelId } from "@ddm/shared";
+import { AFFECTION_INITIAL, affectionBand, chooseChatContext, getStage, resolveModelId } from "@ddm/shared";
 import {
   BedrockRuntimeClient,
   InvokeModelCommand,
@@ -32,24 +32,62 @@ const MAX_TOKENS = 300;
  */
 function buildSystemPrompt(context: ChatContext, lang: Lang): string {
   const stage = getStage(context.stageId);
+  // Affection drives TONE. chooseChatContext defaults this to AFFECTION_INITIAL
+  // (FEAT-001); guard here too for safety. The neutral band appends NOTHING so
+  // the default prompt stays byte-identical to the pre-#42 behavior.
+  //
+  // INTENTIONAL (issue #42 review follow-up): the tone reflects the affection
+  // the monster had ENTERING this turn, not including the +1 gain that this
+  // same chat earns. The gain is applied + persisted by the client AFTER a
+  // successful reply (useMonster.sendChat → gainAffectionFromChat), so the
+  // NEXT turn's prompt (which reloads the persisted monster) picks it up.
+  // We deliberately do NOT persist the gain here: keeping the client as the
+  // SINGLE writer of the chat gain keeps the write path simple and avoids a
+  // double-count (client + server) of the same interaction. The practical
+  // impact is at most a one-turn lag in tone, and only in the rare case where
+  // this chat's +1 (AFFECTION_GAIN_CHAT) is the delta that crosses a band
+  // boundary (a cosmetic edge that self-corrects on the following turn).
+  const affection = Number.isFinite(context.affection) ? context.affection : AFFECTION_INITIAL;
+  const band = affectionBand(affection);
+
   if (lang === "en") {
-    return [
+    const lines = [
       `You are an AI monster named "${context.name}".`,
       `Your current growth stage is "${stage.labelEn}".`,
       "Chat briefly and in a friendly way with your owner (the player).",
       "Express a monster-like, innocent, and energetic personality in your voice.",
       `The higher the growth stage, the smarter and calmer you speak (currently ${stage.labelEn}).`,
       "Reply in English, in about 2-3 short sentences.",
-    ].join("\n");
+    ];
+    if (band === "warm") {
+      lines.push(
+        "You are very attached to this owner, so speak in a warmer, more familiar, affectionate and slightly spoiled tone.",
+      );
+    } else if (band === "cold") {
+      lines.push(
+        "You are not very attached to this owner yet, so speak in a slightly distant, reserved tone.",
+      );
+    }
+    return lines.join("\n");
   }
-  return [
+  const lines = [
     `あなたは「${context.name}」という名前のAIモンスターです。`,
     `現在の成長段階は「${stage.labelJa}」です。`,
     "飼い主（プレイヤー）と親しげに短く会話してください。",
     "一人称や口調はモンスターらしく、無邪気で元気な性格を表現してください。",
     `成長段階が上がるほど賢く、落ち着いた話し方になります（現在は${stage.labelJa}）。`,
     "返答は日本語で、2〜3文程度の短いものにしてください。",
-  ].join("\n");
+  ];
+  if (band === "warm") {
+    lines.push(
+      "飼い主にとても懐いているので、より親しげでくだけた、甘えん坊な口調で話してください。",
+    );
+  } else if (band === "cold") {
+    lines.push(
+      "まだあまり懐いていないので、よそよそしく少し距離のある口調で話してください。",
+    );
+  }
+  return lines.join("\n");
 }
 
 /** The shape of the Anthropic Messages API response body from Bedrock. */

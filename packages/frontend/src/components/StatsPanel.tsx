@@ -1,8 +1,10 @@
 import type { Ref } from "react";
 import type { Monster } from "@ddm/shared";
-import { MAX_HUNGRY_LEVEL, evolutionProgress } from "@ddm/shared";
+import { AFFECTION_MAX, MAX_HUNGRY_LEVEL, affectionOf, evolutionProgress } from "@ddm/shared";
 import { useI18n } from "../i18n.ts";
 import {
+  affectionLevelLabel,
+  affectionPercent,
   evolutionReqAriaLabel,
   formatMinutes,
   fullnessPercent,
@@ -32,6 +34,10 @@ export function StatsPanel({ monster, onRename, renameButtonRef }: StatsPanelPro
   const hp = hpPercent(stats.hp, stats.maxHp);
   const fullness = fullnessPercent(monster.hungryLevel);
   const hungerCaution = isHungerCaution(monster.hungryLevel);
+  // Read affection via the shared helper so legacy state (no field) is safe.
+  const affection = affectionOf(monster);
+  const affectionPct = affectionPercent(affection);
+  const affectionLabel = affectionLevelLabel(affection, lang);
   const atk = statBarPercent(stats.atk, ATK_REFERENCE);
   const def = statBarPercent(stats.def, DEF_REFERENCE);
 
@@ -85,6 +91,24 @@ export function StatsPanel({ monster, onRename, renameButtonRef }: StatsPanelPro
         </div>
         <span className="stat-value">
           {fullness}% ({monster.hungryLevel}/{MAX_HUNGRY_LEVEL})
+        </span>
+      </div>
+
+      {/* Affection (なつき度) gauge. Accessible, NOT color-only: the row
+          aria-label combines the gauge name, the percentage/value, AND the
+          band label, mirroring the fullness gauge's aria-label pattern. */}
+      <div
+        className="stat-row"
+        aria-label={`${t("stats.affection")}: ${affectionPct}% (${affection}/${AFFECTION_MAX}) ${affectionLabel}`}
+      >
+        <span className="stat-label">
+          <span aria-hidden="true">❤️</span> {t("stats.affection")}
+        </span>
+        <div className="bar">
+          <div className="bar-fill affection" style={{ width: `${affectionPct}%` }} />
+        </div>
+        <span className="stat-value">
+          {affectionPct}% ({affection}/{AFFECTION_MAX}) {affectionLabel}
         </span>
       </div>
 

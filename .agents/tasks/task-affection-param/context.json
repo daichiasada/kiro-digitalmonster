@@ -1,0 +1,31 @@
+{
+  "project_type": "TypeScript monorepo: a Digimon-style monster raising web game (AIモンスター / AI Monster). packages/shared (pure domain logic), packages/backend (AWS Lambda chat/battle/save handlers bundling @ddm/shared), packages/frontend (React + Vite, JA/EN i18n), infra (CDK).",
+  "language": "TypeScript",
+  "build_system": "npm workspaces. Root `npm run build` builds @ddm/shared, @ddm/backend, @ddm/frontend, infra in order. Node v22 required; if node/npm missing from PATH run: export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\".",
+  "test_framework": "node:test with --experimental-strip-types (no transpile; strips types but NOT JSX). Shared tests in packages/shared/src/__tests__/*.ts. Frontend pure-helper tests in packages/frontend/src/game-ui.test.ts (imports ui-helpers.ts + i18n.ts, which are React/DOM-free by design).",
+  "build_command": "cd /projects/sandbox/kiro-digitalmonster && export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm run build",
+  "test_command": "cd /projects/sandbox/kiro-digitalmonster && export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm test   (shared, baseline 52 passing after #36). Frontend helper tests: (cd packages/frontend && node --experimental-strip-types --test src/game-ui.test.ts) baseline 63 passing after #36.",
+  "verification_instructions": "1) npm run build (all packages compile, incl. tsc for frontend). 2) npm test (shared node:test). 3) frontend helper test command above. All must stay green and counts must only go UP from baselines (52 shared / 63 frontend).",
+  "snapshot_or_generated_files": "None checked in. Build emits dist/ (gitignored). No snapshot fixtures.",
+  "setup_instructions": "Dependencies already installed (node_modules present). If a clean checkout: npm install at root. Then build/test commands above. Network OPEN_INTERNET.",
+  "environment_constraints": "Network OPEN_INTERNET. Node must be on PATH via the export above. node:test strips TS types but does NOT transform JSX, which is why pure logic lives in ui-helpers.ts / i18n.ts (JSX-free) and is tested there; keep new testable pure helpers in those files, not in .tsx components.",
+  "contribution_requirements": "No new runtime dependencies. JA is source-of-truth for i18n; EN is a typed Record<MessageKey,string> so every new key MUST be added to BOTH ja+en or the frontend tsc build fails. Keep JA output byte-identical for EXISTING keys. Respect prefers-reduced-motion for any new animation. All shared game functions return a NEW monster (never mutate input). Branch off main; do NOT push or open PRs (orchestrator handles that). Do NOT touch backup/previous-main branches.",
+  "key_patterns": "Monster model in packages/shared/src/types.ts; game rules in game.ts (createMonster, feed/train/sleep/wake/clean each return a NEW monster via cloneMonster; applyTimePassage(monster, now) advances hunger/dirty/HP/evolution; validateMonster is a structural type guard used server-side before persisting; exports MAX_HUNGRY_LEVEL=10, HUNGRY_CAUTION_LEVEL=7, MONSTER_NAME_* ). Existing shared constants pattern: exported `const` with a doc comment explaining it's the single source of truth (see MAX_HUNGRY_LEVEL). Battle result applied in packages/backend/src/handlers/battle.ts (loads monster, simulates, on winner==='player' bumps atk/def, persists updated monster) — affection win bump goes here. Chat prompt in packages/backend/src/handlers/chat.ts buildSystemPrompt(context, lang); ChatContext from chooseChatContext in game.ts — to make affection influence tone, carry an affection number into the context/prompt and default it when absent. Frontend state in packages/frontend/src/state/useMonster.ts (optimistic commit -> saveMonster -> commit; runCareAction wraps feed/train/clean/sleep; TIME_TICK interval re-applies applyTimePassage; also owns chat/battle/rename/reset). Sprite click target is App.tsx `.sprite-wrap`. Pure UI helpers + their tests: ui-helpers.ts / game-ui.test.ts. Gauge accessibility pattern to COPY: the #29 fullness gauge in StatsPanel.tsx (icon + text value + aria-label, not color-only) and the fullnessPercent/isHungerCaution helpers.",
+  "relevant_files": [
+    "packages/shared/src/types.ts (add affection field to Monster)",
+    "packages/shared/src/game.ts (affection constants + pure functions, integrate into createMonster/feed/train/sleep/clean/applyTimePassage, default in validateMonster + a normalize helper, carry affection into ChatContext)",
+    "packages/shared/src/index.ts (re-exports all of game.ts via export *; new exports flow automatically)",
+    "packages/shared/src/__tests__/game.test.ts (pattern for shared unit tests)",
+    "packages/shared/src/__tests__/review-fixes.test.ts (another shared test file; a new affection.test.ts can live alongside)",
+    "packages/backend/src/handlers/chat.ts (buildSystemPrompt + chooseChatContext usage; pass affection into prompt, JA+EN warm-tone variants, keep baby-no-chat)",
+    "packages/backend/src/handlers/battle.ts (on player win, raise affection via shared helper before persisting)",
+    "packages/frontend/src/state/useMonster.ts (pet action with daily cap; bump affection reaches via shared feed/train/etc.; chat affection bump; expose pet() + petsRemaining)",
+    "packages/frontend/src/App.tsx (make .sprite-wrap clickable/keyboard-activatable to pet; heart-pop FX reusing care-fx style)",
+    "packages/frontend/src/components/StatsPanel.tsx (accessible heart gauge near fullness gauge)",
+    "packages/frontend/src/ui-helpers.ts (pure helpers: affectionPercent, affectionLevelLabel, daily-pet-cap helpers; heart FX descriptor)",
+    "packages/frontend/src/game-ui.test.ts (tests for the new pure helpers)",
+    "packages/frontend/src/i18n.ts (new ja+en keys for the heart gauge + pet action)",
+    "packages/frontend/src/styles.css (heart gauge styling + heart-pop FX, with prefers-reduced-motion handling)"
+  ],
+  "directory_structure": "packages/shared/src: types.ts, game.ts, battle.ts, stages.ts, bedrock-models.ts, index.ts, __tests__/. packages/backend/src: handlers/{chat,battle,...}.ts, dynamo.ts, config.ts, lib/http.ts. packages/frontend/src: App.tsx, state/useMonster.ts, components/*.tsx, ui-helpers.ts, i18n.ts, game-ui.test.ts, styles.css, assets/."
+}

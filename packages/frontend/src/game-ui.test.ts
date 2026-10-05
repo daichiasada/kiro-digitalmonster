@@ -12,6 +12,9 @@ import assert from "node:assert/strict";
 import {
   BABY_SPEECH_TEXT,
   BABY_SPEECH_TEXT_EN,
+  PET_DAILY_CAP,
+  affectionLevelLabel,
+  affectionPercent,
   babySpeechText,
   battleLogJa,
   battleLogLine,
@@ -19,7 +22,10 @@ import {
   battleLogList,
   busyStatusLabel,
   canChat,
+  canPet,
+  canPetNow,
   careEffect,
+  dayStamp,
   evolutionReqAriaLabel,
   formatMinutes,
   formatMinutesJa,
@@ -27,6 +33,11 @@ import {
   hpPercent,
   isHungerCaution,
   latestMonsterReply,
+  nextPetRecord,
+  petCapReachedLabel,
+  petSpriteLabel,
+  petsRemaining,
+  readPetRecord,
   moodLabel,
   moodLabelJa,
   onboardingCta,
@@ -40,7 +51,14 @@ import {
   winnerLabelJa,
 } from "./ui-helpers.ts";
 import type { CareAction } from "./ui-helpers.ts";
-import { HUNGRY_CAUTION_LEVEL, MAX_HUNGRY_LEVEL, evolutionProgress } from "@ddm/shared";
+import {
+  AFFECTION_COLD_THRESHOLD,
+  AFFECTION_MAX,
+  AFFECTION_WARM_THRESHOLD,
+  HUNGRY_CAUTION_LEVEL,
+  MAX_HUNGRY_LEVEL,
+  evolutionProgress,
+} from "@ddm/shared";
 import type { Monster } from "@ddm/shared";
 import { DEFAULT_LANG, MESSAGES, t } from "./i18n.ts";
 import type { Lang, MessageKey } from "./i18n.ts";
@@ -619,4 +637,149 @@ test("onboardingCta returns the final-stage line at the ultimate stage", () => {
   assert.equal(prog.isFinalStage, true);
   assert.equal(onboardingCta(prog, "ja"), "もう完全に育ちきっているよ！");
   assert.equal(onboardingCta(prog, "en"), "It's already fully grown!");
+});
+
+// --- Affection (なつき度) gauge helpers (issue #42) -------------------------
+
+test("affectionPercent scales against AFFECTION_MAX, clamps, and rounds", () => {
+  assert.equal(affectionPercent(0), 0);
+  assert.equal(affectionPercent(AFFECTION_MAX), 100);
+  assert.equal(affectionPercent(AFFECTION_MAX / 2), 50);
+  assert.equal(affectionPercent(AFFECTION_MAX + 50), 100); // clamps above MAX
+  assert.equal(affectionPercent(-10), 0); // clamps below 0
+});
+
+test("affectionPercent guards non-finite input to 0", () => {
+  assert.equal(affectionPercent(Number.NaN), 0);
+  assert.equal(affectionPercent(Number.POSITIVE_INFINITY), 0);
+});
+
+test("affectionLevelLabel returns the localized band label for each band", () => {
+  // cold band: below the cold threshold.
+  assert.equal(affectionLevelLabel(AFFECTION_COLD_THRESHOLD - 1, "ja"), "よそよそしい");
+  assert.equal(affectionLevelLabel(AFFECTION_COLD_THRESHOLD - 1, "en"), "Distant");
+  // neutral band: at the cold threshold, below the warm threshold.
+  assert.equal(affectionLevelLabel(AFFECTION_COLD_THRESHOLD, "ja"), "ふつう");
+  assert.equal(affectionLevelLabel(AFFECTION_COLD_THRESHOLD, "en"), "Friendly");
+  assert.equal(affectionLevelLabel(AFFECTION_WARM_THRESHOLD - 1, "ja"), "ふつう");
+  assert.equal(affectionLevelLabel(AFFECTION_WARM_THRESHOLD - 1, "en"), "Friendly");
+  // warm band: at/above the warm threshold.
+  assert.equal(affectionLevelLabel(AFFECTION_WARM_THRESHOLD, "ja"), "なかよし");
+  assert.equal(affectionLevelLabel(AFFECTION_WARM_THRESHOLD, "en"), "Bonded");
+});
+
+test("affectionLevelLabel matches the i18n affection.* keys", () => {
+  assert.equal(affectionLevelLabel(0, "ja"), t("ja", "affection.cold"));
+  assert.equal(affectionLevelLabel(AFFECTION_COLD_THRESHOLD, "ja"), t("ja", "affection.neutral"));
+  assert.equal(affectionLevelLabel(AFFECTION_MAX, "ja"), t("ja", "affection.warm"));
+  assert.equal(affectionLevelLabel(0, "en"), t("en", "affection.cold"));
+  assert.equal(affectionLevelLabel(AFFECTION_COLD_THRESHOLD, "en"), t("en", "affection.neutral"));
+  assert.equal(affectionLevelLabel(AFFECTION_MAX, "en"), t("en", "affection.warm"));
+});
+
+// --- Pet (なでる) daily-cap helpers (issue #42) ----------------------------
+
+test("dayStamp is deterministic YYYY-MM-DD for a fixed timestamp", () => {
+  // Build a local-midday timestamp so the local date is unambiguous regardless
+  // of the host timezone, then assert dayStamp echoes those local parts.
+  const d = new Date(2026, 9, 5, 12, 0, 0); // 2026-10-05 local noon
+  const stamp = dayStamp(d.getTime());
+  assert.equal(stamp, "2026-10-05");
+  // Same instant always yields the same stamp.
+  assert.equal(dayStamp(d.getTime()), stamp);
+});
+
+test("dayStamp zero-pads single-digit months and days", () => {
+  const d = new Date(2026, 0, 3, 9, 30, 0); // 2026-01-03 local
+  assert.equal(dayStamp(d.getTime()), "2026-01-03");
+});
+
+test("readPetRecord returns a zero-count record for null/empty raw", () => {
+  const now = new Date(2026, 9, 5, 8, 0, 0).getTime();
+  assert.deepEqual(readPetRecord(null, now), { day: "2026-10-05", count: 0 });
+  assert.deepEqual(readPetRecord("", now), { day: "2026-10-05", count: 0 });
+});
+
+test("readPetRecord keeps a same-day stored count", () => {
+  const now = new Date(2026, 9, 5, 8, 0, 0).getTime();
+  const raw = JSON.stringify({ day: "2026-10-05", count: 3 });
+  assert.deepEqual(readPetRecord(raw, now), { day: "2026-10-05", count: 3 });
+});
+
+test("readPetRecord resets the count on a new day", () => {
+  const now = new Date(2026, 9, 5, 8, 0, 0).getTime();
+  const raw = JSON.stringify({ day: "2026-10-04", count: 5 });
+  assert.deepEqual(readPetRecord(raw, now), { day: "2026-10-05", count: 0 });
+});
+
+test("readPetRecord resets on malformed JSON", () => {
+  const now = new Date(2026, 9, 5, 8, 0, 0).getTime();
+  assert.deepEqual(readPetRecord("not json", now), { day: "2026-10-05", count: 0 });
+});
+
+test("petsRemaining / canPet at 0, under cap, and at cap", () => {
+  const now = new Date(2026, 9, 5, 8, 0, 0).getTime();
+  const today = dayStamp(now);
+  // Fresh (0 used): full cap remaining, can pet.
+  assert.equal(petsRemaining({ day: today, count: 0 }, now), PET_DAILY_CAP);
+  assert.equal(canPet({ day: today, count: 0 }, now), true);
+  // Under cap: still has remaining and can pet.
+  assert.equal(petsRemaining({ day: today, count: PET_DAILY_CAP - 1 }, now), 1);
+  assert.equal(canPet({ day: today, count: PET_DAILY_CAP - 1 }, now), true);
+  // At cap: none remaining, cannot pet.
+  assert.equal(petsRemaining({ day: today, count: PET_DAILY_CAP }, now), 0);
+  assert.equal(canPet({ day: today, count: PET_DAILY_CAP }, now), false);
+  // Over cap (defensive): clamped to 0, cannot pet.
+  assert.equal(petsRemaining({ day: today, count: PET_DAILY_CAP + 3 }, now), 0);
+  assert.equal(canPet({ day: today, count: PET_DAILY_CAP + 3 }, now), false);
+});
+
+test("petsRemaining / canPet treat a prior-day record as a fresh day", () => {
+  const now = new Date(2026, 9, 5, 8, 0, 0).getTime();
+  const stale = { day: "2026-10-04", count: PET_DAILY_CAP };
+  assert.equal(petsRemaining(stale, now), PET_DAILY_CAP);
+  assert.equal(canPet(stale, now), true);
+});
+
+test("nextPetRecord increments today's count and resets on a new day", () => {
+  const now = new Date(2026, 9, 5, 8, 0, 0).getTime();
+  const today = dayStamp(now);
+  // Same-day increment.
+  assert.deepEqual(nextPetRecord({ day: today, count: 2 }, now), { day: today, count: 3 });
+  // From zero.
+  assert.deepEqual(nextPetRecord({ day: today, count: 0 }, now), { day: today, count: 1 });
+  // Prior-day record resets to a 1-count record for today.
+  assert.deepEqual(
+    nextPetRecord({ day: "2026-10-04", count: PET_DAILY_CAP }, now),
+    { day: today, count: 1 },
+  );
+});
+
+test("canPetNow is true only when a finite, positive number of pets remain", () => {
+  assert.equal(canPetNow(PET_DAILY_CAP), true);
+  assert.equal(canPetNow(1), true);
+  assert.equal(canPetNow(0), false);
+  assert.equal(canPetNow(-1), false);
+  // Non-finite input is treated as "unavailable" defensively.
+  assert.equal(canPetNow(Number.NaN), false);
+  assert.equal(canPetNow(Number.POSITIVE_INFINITY), false);
+});
+
+test("petSpriteLabel invites petting while pets remain, else shows the cap message", () => {
+  // Pets remaining -> the "なでる" action label (JA/EN).
+  assert.equal(petSpriteLabel(1, "ja"), t("ja", "action.petAria"));
+  assert.equal(petSpriteLabel(PET_DAILY_CAP, "ja"), "なでる");
+  assert.equal(petSpriteLabel(1, "en"), t("en", "action.petAria"));
+  assert.equal(petSpriteLabel(PET_DAILY_CAP, "en"), "Pet");
+  // Cap reached (0 or less) -> the cap-reached message (JA/EN), NOT "なでる".
+  assert.equal(petSpriteLabel(0, "ja"), t("ja", "action.petCapReached"));
+  assert.equal(petSpriteLabel(0, "ja"), "きょうはもう十分なでたよ");
+  assert.equal(petSpriteLabel(0, "en"), t("en", "action.petCapReached"));
+  assert.equal(petSpriteLabel(0, "en"), "You've petted it enough for today");
+  assert.notEqual(petSpriteLabel(0, "ja"), petSpriteLabel(1, "ja"));
+});
+
+test("petCapReachedLabel sources the cap message from the action.petCapReached key", () => {
+  assert.equal(petCapReachedLabel("ja"), t("ja", "action.petCapReached"));
+  assert.equal(petCapReachedLabel("en"), t("en", "action.petCapReached"));
 });
