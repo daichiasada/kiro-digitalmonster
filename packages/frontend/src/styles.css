@@ -1168,6 +1168,28 @@ body {
 }
 
 /* --- chat --- */
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chat-clear {
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+}
+
+.chat-clear:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .chat-disabled-hint {
   color: var(--muted);
   font-size: 0.9rem;

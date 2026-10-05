@@ -445,6 +445,7 @@ export function App() {
               log={game.chatLog}
               pending={game.chatPending}
               onSend={game.sendChat}
+              onClear={game.clearChat}
             />
           </div>
 

@@ -18,6 +18,7 @@ import type {
 import {
   AFFECTION_MAX,
   HUNGRY_CAUTION_LEVEL,
+  MAX_CHAT_TURNS,
   MAX_HUNGRY_LEVEL,
   affectionBand,
   recordAppearance,
@@ -1007,4 +1008,143 @@ export function firstSeenDateLabel(epochMs: number, lang: Lang): string {
     return "";
   }
   return new Date(epochMs).toLocaleDateString(lang === "en" ? "en-US" : "ja-JP");
+}
+
+// --- Chat transcript persistence (会話履歴の永続化) — issue #37 --------------
+
+/**
+ * One persisted chat line. A STRUCTURAL subset of the `ChatLine` type owned by
+ * state/useMonster.ts (`{ role; text; modelId? }`), redeclared locally to avoid
+ * a circular import (useMonster.ts already imports from this module), mirroring
+ * how {@link latestMonsterReply} accepts a structural subset. The optional
+ * `modelId` is preserved for monster lines so a restored transcript still shows
+ * which model produced each reply.
+ */
+export interface StoredChatLine {
+  role: "player" | "monster";
+  text: string;
+  modelId?: string;
+}
+
+/**
+ * STORAGE CHOICE (issue #37): the chat transcript is persisted in localStorage
+ * keyed PER MONSTER under `ddm.chat.<monsterId>`, consistent with the app's
+ * no-auth, browser-owned-id design and the existing `ddm.*` guarded helpers
+ * (see {@link petStorageKey} / {@link ZUKAN_STORAGE_KEY}). Keying per monster id
+ * means a reset — which rehatches under the SAME id — can wipe exactly this
+ * monster's transcript, and multiple browser profiles never collide. This
+ * deliberately avoids any DynamoDB schema / Monster save-shape / validateMonster
+ * change: the transcript is a browser-local convenience, not part of the
+ * authoritative monster record.
+ */
+export function chatStorageKey(monsterId: string): string {
+  return `ddm.chat.${monsterId}`;
+}
+
+/**
+ * Parse a stored chat log (raw JSON string or null) into a clean
+ * {@link StoredChatLine}[]. PURE and unit-testable: JSON.parse inside a
+ * try/catch, keeping ONLY well-formed entries whose `role` is exactly
+ * `'player'` or `'monster'` and whose `text` is a string. The optional
+ * `modelId` is preserved (only when it is a string). Returns `[]` on null,
+ * empty, malformed JSON, or a non-array payload. Mirrors the validation shape
+ * of the shared `trimChatHistory` but keeps the UI-only `modelId` field.
+ */
+export function parseChatLog(raw: string | null): StoredChatLine[] {
+  if (raw === null || raw === "") {
+    return [];
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+  const lines: StoredChatLine[] = [];
+  for (const entry of parsed) {
+    if (typeof entry !== "object" || entry === null) {
+      continue;
+    }
+    const { role, text, modelId } = entry as {
+      role?: unknown;
+      text?: unknown;
+      modelId?: unknown;
+    };
+    if (role !== "player" && role !== "monster") {
+      continue;
+    }
+    if (typeof text !== "string") {
+      continue;
+    }
+    const line: StoredChatLine = { role, text };
+    if (typeof modelId === "string") {
+      line.modelId = modelId;
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+
+/**
+ * Serialize a chat log to a JSON string for storage. PURE: trims to the most
+ * recent {@link MAX_CHAT_TURNS} lines FIRST (keeping the latest) so the stored
+ * size stays bounded regardless of how long the live transcript grows.
+ */
+export function serializeChatLog(log: ReadonlyArray<StoredChatLine>): string {
+  const bounded =
+    log.length > MAX_CHAT_TURNS ? log.slice(log.length - MAX_CHAT_TURNS) : log;
+  return JSON.stringify(bounded);
+}
+
+/**
+ * Read the raw chat-log JSON string for a monster from localStorage, guarded so
+ * it never throws (localStorage can be absent or blocked). Mirrors
+ * {@link readPetRecordRaw} / {@link readZukanRaw}. Returns `null` when storage
+ * is unavailable or the key is absent.
+ */
+export function readChatLogRaw(monsterId: string): string | null {
+  try {
+    if (typeof localStorage === "undefined") {
+      return null;
+    }
+    return localStorage.getItem(chatStorageKey(monsterId));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read + parse the persisted chat log for a monster. Thin composition of
+ * {@link readChatLogRaw} and {@link parseChatLog}; never throws.
+ */
+export function readChatLog(monsterId: string): StoredChatLine[] {
+  return parseChatLog(readChatLogRaw(monsterId));
+}
+
+/**
+ * Persist a chat log for a monster to localStorage, guarded so it never throws.
+ * The log is bounded to {@link MAX_CHAT_TURNS} by {@link serializeChatLog}.
+ */
+export function writeChatLog(monsterId: string, log: ReadonlyArray<StoredChatLine>): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(chatStorageKey(monsterId), serializeChatLog(log));
+    }
+  } catch {
+    // Ignore storage failures (private mode, quota, etc.).
+  }
+}
+
+/** Remove a monster's persisted chat log from localStorage, guarded. */
+export function clearChatLog(monsterId: string): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(chatStorageKey(monsterId));
+    }
+  } catch {
+    // Ignore storage failures (private mode, quota, etc.).
+  }
 }

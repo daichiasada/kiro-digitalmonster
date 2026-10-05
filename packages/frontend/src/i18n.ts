@@ -115,6 +115,8 @@ const JA_MESSAGES = {
   "chat.inputAria": "メッセージ",
   "chat.send": "送信",
   "chat.emptyPrompt": "話しかけてみよう！",
+  "chat.clear": "会話をクリア",
+  "chat.clearAria": "会話をクリア",
 
   // Evolution banner
   "evolution.banner": "進化した！ {stage} になった！",
@@ -278,6 +280,8 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   "chat.inputAria": "Message",
   "chat.send": "Send",
   "chat.emptyPrompt": "Say hello!",
+  "chat.clear": "Clear conversation",
+  "chat.clearAria": "Clear conversation",
 
   // Evolution banner
   "evolution.banner": "It evolved! It became {stage}!",

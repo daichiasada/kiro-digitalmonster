@@ -9,10 +9,12 @@ export interface ChatPanelProps {
   log: ChatLine[];
   pending: boolean;
   onSend: (message: string) => void;
+  /** Clear both the in-memory and persisted conversation (issue #37). */
+  onClear: () => void;
 }
 
 /** Conversation panel. Disabled with a hint during the 幼年期 (baby) stage. */
-export function ChatPanel({ stageId, log, pending, onSend }: ChatPanelProps) {
+export function ChatPanel({ stageId, log, pending, onSend, onClear }: ChatPanelProps) {
   const { t } = useI18n();
   const [text, setText] = useState("");
   const enabled = canChat(stageId);
@@ -29,7 +31,20 @@ export function ChatPanel({ stageId, log, pending, onSend }: ChatPanelProps) {
 
   return (
     <section className="panel chat-panel" aria-label={t("aria.chat")}>
-      <h2>{t("chat.title")}</h2>
+      <div className="chat-header">
+        <h2>{t("chat.title")}</h2>
+        {enabled && log.length > 0 && (
+          <button
+            type="button"
+            className="chat-clear"
+            onClick={onClear}
+            disabled={pending}
+            aria-label={t("chat.clearAria")}
+          >
+            {t("chat.clear")}
+          </button>
+        )}
+      </div>
       {!enabled ? (
         <p className="chat-disabled-hint">{t("chat.disabledHint")}</p>
       ) : (
