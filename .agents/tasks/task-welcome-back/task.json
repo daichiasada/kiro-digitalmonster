@@ -1,0 +1,7 @@
+{
+  "task_id": "task-welcome-back",
+  "task_description": "Issue #40: 不在中の出来事サマリー（おかえり画面）. Add a shared PURE absence-diff function (summarizeAbsence) comparing the monster before/after applyTimePassage (elapsed time, hunger delta, became dirty, HP lost from starving / gained while sleeping, evolution), unit-tested in @ddm/shared. Add a frontend おかえり/welcome-back summary panel shown only when the absence since lastUpdatedAt >= a documented 5-minute threshold, rendered JA/EN, with a one-tap recommended-care button (feed/clean/wake), captured at the mount advance (not the TIME_TICK interval), keyboard-dismissible, color-safe, prefers-reduced-motion aware, dismissed once per return.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
