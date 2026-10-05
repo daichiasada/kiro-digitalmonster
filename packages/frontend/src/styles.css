@@ -242,6 +242,119 @@ body {
 .stage-area {
   display: grid;
   gap: 16px;
+  /* Positioned so the ::before per-stage/dirty overlay can sit behind the
+     content, and padded + rounded so the time-of-day gradient reads as a
+     framed backdrop behind the sprite and speech bubble (issue #43). */
+  position: relative;
+  padding: 12px;
+  border-radius: 18px;
+  /* Default (fallback) backdrop before a data-timeofday is applied: the same
+     dark family as the sprite-wrap base so text stays legible. */
+  background: linear-gradient(180deg, #16213f 0%, #0f1830 100%);
+  /* A short fade when the phase flips at a day boundary. There is NO continuous
+     keyframe animation here (perf): just a one-shot transition on the gradient,
+     which is nulled under prefers-reduced-motion below. */
+  transition: background 0.6s ease;
+}
+
+/* Time-of-day gradients (issue #43). Every phase keeps BOTH gradient stops in
+   the dark family near --bg #0f1830 / #16213f / #223359, so the on-stage
+   foreground (--text #eef3ff) stays far above the WCAG AA 4.5:1 body-text
+   ratio on any stop. The speech bubble is additionally insulated on its own
+   var(--panel-2) #223359 background, so its text contrast never depends on the
+   gradient. Contrast reasoning per phase (darkest -> lightest stop, both dark;
+   #eef3ff on each exceeds 4.5:1):
+     morning  darkest #16213f  lightest #2a3a66  (cool pre-dawn blue)
+     day      darkest #16213f  lightest #223359  (brightest, still dark navy)
+     evening  darkest #121a33  lightest #2b2746  (dusk, slight warm violet)
+     night    darkest #0b1226  lightest #141d38  (deepest, near --bg)
+   No large images or box-shadow spam; GPU-cheap linear gradients only. */
+.stage-area[data-timeofday="morning"] {
+  background: linear-gradient(180deg, #2a3a66 0%, #16213f 100%);
+}
+.stage-area[data-timeofday="day"] {
+  background: linear-gradient(180deg, #223359 0%, #16213f 100%);
+}
+.stage-area[data-timeofday="evening"] {
+  background: linear-gradient(180deg, #2b2746 0%, #121a33 100%);
+}
+.stage-area[data-timeofday="night"] {
+  background: linear-gradient(180deg, #141d38 0%, #0b1226 100%);
+}
+
+/* Per-growth-stage hue nudge layered UNDER the sprite via a very low-opacity
+   radial tint, so the stage still reads through the time-of-day gradient
+   without lifting the backdrop out of the dark family (contrast preserved).
+   pointer-events: none so it never blocks the sprite/pet target. */
+.stage-area::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: transparent;
+  transition: background 0.6s ease;
+}
+.stage-area[data-stage="baby"]::before {
+  /* soft warm glow */
+  background: radial-gradient(60% 55% at 50% 60%, rgba(255, 214, 153, 0.1), transparent 70%);
+}
+.stage-area[data-stage="rookie"]::before {
+  /* cool teal */
+  background: radial-gradient(60% 55% at 50% 60%, rgba(120, 220, 200, 0.1), transparent 70%);
+}
+.stage-area[data-stage="champion"]::before {
+  /* violet */
+  background: radial-gradient(60% 55% at 50% 60%, rgba(170, 150, 255, 0.1), transparent 70%);
+}
+.stage-area[data-stage="ultimate"]::before {
+  /* regal gold */
+  background: radial-gradient(60% 55% at 50% 60%, rgba(255, 196, 120, 0.12), transparent 70%);
+}
+
+/* Keep the actual content (sprite, bubble, panels) above the ::before tint. */
+.stage-area > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Stage-level sleeping cue (issue #43): dim the whole stage backdrop, building
+   on the existing per-sprite .sprite-wrap.sleeping dim. filter only (GPU-cheap),
+   no animation. Contrast is unaffected for the speech bubble, which keeps its
+   own --panel-2 background. */
+.stage-area.is-sleeping {
+  filter: brightness(0.78) saturate(0.85);
+}
+
+/* Stage-level dirty cue (issue #43): an unobtrusive faint grime vignette drawn
+   as a low-opacity inset radial on an ::after layer. It sits above the backdrop
+   but below the content, uses a muted brown-green tint at low alpha so it does
+   not clash with the ✨ care-fx overlay, and never darkens the center enough to
+   hurt text contrast (edges only). pointer-events: none. */
+.stage-area.is-dirty::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    75% 75% at 50% 45%,
+    transparent 55%,
+    rgba(90, 78, 48, 0.28) 100%
+  );
+}
+
+/* prefers-reduced-motion: null the one-shot phase-change transitions while
+   leaving the correct STATIC gradient/overlay in place (mirrors the existing
+   reduced-motion blocks in this file). No continuous animation exists on the
+   stage, so nothing else needs stilling here. */
+@media (prefers-reduced-motion: reduce) {
+  .stage-area,
+  .stage-area::before {
+    transition: none;
+  }
 }
 
 .sprite-wrap {
