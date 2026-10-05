@@ -1,0 +1,7 @@
+{
+  "task_id": "task-a11y-action-feedback",
+  "task_description": "Issue #32 (Kiro University AI Monster game, frontend-only): improve confirm-dialog focus control and action loading feedback. (1) Reset confirm alertdialog: focus Confirm on open, Escape cancels, simple two-button focus trap. (2) Busy affordance on care/battle actions (spinner / '処理中…' / aria-busy) without clashing with the #10 care-fx sprite overlay. (3) Evolution ✓/・ markers get accessible met/unmet labels so state is not color-only. JA/EN parity for all new strings; no new runtime dependencies; respect prefers-reduced-motion. Commit locally on feat/a11y-action-feedback; do not push or open a PR.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

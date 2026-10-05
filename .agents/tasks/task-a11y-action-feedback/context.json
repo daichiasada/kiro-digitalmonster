@@ -1,0 +1,25 @@
+{
+  "project_type": "TypeScript monorepo (npm workspaces): @ddm/shared (game logic), @ddm/backend (Lambda), @ddm/frontend (React 18 + Vite SPA), infra (CDK). This task is frontend-only.",
+  "language": "TypeScript / React 18 (JSX via Vite)",
+  "build_system": "npm workspaces. Root `npm run build` builds shared -> backend -> frontend -> infra in order. Frontend build is `tsc && vite build`. Node may need: export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\".",
+  "test_framework": "Node built-in test runner (node:test) with --experimental-strip-types. Pure helpers only, NO DOM/React in test files. Frontend tests live in packages/frontend/src/game-ui.test.ts and import from ui-helpers.ts / i18n.ts.",
+  "build_command": "npm run build (root)",
+  "test_command": "npm test (shared, baseline 47) and npm test -w @ddm/frontend (frontend ui-helpers, baseline 59)",
+  "verification_instructions": "1) export PATH for node. 2) npm run build must succeed (tsc enforces i18n JA/EN key parity: a missing EN or JA key is a compile error). 3) npm test -> shared 47 pass. 4) npm test -w @ddm/frontend -> >=59 pass (new helper tests increase this). 5) Optional Playwright: serve the vite build (dist/) and verify focus-moves-to-Confirm on open + Escape-cancels; prior tasks used request interception against a local server since the deployed CloudFront site is stale.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "Dependencies already installed (node_modules present). export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" so node/npm resolve. No install needed.",
+  "environment_constraints": "Network OPEN_INTERNET. No push / no PR from this agent: commit locally on a feature branch only. Do NOT touch backup/previous-main. Do NOT redeploy (orchestrator does one batch redeploy at the end).",
+  "contribution_requirements": "No new runtime dependencies. JA/EN parity required for every new i18n key or the build fails (EN typed as Record<MessageKey,string>). Keep JA output byte-identical for existing keys. Respect the existing prefers-reduced-motion convention for any new animation (styles.css has @media (prefers-reduced-motion: reduce) blocks at lines ~292, ~360, ~510, ~954, ~1175).",
+  "key_patterns": "i18n: JA_MESSAGES in i18n.ts is source of truth; MessageKey derived; EN_MESSAGES must mirror keys. useI18n()->t(key). Pure, DOM-free logic goes in ui-helpers.ts with a matching node:test in game-ui.test.ts. Care FX overlay is driven from App.tsx triggerCareFx() which sets careFx state and renders a .care-fx sprite overlay (aria-hidden) keyed to re-fire; it is gated on (monster!==null && !busy). Reset confirm is an inline role=alertdialog panel in App.tsx (confirmingReset state), with Confirm (reset.confirm) + Cancel (reset.cancel) buttons; currently no focus move / no Escape / no trap. StatsPanel evolution-req rows use .met/.unmet class + aria-hidden ✓/・ glyph.",
+  "relevant_files": [
+    "packages/frontend/src/App.tsx (reset alertdialog block ~line 136; careFx handlers; busy prop passed to CarePanel/BattlePanel)",
+    "packages/frontend/src/components/CarePanel.tsx (busy disables buttons; add busy affordance)",
+    "packages/frontend/src/components/BattlePanel.tsx (busy disables battle button; add busy affordance without clashing with #9 animation / #10 care-fx)",
+    "packages/frontend/src/components/StatsPanel.tsx (evolution-req met/unmet rows with aria-hidden glyph)",
+    "packages/frontend/src/i18n.ts (add JA+EN keys)",
+    "packages/frontend/src/ui-helpers.ts (add pure helpers: met/unmet aria label resolver, busy label helper)",
+    "packages/frontend/src/game-ui.test.ts (add node:test cases for new pure helpers)",
+    "packages/frontend/src/styles.css (reset-confirm styles ~142; evolution-req ~642; care-fx ~380; prefers-reduced-motion media blocks; add spinner + visually-hidden class)"
+  ],
+  "directory_structure": "packages/frontend/src: App.tsx (root screen), i18n.ts, ui-helpers.ts (pure helpers), styles.css, game-ui.test.ts (node:test), components/ (CarePanel, BattlePanel, StatsPanel, ChatPanel, SpeechBubble, EvolutionBanner, OnboardingHint), state/useMonster.ts (exposes busy/loading/monster + actions), assets/monsters/MonsterSprite.tsx."
+}

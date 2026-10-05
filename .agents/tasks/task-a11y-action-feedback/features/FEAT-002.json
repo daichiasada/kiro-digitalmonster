@@ -1,0 +1,36 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Issue #32: Implement the three accessibility / action-feedback improvements, all frontend-only. (1) Reset confirm dialog (role=alertdialog) focus control: move focus to the Confirm button on open, Escape triggers Cancel, and a simple two-button focus trap keeps Tab within the dialog; restore focus to the reset trigger on close is a nice-to-have. (2) Busy affordance on care + battle actions: add a lightweight, accessible busy indicator (aria-busy + visually-hidden status text and/or a small spinner respecting prefers-reduced-motion) while game.busy is true, WITHOUT duplicating or clashing with the #10 care-fx sprite overlay. (3) Evolution ✓/・ markers: add an accessible met/unmet label (JA 達成/未達成, EN met/not met) via a pure resolver in ui-helpers.ts so the state is not color-only; keep the existing glyph and visual. Add JA+EN i18n keys for all new strings and pure-helper unit tests in game-ui.test.ts.",
+  "status": "pending",
+  "steps": [
+    "i18n (packages/frontend/src/i18n.ts): add new keys to BOTH JA_MESSAGES and EN_MESSAGES (byte-identical for existing keys; new keys in both or tsc fails). Suggested keys: 'status.busy' (JA '処理中…', EN 'Working…'); 'evolution.met' (JA '達成', EN 'met'); 'evolution.unmet' (JA '未達成', EN 'not met'). Place them in sensibly commented groups.",
+    "Pure helpers (packages/frontend/src/ui-helpers.ts): add a DOM-free resolver `evolutionReqAriaLabel(met: boolean, lang: Lang): string` that returns t(lang,'evolution.met') when met else t(lang,'evolution.unmet'); and if useful a `busyStatusLabel(lang: Lang): string` returning t(lang,'status.busy'). Follow the existing pattern (import { t } and type Lang from ./i18n.ts). Document with JSDoc like the neighbors.",
+    "Unit tests (packages/frontend/src/game-ui.test.ts): add node:test cases importing the new helpers. Cover evolutionReqAriaLabel(true/false) in ja and en returning the exact strings, and busyStatusLabel ja/en. Keep DOM/React out of the test file.",
+    "StatsPanel (packages/frontend/src/components/StatsPanel.tsx): on each `.evolution-req` <p> (training row and age row), add an accessible met/unmet label without changing the visual. Keep the existing aria-hidden ✓/・ glyph. Approach: add a visually-hidden <span> (e.g. className 'visually-hidden') whose text is evolutionReqAriaLabel(prog.trainingMet, lang) / evolutionReqAriaLabel(prog.ageMet, lang) placed inside the <p> so screen readers announce met/not-met. Import useI18n lang already available; import the helper from ../ui-helpers.ts.",
+    "Reset dialog focus control (packages/frontend/src/App.tsx): the alertdialog is the `confirmingReset` block (role=alertdialog). (a) Add a ref to the Confirm button (useRef<HTMLButtonElement>) and a useEffect keyed on confirmingReset that focuses it when the dialog opens. (b) Add onKeyDown on the dialog container: Escape -> setConfirmingReset(false) (Cancel). (c) Simple focus trap: on Tab/Shift+Tab within the dialog, keep focus cycling between the Confirm and Cancel buttons (two-button trap; e.g. track first/last focusable and wrap). (d) Nice-to-have: capture the reset trigger element (or a ref to the reset button) before opening and restore focus to it on close. Do not change the existing reset behavior (#20): Confirm still calls handleReset (game.reset) and hides; Cancel still hides.",
+    "Busy affordance - CarePanel (packages/frontend/src/components/CarePanel.tsx): while busy, surface a subtle accessible indicator. Add aria-busy={busy} to the care-panel section (or buttons) and render a visually-hidden live status (e.g. <span className='care-busy' role='status' aria-live='polite'>{busy ? t('status.busy') : ''}</span>) and/or a small spinner element shown only when busy. Keep buttons disabled={busy} as-is. Do NOT add a sprite overlay here (the #10 care-fx already animates on the sprite from App.tsx) - this indicator lives in the panel, not over the sprite, to avoid double-signalling.",
+    "Busy affordance - BattlePanel (packages/frontend/src/components/BattlePanel.tsx): mirror the CarePanel approach for the battle button area (aria-busy / role=status visually-hidden '処理中…' and/or small spinner), shown while the `busy` prop is true. Ensure it does not interfere with the existing #9 battle playback animation or the result/log rendering; keep disabled={busy} on the battle button.",
+    "Styles (packages/frontend/src/styles.css): add a `.visually-hidden` utility class (clip/absolute off-screen) if one does not already exist, reusing it for the sr-only labels. Add a small `.spinner` (or `.busy-spinner`) style if you render a spinner, with a keyframe rotation; MUST be disabled/stilled under @media (prefers-reduced-motion: reduce) following the existing convention in the file. Keep additions minimal and consistent with existing variables.",
+    "Verify: run the build and both test suites; confirm JA strings for existing keys are unchanged (git diff i18n.ts shows only additions)."
+  ],
+  "acceptance_criteria": [
+    "`npm run build` exits 0 (confirms JA/EN i18n key parity and TS types).",
+    "`npm test` still reports 47 passing shared tests.",
+    "`npm test -w @ddm/frontend` reports >=62 passing (59 baseline + new helper tests).",
+    "Opening the reset confirm dialog moves focus to the Confirm button; pressing Escape closes it as Cancel (no reset); Tab/Shift+Tab stays within the two dialog buttons.",
+    "While a care or battle action is in flight (busy), an accessible busy indicator (aria-busy and/or role=status '処理中…'/'Working…') is present and does not duplicate the sprite care-fx overlay.",
+    "Each evolution condition row exposes an accessible met/unmet label (達成/未達成, met/not met) in addition to the ✓/・ glyph and color; existing visual is unchanged.",
+    "git diff of i18n.ts shows existing JA/EN values unchanged (only new keys added).",
+    "Any new spinner animation is stilled under prefers-reduced-motion."
+  ],
+  "verification": [
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm run build",
+    "npm test",
+    "npm test -w @ddm/frontend",
+    "git diff --stat main -- packages/frontend/src/i18n.ts (confirm only additions)",
+    "Optional: build the frontend (npm run build -w @ddm/frontend) and run a Playwright check serving dist/ to confirm focus-on-open and Escape-cancel; if not feasible, document manual verification steps."
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
