@@ -3,8 +3,9 @@
  * Clearly bigger and more defined than the baby.
  */
 import type { MonsterSpriteProps } from "./Baby.tsx";
+import { FormAccent } from "./formAccent.tsx";
 
-export function Rookie({ size = 160, title = "成長期のAIモンスター" }: MonsterSpriteProps) {
+export function Rookie({ size = 160, title = "成長期のAIモンスター", form }: MonsterSpriteProps) {
   return (
     <svg
       width={size}
@@ -47,6 +48,8 @@ export function Rookie({ size = 160, title = "成長期のAIモンスター" }: 
       <path d="M86 94 Q100 106 114 94" fill="none" stroke="#1b2a4a" strokeWidth="3" strokeLinecap="round" />
       {/* small fangs */}
       <path d="M92 98 L96 104 L100 98 Z" fill="#ffffff" />
+      {/* per-variant accent (issue #38); null for base/undefined */}
+      <FormAccent form={form} stage="rookie" />
     </svg>
   );
 }

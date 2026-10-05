@@ -1,0 +1,31 @@
+{
+  "project_type": "TypeScript monorepo: a monster-raising web game. packages/shared (@ddm/shared pure domain logic, node:test), packages/backend (AWS Lambda handlers; bundles @ddm/shared), packages/frontend (React + Vite, JA/EN i18n), infra (CDK).",
+  "language": "TypeScript (ESM, .ts/.tsx with explicit .ts import extensions)",
+  "build_system": "npm workspaces at repo root. Node v22.23.3 (may need `export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"`).",
+  "test_framework": "packages/shared uses node:test (node --test over src/**/*.test.ts and __tests__). Frontend ui-helpers/logic tests live in packages/frontend/src/game-ui.test.ts (also node:test).",
+  "build_command": "npm run build (root) — builds shared, backend bundle, frontend Vite build. Run with the node PATH exported.",
+  "test_command": "npm test (root). Baselines after #41: shared node:test = 94 passing; frontend game-ui.test.ts = 90 passing. Keep both green (adapt, do not delete, the 42+ evolution/stages tests).",
+  "verification_instructions": "1) export PATH for node. 2) npm run build at repo root must pass (tsc + vite). 3) npm test at repo root: all shared + frontend tests pass with higher totals than baseline (new branch-decision + sprite-select + hint tests added). 4) Confirm no new runtime dependency added to any package.json.",
+  "snapshot_or_generated_files": "None checked in that this task touches. Vite build output is not committed.",
+  "setup_instructions": "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"; cd /projects/sandbox/kiro-digitalmonster; npm ci is NOT needed (node_modules present); run `npm run build` and `npm test` to confirm baseline before changes.",
+  "environment_constraints": "Network OPEN_INTERNET. CANNOT push or open PRs (orchestrator does that). Do NOT touch backup/previous-main branches. Work on branch feat/evolution-branching off main.",
+  "contribution_requirements": "JA/EN i18n parity for every new user-facing string. No new runtime dependencies. Respect prefers-reduced-motion for any animation (none expected here). Keep JA output BYTE-IDENTICAL for existing i18n keys and for the base/default form's chat system prompt. Backward compatibility with pre-#38 saves is a HARD requirement.",
+  "key_patterns": "Optional-field-with-default backward-compat pattern established by #42 (affection: affectionOf/normalizeAffection/clampAffection, validateMonster accepts absent-or-valid) and #41 (battleRecord: battleRecordOf/normalizeBattleRecord, same validateMonster policy). MIRROR this EXACTLY for the new optional `form` field: formOf (read-with-default to base), normalizeForm (new monster with default filled), validateMonster accepts form absent OR a known variant and rejects present-but-invalid. Load path normalizes in packages/frontend/src/state/useMonster.ts `advance()` which chains normalizeBattleRecord(normalizeAffection(applyTimePassage(...))). Branch-decision MUST be a shared pure, deterministic, total function (always returns a valid variant) living in packages/shared, with the StatsPanel hint derived from the SAME function so UI cannot contradict the actual evolution outcome.",
+  "relevant_files": [
+    "packages/shared/src/types.ts — add GrowthForm/MonsterForm union + optional Monster.form field (mirror affection/battleRecord doc style)",
+    "packages/shared/src/stages.ts — StageConfig, STAGES, evolveStage, evolutionProgress; add per-variant baseStats/sprite-key/tone source and extend evolutionProgress or add a sibling to expose the predicted form",
+    "packages/shared/src/game.ts — applyAllEvolutions/applyEvolution (choose + persist form on each stage advance, rebase stats onto the variant baseStats), createMonster, validateMonster, formOf/normalizeForm helpers",
+    "packages/shared/src/battle-enhancements.ts — battleRecordOf gives win-rate input for the branch function",
+    "packages/shared/src/index.ts — export new helpers/types",
+    "packages/shared/src/__tests__/stages.test.ts — adapt existing linear-evolution tests to the branching model (keep coverage)",
+    "packages/shared/src/__tests__/game.property.test.ts — one-step evolution property test may need form-aware adaptation",
+    "packages/shared/src/__tests__/affection.test.ts and battle-enhancements.test.ts — legacyMonster() factories to mirror for form backward-compat tests",
+    "packages/backend/src/handlers/chat.ts — buildSystemPrompt: thread the variant tone (JA+EN), base form byte-identical to today",
+    "packages/frontend/src/assets/monsters/MonsterSprite.tsx — select by (tier, form); Baby.tsx/Rookie.tsx/Champion.tsx/Ultimate.tsx are the existing sprites to parameterize or branch from",
+    "packages/frontend/src/components/StatsPanel.tsx — evolution-progress block: add a branch hint about what the current care tendency steers the next evolution toward",
+    "packages/frontend/src/i18n.ts — add JA+EN keys for variant labels + the branch hint; ja block ~line 72, en block ~line 202",
+    "packages/frontend/src/state/useMonster.ts — advance() normalizes on load; may need normalizeForm chained in",
+    "packages/frontend/src/App.tsx and BattlePanel.tsx — MonsterSprite call sites must pass the form"
+  ],
+  "directory_structure": "packages/shared/src: types.ts, stages.ts, game.ts, battle.ts, battle-enhancements.ts, bedrock-models.ts, index.ts, __tests__/. packages/backend/src/handlers: chat.ts, battle.ts, monster.ts. packages/frontend/src: App.tsx, i18n.ts, ui-helpers.ts, game-ui.test.ts, state/useMonster.ts, components/ (StatsPanel, BattlePanel, EvolutionBanner, ...), assets/monsters/ (Baby/Rookie/Champion/Ultimate/MonsterSprite)."
+}

@@ -32,6 +32,7 @@ import {
   isValidMonsterName,
   normalizeAffection,
   normalizeBattleRecord,
+  normalizeForm,
   normalizeMonsterName,
   pet as petLogic,
   sleep as sleepLogic,
@@ -133,7 +134,12 @@ function advance(monster: Monster, now: number): Monster {
   // normalizeBattleRecord likewise backfills an all-zeros battle record for
   // legacy (pre-#41) saves that lack the field, so the StatsPanel record row
   // always has a numeric record to display. Both helpers are idempotent.
-  return normalizeBattleRecord(normalizeAffection(applyTimePassage(monster, now)));
+  // normalizeForm likewise backfills "base" for legacy (pre-#38) saves that
+  // lack the evolution-branch `form` field, so the sprite + StatsPanel hint
+  // always have a concrete form to read. Idempotent, same as the others.
+  return normalizeForm(
+    normalizeBattleRecord(normalizeAffection(applyTimePassage(monster, now))),
+  );
 }
 
 export function useMonster(): UseMonsterState {

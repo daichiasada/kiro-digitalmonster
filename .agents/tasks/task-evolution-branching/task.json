@@ -1,0 +1,7 @@
+{
+  "task_id": "task-evolution-branching",
+  "task_description": "Issue #38: evolution branching by care quality. Keep linear tiers (baby->rookie->champion->ultimate) but add 2-3 evolution VARIANTS per step chosen from care tendencies (training count, overfeeding, cleanliness, battle win rate, etc.): e.g. trained -> attack-type, well-rested -> defense-type, neglected -> mischief-type. Representation: keep stageId as the tier and add an optional Monster.form ('base'|'attack'|'defense'|'mischief'), backward-compat-defaulted to 'base' for pre-#38 saves (mirroring #42 affection / #41 battleRecord). The branch decision is a shared, pure, deterministic, total function unit-tested so every branch is reachable; each variant gets its own baseStats, SVG sprite, and chat system-prompt tone; and the StatsPanel shows a next-evolution hint derived from the same shared function.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null
+}

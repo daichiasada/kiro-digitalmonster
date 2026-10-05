@@ -33,6 +33,7 @@ import {
   careEffect,
   dayStamp,
   evolutionReqAriaLabel,
+  formLabel,
   formatMinutes,
   formatMinutesJa,
   fullnessPercent,
@@ -66,6 +67,7 @@ import {
   MAX_HUNGRY_LEVEL,
   battleRecordOf,
   evolutionProgress,
+  predictedNextForm,
 } from "@ddm/shared";
 import type { Monster } from "@ddm/shared";
 import { DEFAULT_LANG, MESSAGES, t } from "./i18n.ts";
@@ -896,4 +898,111 @@ test("resolveAnimationEnemy prefers the fought snapshot over a reseeded preview"
   assert.notEqual(resolved.maxHp, reseededPreview.maxHp);
   // ...and depict the fought enemy's name, not the next preview's.
   assert.equal(resolved.name, "強い 野生の成熟期モンスター");
+});
+
+// --- Evolution branch labels + StatsPanel hint (issue #38) ------------------
+// formLabel maps a MonsterForm to its localized label; the StatsPanel hint is
+// composed from the SAME shared predictedNextForm/chooseEvolutionForm the
+// engine uses to assign the form, so the displayed hint can never contradict
+// the real evolution outcome.
+
+test("formLabel returns the JA variant labels 攻撃/防御/やんちゃ", () => {
+  assert.equal(formLabel("attack", "ja"), "攻撃");
+  assert.equal(formLabel("defense", "ja"), "防御");
+  assert.equal(formLabel("mischief", "ja"), "やんちゃ");
+});
+
+test("formLabel returns the EN variant labels Attack/Defense/Mischief", () => {
+  assert.equal(formLabel("attack", "en"), "Attack");
+  assert.equal(formLabel("defense", "en"), "Defense");
+  assert.equal(formLabel("mischief", "en"), "Mischief");
+});
+
+test("formLabel is sourced from the form.* i18n keys", () => {
+  for (const f of ["attack", "defense", "mischief"] as const) {
+    assert.equal(formLabel(f, "ja"), t("ja", `form.${f}` as const));
+    assert.equal(formLabel(f, "en"), t("en", `form.${f}` as const));
+  }
+});
+
+test("formLabel returns an empty string for the base form (no branch label)", () => {
+  // "base" is not a branch target, so it has no variant label; the StatsPanel
+  // hint only renders when a concrete (non-base) variant is predicted, so an
+  // empty label can never leak an empty hint.
+  assert.equal(formLabel("base", "ja"), "");
+  assert.equal(formLabel("base", "en"), "");
+});
+
+/**
+ * Re-compose the StatsPanel evolution hint exactly as the component does:
+ * derive the predicted next form from the shared predictedNextForm (same `now`)
+ * and splice its localized label into the "stats.evolveHint" template. Returns
+ * null when there is no concrete variant to hint at (final stage / base).
+ */
+function composeEvolveHint(monster: Monster, now: number, lang: Lang): string | null {
+  const predicted = predictedNextForm(monster, now);
+  const label = predicted !== null ? formLabel(predicted, lang) : "";
+  if (label === "") {
+    return null;
+  }
+  return t(lang, "stats.evolveHint").replace("{form}", label);
+}
+
+test("StatsPanel hint is derived from predictedNextForm for a training-heavy baby (attack)", () => {
+  const now = 1_000_000;
+  // Training-heavy care pushes the branch toward the attack type.
+  const monster = makeMonster({ stageId: "baby", bornAt: now, trainingCount: 50 });
+  // The hint must agree with the engine's own branch decision.
+  assert.equal(predictedNextForm(monster, now), "attack");
+  assert.equal(composeEvolveHint(monster, now, "ja"), "今の育て方だと攻撃型に進化しそう");
+  assert.equal(
+    composeEvolveHint(monster, now, "en"),
+    "Current care is steering toward a Attack-type evolution",
+  );
+});
+
+test("StatsPanel hint reflects a calm, affectionate baby (defense)", () => {
+  const now = 1_000_000;
+  const monster = makeMonster({
+    stageId: "baby",
+    bornAt: now,
+    trainingCount: 0,
+    careCounters: { feed: 30, sleep: 30, clean: 30 },
+    affection: 100,
+  });
+  assert.equal(predictedNextForm(monster, now), "defense");
+  assert.equal(composeEvolveHint(monster, now, "ja"), "今の育て方だと防御型に進化しそう");
+  assert.equal(
+    composeEvolveHint(monster, now, "en"),
+    "Current care is steering toward a Defense-type evolution",
+  );
+});
+
+test("StatsPanel hint reflects a neglected baby (mischief)", () => {
+  const now = 1_000_000;
+  // A freshly made baby (no training, neutral affection default) scores highest
+  // on the neglect-driven mischief branch.
+  const monster = makeMonster({ stageId: "baby", bornAt: now, hungryLevel: 6, dirty: true });
+  assert.equal(predictedNextForm(monster, now), "mischief");
+  assert.equal(composeEvolveHint(monster, now, "ja"), "今の育て方だとやんちゃ型に進化しそう");
+  assert.equal(
+    composeEvolveHint(monster, now, "en"),
+    "Current care is steering toward a Mischief-type evolution",
+  );
+});
+
+test("StatsPanel hint is hidden at the final stage (predictedNextForm null)", () => {
+  const now = 100 * 60 * 1000;
+  const monster = makeMonster({ stageId: "ultimate", bornAt: 0, trainingCount: 50 });
+  assert.equal(predictedNextForm(monster, now), null);
+  assert.equal(composeEvolveHint(monster, now, "ja"), null);
+  assert.equal(composeEvolveHint(monster, now, "en"), null);
+});
+
+test("stats.evolveHint template has JA and EN entries with the {form} token", () => {
+  for (const lang of ["ja", "en"] as const) {
+    const tpl = t(lang, "stats.evolveHint");
+    assert.ok(tpl.length > 0, `${lang} evolveHint empty`);
+    assert.ok(tpl.includes("{form}"), `${lang} evolveHint missing {form} token`);
+  }
 });
