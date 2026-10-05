@@ -1,7 +1,14 @@
 {
   "task_id": "task-a11y-action-feedback",
   "task_description": "Issue #32 (Kiro University AI Monster game, frontend-only): improve confirm-dialog focus control and action loading feedback. (1) Reset confirm alertdialog: focus Confirm on open, Escape cancels, simple two-button focus trap. (2) Busy affordance on care/battle actions (spinner / '処理中…' / aria-busy) without clashing with the #10 care-fx sprite overlay. (3) Evolution ✓/・ markers get accessible met/unmet labels so state is not color-only. JA/EN parity for all new strings; no new runtime dependencies; respect prefers-reduced-motion. Commit locally on feat/a11y-action-feedback; do not push or open a PR.",
-  "status": "in_progress",
+  "status": "completed",
   "feature_order": ["FEAT-001", "FEAT-002"],
-  "blocked_reason": null
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build exit 0; shared tests 47 pass; frontend tests 62 pass (59 baseline + 3 new pure-helper tests). New tests assert exact JA/EN strings for evolutionReqAriaLabel and busyStatusLabel and tie them to the i18n keys, so they exercise the new code paths. i18n diff is additions-only (existing JA/EN values byte-identical). No Dockerfile for the frontend package; docker build not applicable. Semantic review (v1) APPROVED with 3 non-blocking notes. DOM focus/Escape/trap behavior is not unit-testable under node:test (DOM-free) and is documented as manual-verified."
+  }
 }
