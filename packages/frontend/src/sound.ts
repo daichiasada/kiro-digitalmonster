@@ -14,15 +14,19 @@
  *      AudioContext created without a user gesture, so constructing it eagerly
  *      would either throw a console warning or leave a dangling suspended
  *      context.
- *   2. {@link playSound} is only ever called from user-gesture-driven handlers
- *      (feed/train care buttons, the Fight button and its gesture-initiated
- *      battle replay, and the settings toggle). It calls `resume()` so the
- *      first such gesture satisfies the browser's autoplay policy.
- *   3. Sound effects default to OFF (muted): `DEFAULT_SETTINGS.sfxEnabled` is
+ *   2. Sound effects default to OFF (muted): `DEFAULT_SETTINGS.sfxEnabled` is
  *      false. Nothing plays until the user explicitly enables SFX AND volume
  *      > 0, so even the very first gesture is silent until the user opts in.
- *      Enabling SFX is itself a user gesture, so by the time anything can play
- *      the context can always be resumed.
+ *   3. The autoplay guarantee is ENFORCED here rather than assumed: an event
+ *      such as evolution can reach {@link playSound} from a background
+ *      TIME_TICK with no fresh user gesture (e.g. right after a page reload
+ *      that restored `sfxEnabled: true` from storage). In that case the
+ *      lazily-created context starts suspended; we call `resume()` (which the
+ *      browser only honors once a gesture has occurred) but DO NOT schedule any
+ *      oscillators while the context is not actually `running`. So a
+ *      non-running context is a clean, silent no-op — notes are only ever
+ *      produced once the context has genuinely reached the `running` state,
+ *      which only happens inside/after a real user gesture.
  *
  * The whole engine is guarded in try/catch and no-ops when `window` or
  * `AudioContext` is unavailable, so it can never throw into the UI.
@@ -62,9 +66,14 @@ function getAudioContextCtor(): typeof AudioContext | null {
 }
 
 /**
- * Lazily create (and resume) the shared AudioContext. Called only from
- * {@link playSound}, which is only reached from a user gesture, so the resume()
- * here is autoplay-policy compliant. Returns null if Web Audio is unavailable.
+ * Lazily create the shared AudioContext and attempt to resume it. Returns null
+ * if Web Audio is unavailable.
+ *
+ * A `resume()` is requested whenever the context is suspended; the browser only
+ * honors it once a real user gesture has occurred, so this is autoplay-safe.
+ * The returned context may still be `suspended` (e.g. a background evolution
+ * tick after a reload with no fresh gesture yet) — callers MUST check
+ * `state === "running"` before scheduling audio. See {@link playSound}.
  */
 function ensureContext(): AudioContext | null {
   const Ctor = getAudioContextCtor();
@@ -74,7 +83,8 @@ function ensureContext(): AudioContext | null {
   if (ctx === null) {
     ctx = new Ctor();
   }
-  // Resume a suspended context (first gesture / returning from background).
+  // Resume a suspended context (first gesture / returning from background). The
+  // browser rejects this outside a gesture, leaving the context suspended.
   if (ctx.state === "suspended") {
     void ctx.resume();
   }
@@ -120,11 +130,12 @@ function scheduleNote(
  *
  * Returns early (plays nothing) when {@link shouldPlaySound} is false — i.e.
  * SFX disabled or volume 0 — which is also the default state (muted). Lazily
- * creates/resumes the AudioContext, then schedules the event's tone(s). Any
- * failure is swallowed so audio problems never break the game UI.
- *
- * MUST only be called from user-gesture-driven handlers (see the autoplay
- * policy in this file's top JSDoc).
+ * creates/resumes the AudioContext, then schedules the event's tone(s) ONLY
+ * when the context has actually reached the `running` state. A suspended /
+ * not-yet-resumed context (e.g. a background evolution tick after a reload with
+ * no fresh gesture) is a clean, silent no-op — this is what enforces the
+ * autoplay guarantee rather than relying on the browser to drop stray notes.
+ * Any failure is swallowed so audio problems never break the game UI.
  */
 export function playSound(event: SoundEvent, opts: PlaySoundOptions): void {
   const { enabled, volume } = opts;
@@ -134,6 +145,13 @@ export function playSound(event: SoundEvent, opts: PlaySoundOptions): void {
   try {
     const context = ensureContext();
     if (context === null) {
+      return;
+    }
+    // Autoplay guard: only emit audio once the context is genuinely running
+    // (which only happens inside/after a real user gesture). If it is still
+    // suspended, ensureContext() has already requested a resume() for next
+    // time, and we silently skip scheduling now.
+    if (context.state !== "running") {
       return;
     }
     const vol = clampVolume(volume);

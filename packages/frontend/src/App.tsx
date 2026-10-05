@@ -309,12 +309,13 @@ export function App() {
   // so it fires once per evolution.
   //
   // AUTOPLAY NOTE: an evolution can be produced by a background TIME_TICK with
-  // NO immediate user gesture, so the AudioContext may be suspended at this
-  // point. That is acceptable: SFX defaults to muted, and the only way SFX can
-  // be ON is that the user explicitly enabled it — enabling it is itself a
-  // gesture that resumes the context — so by the time this can make noise the
-  // context has already been resumed. playSound also guards a suspended context
-  // and never throws, so a silent no-op is the worst case.
+  // NO user gesture in the current session (e.g. right after a page reload that
+  // restored `sfxEnabled: true` from ddm.settings). SFX defaults to muted, and
+  // playSound enforces the autoplay guarantee itself: it only emits audio when
+  // the AudioContext has actually reached the `running` state (which only
+  // happens inside/after a real user gesture). A suspended / not-yet-resumed
+  // context is a guarded, silent no-op, and playSound never throws — so this
+  // call is safe even with no fresh gesture this session.
   useEffect(() => {
     if (game.justEvolvedTo !== null) {
       playSound("evolve", { enabled: sfxEnabled, volume: sfxVolume });

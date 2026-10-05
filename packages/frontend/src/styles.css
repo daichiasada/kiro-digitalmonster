@@ -2138,8 +2138,8 @@ body {
 /* --- app-level reduced-motion toggle (issue #45) ---
    The `.force-reduced-motion` root class (toggled on the top-level .app div in
    App.tsx when the user enables "reduce motion" in the settings panel) mirrors
-   EXACTLY the declarations in the ten `@media (prefers-reduced-motion: reduce)`
-   blocks above. The media blocks are left untouched so the OS
+   EXACTLY the declarations in each `@media (prefers-reduced-motion: reduce)`
+   block above. The media blocks are left untouched so the OS
    prefers-reduced-motion preference remains the default-on signal; this class
    adds a second, user-controlled trigger that stills the same animations. The
    fx-reduced-fade keyframes and zukan-in rule defined above are reused as-is. */
