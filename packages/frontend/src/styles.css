@@ -1985,3 +1985,220 @@ body {
     animation: none;
   }
 }
+
+/* --- settings panel (issue #45) --- */
+/* Gear button in the header; mirrors the zukan button's pill styling. */
+.settings-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.settings-btn:hover {
+  background: #2a3d66;
+}
+
+.settings-btn:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+/* Dialog overlay + box reuse the zukan-modal visual language. */
+.settings-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.settings-box {
+  width: 100%;
+  max-width: 440px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  animation: zukan-in 0.2s ease-out;
+}
+
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.settings-title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+.settings-close {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.settings-close:hover {
+  background: #2a3d66;
+}
+
+.settings-close:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.settings-row label,
+.settings-row-label {
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* Checkboxes: larger hit area + visible focus ring. */
+.settings-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.settings-checkbox:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+/* Range slider: fill the available row width with a visible focus ring. */
+.settings-range {
+  flex: 1 1 160px;
+  min-width: 120px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.settings-range:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 4px;
+}
+
+.settings-range-value {
+  min-width: 3.5ch;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-box {
+    animation: none;
+  }
+}
+
+/* --- app-level reduced-motion toggle (issue #45) ---
+   The `.force-reduced-motion` root class (toggled on the top-level .app div in
+   App.tsx when the user enables "reduce motion" in the settings panel) mirrors
+   EXACTLY the declarations in the ten `@media (prefers-reduced-motion: reduce)`
+   blocks above. The media blocks are left untouched so the OS
+   prefers-reduced-motion preference remains the default-on signal; this class
+   adds a second, user-controlled trigger that stills the same animations. The
+   fx-reduced-fade keyframes and zukan-in rule defined above are reused as-is. */
+.force-reduced-motion .stage-area,
+.force-reduced-motion .stage-area::before {
+  transition: none;
+}
+
+.force-reduced-motion .sprite-wrap .hunger-badge.caution {
+  animation: none;
+}
+
+.force-reduced-motion .speech-bubble {
+  animation: none;
+}
+
+.force-reduced-motion .sprite-bounce-layer.reacting {
+  animation: none;
+}
+
+.force-reduced-motion .care-fx {
+  /* Keep a brief fade so the cue is still visible without motion. */
+  animation: fx-reduced-fade 0.3s ease-out forwards !important;
+  transform: translate(-50%, -50%);
+}
+
+.force-reduced-motion .combatant .combatant-sprite {
+  animation: none !important;
+}
+
+.force-reduced-motion .battle-hp-fill {
+  transition: none !important;
+}
+
+.force-reduced-motion .damage-pop {
+  animation: none !important;
+  opacity: 1;
+}
+
+.force-reduced-motion .difficulty-btn {
+  transition: none !important;
+}
+
+.force-reduced-motion .busy-spinner {
+  animation: none;
+}
+
+.force-reduced-motion .name-dialog-box {
+  animation: none;
+}
+
+.force-reduced-motion .onboarding-hint {
+  animation: none;
+}
+
+.force-reduced-motion .zukan-box {
+  animation: none;
+}
+
+.force-reduced-motion .settings-box {
+  animation: none;
+}

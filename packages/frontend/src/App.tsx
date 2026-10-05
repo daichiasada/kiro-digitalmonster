@@ -16,14 +16,17 @@ import {
   writeOnboarded,
   readZukan,
   readSettings,
+  writeSettings,
   timeOfDay,
   type CareAction,
+  type Settings,
 } from "./ui-helpers.ts";
 import { playSound } from "./sound.ts";
 import { MonsterSprite } from "./assets/monsters/MonsterSprite.tsx";
 import { StatsPanel } from "./components/StatsPanel.tsx";
 import { NameDialog } from "./components/NameDialog.tsx";
 import { ZukanModal } from "./components/ZukanModal.tsx";
+import { SettingsPanel } from "./components/SettingsPanel.tsx";
 import { CarePanel } from "./components/CarePanel.tsx";
 import { BattlePanel } from "./components/BattlePanel.tsx";
 import { ChatPanel } from "./components/ChatPanel.tsx";
@@ -35,7 +38,7 @@ import { WelcomeBackPanel } from "./components/WelcomeBackPanel.tsx";
 /** Root game screen wiring the state hook to the UI panels. */
 export function App() {
   const game = useMonster();
-  const { lang, setLang, t } = useI18n();
+  const { lang, t } = useI18n();
 
   // Transient "last care action" signal used to drive a short, non-blocking
   // overlay animation over the sprite. The counter forces React to remount the
@@ -43,17 +46,19 @@ export function App() {
   const [careFx, setCareFx] = useState<{ action: CareAction; key: number } | null>(null);
   const fxTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sound-effect settings (issue #45). FEAT-002 consumes an {enabled, volume}
-  // value read from the shared `ddm.settings` store; FEAT-003 owns the live
-  // settings state/panel/persistence and will replace this per-render read with
-  // reactive state. Defaults are MUTED (sfxEnabled=false) so nothing plays
-  // until the user opts in — the autoplay policy is satisfied because playSound
-  // only resumes the AudioContext from a user gesture and only after SFX is
-  // explicitly enabled.
-  const settings = readSettings();
-  const sfx = { enabled: settings.sfxEnabled, volume: settings.volume };
-  const sfxEnabled = sfx.enabled;
-  const sfxVolume = sfx.volume;
+  // Display/sound settings (issue #45). Reactive state lazily initialized from
+  // the persisted `ddm.settings` store; every change persists via writeSettings
+  // and takes effect immediately. Defaults are MUTED (sfxEnabled=false) so
+  // nothing plays until the user opts in — the autoplay policy is satisfied
+  // because playSound only resumes the AudioContext from a user gesture and
+  // only after SFX is explicitly enabled.
+  const [settings, setSettings] = useState<Settings>(readSettings);
+  const sfxEnabled = settings.sfxEnabled;
+  const sfxVolume = settings.volume;
+  const updateSettings = useCallback((next: Settings) => {
+    setSettings(next);
+    writeSettings(next);
+  }, []);
 
   // Device-local time-of-day phase (issue #43) that keys the stage background
   // gradient. Seeded from the current local hour and recomputed on a cheap
@@ -189,6 +194,16 @@ export function App() {
     zukanTriggerRef.current?.focus();
   }, []);
 
+  // Settings panel (issue #45): a header ⚙ button opens the accessible dialog
+  // that consolidates SFX on/off + volume, reduced motion, and the JA/EN
+  // language toggle. Mirrors the zukan modal's focus-restoration contract.
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeSettings = useCallback(() => {
+    setSettingsOpen(false);
+    settingsTriggerRef.current?.focus();
+  }, []);
+
   // First-run onboarding hint. Lazy initializer reads localStorage once;
   // dismissing persists the "ddm.onboarded" flag so it never shows again.
   const [onboarded, setOnboarded] = useState(readOnboarded);
@@ -307,7 +322,7 @@ export function App() {
   }, [game.justEvolvedTo, sfxEnabled, sfxVolume]);
 
   return (
-    <div className="app">
+    <div className={`app${settings.reducedMotion ? " force-reduced-motion" : ""}`}>
       <header className="app-header">
         <h1>{t("app.title")}</h1>
         <div className="header-controls">
@@ -330,24 +345,16 @@ export function App() {
           >
             {t("reset.button")}
           </button>
-          <div className="lang-toggle" role="group" aria-label="Language">
-            <button
-              type="button"
-              className={`lang-btn${lang === "ja" ? " active" : ""}`}
-              aria-pressed={lang === "ja"}
-              onClick={() => setLang("ja")}
-            >
-              JA
-            </button>
-            <button
-              type="button"
-              className={`lang-btn${lang === "en" ? " active" : ""}`}
-              aria-pressed={lang === "en"}
-              onClick={() => setLang("en")}
-            >
-              EN
-            </button>
-          </div>
+          <button
+            ref={settingsTriggerRef}
+            type="button"
+            className="settings-btn"
+            aria-label={t("settings.buttonAria")}
+            title={t("settings.buttonAria")}
+            onClick={() => setSettingsOpen(true)}
+          >
+            <span aria-hidden="true">⚙</span> {t("settings.button")}
+          </button>
         </div>
       </header>
 
@@ -397,6 +404,10 @@ export function App() {
       )}
 
       {zukanOpen && <ZukanModal zukan={readZukan()} onClose={closeZukan} />}
+
+      {settingsOpen && (
+        <SettingsPanel settings={settings} onChange={updateSettings} onClose={closeSettings} />
+      )}
 
       <EvolutionBanner stageId={game.justEvolvedTo} onDismiss={game.dismissEvolution} />
 

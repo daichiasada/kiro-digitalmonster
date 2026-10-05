@@ -19,6 +19,9 @@ A Digimon-style raising game. Hatch a monster from an egg, raise it through care
 - ⏰ **Time passing**: the state changes according to how long you leave it (a lightweight take on real-time raising).
 - 💾 **Save**: data is stored in DynamoDB keyed by a `monsterId` issued per browser. No authentication.
 - 💬 **Conversational AI**: the Bedrock Claude model switches according to the growth stage.
+- 🔊 **Sound & settings**: short sound effects for care, battle, and evolution, plus a settings panel (sound on/off and volume, reduced motion, language) saved to `localStorage`.
+
+> **Sound asset license:** Sound effects are generated at runtime via the Web Audio API; no third-party audio assets are bundled.
 
 ---
 

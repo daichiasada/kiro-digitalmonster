@@ -550,57 +550,111 @@ export function shouldPlaySound(enabled: boolean, volume: number): boolean {
 }
 
 /**
- * Minimal display/sound settings shape. FEAT-003 formalizes the full settings
- * state + persistence (SFX on/off + volume, reduced motion, language) under the
- * `ddm.settings` localStorage key; FEAT-002 only needs the SFX fields so the
- * event moments can be wired now. FEAT-003 should EXTEND this shape/key rather
- * than introduce a parallel one.
+ * Display/sound settings surfaced by the Settings panel (issue #45): SFX
+ * on/off, SFX volume, and app-level reduced motion. Language is deliberately
+ * NOT part of this shape — it is owned by i18n.ts under the separate `ddm.lang`
+ * key (the panel only surfaces useI18n().lang/setLang), so toggling it stays
+ * independent of this store and does not regress the #12 persistence.
+ *
+ * Persisted as a single JSON blob under {@link SETTINGS_STORAGE_KEY}
+ * (`ddm.settings`).
  */
-export interface DisplaySettings {
+export interface Settings {
   /** Whether sound effects play. Defaults OFF (muted) per the autoplay policy. */
   sfxEnabled: boolean;
   /** SFX playback volume in [0, 1]. */
   volume: number;
+  /** App-level "reduce motion" toggle that forces the force-reduced-motion class. */
+  reducedMotion: boolean;
 }
 
-/** localStorage key for persisted display/sound settings (shared with FEAT-003). */
+/**
+ * Back-compat alias for the pre-FEAT-003 name. FEAT-002 called this shape
+ * {@link DisplaySettings}; it is now {@link Settings} with the added
+ * `reducedMotion` field. Kept as an alias to avoid churn in older imports.
+ */
+export type DisplaySettings = Settings;
+
+/** localStorage key for persisted display/sound settings. */
 export const SETTINGS_STORAGE_KEY = "ddm.settings";
 
 /**
  * Default settings. SFX is OFF by default so NOTHING plays until the user
  * explicitly enables it (autoplay-policy compliant: even the first gesture is
- * silent until opt-in). Volume defaults to a middle level.
+ * silent until opt-in). Volume defaults to a middle level and reduced motion
+ * is off so the OS prefers-reduced-motion preference remains the default-on
+ * signal.
  */
-export const DEFAULT_SETTINGS: DisplaySettings = {
+export const DEFAULT_SETTINGS: Settings = {
   sfxEnabled: false,
   volume: DEFAULT_SOUND_VOLUME,
+  reducedMotion: false,
 };
 
 /**
- * Read the persisted display/sound settings, guarded so it never throws
- * (localStorage can be absent or blocked). Unknown/corrupt data falls back to
- * {@link DEFAULT_SETTINGS}. This is an interim reader for FEAT-002; FEAT-003
- * will build its settings state on top of this same key/shape.
+ * Pure, DOM/localStorage-free parser for the persisted settings blob. Given the
+ * raw stored string (or null when absent), it:
+ *   - returns a fresh copy of {@link DEFAULT_SETTINGS} when raw is null, the
+ *     JSON is invalid, or it does not parse to an object;
+ *   - coerces non-boolean `sfxEnabled` / `reducedMotion` to their defaults;
+ *   - clamps `volume` into [0, 1] via {@link clampVolume} (NaN/missing ->
+ *     default);
+ *   - fills any missing field from the defaults.
+ *
+ * Kept pure so it is unit-testable under node:test (no DOM/React). The guarded
+ * localStorage wrappers {@link readSettings} / {@link writeSettings} are thin
+ * shells around this.
  */
-export function readSettings(): DisplaySettings {
+export function parseSettings(raw: string | null): Settings {
+  if (raw === null) {
+    return { ...DEFAULT_SETTINGS };
+  }
+  let parsed: Partial<Settings> | null;
+  try {
+    parsed = JSON.parse(raw) as Partial<Settings> | null;
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+  if (parsed === null || typeof parsed !== "object") {
+    return { ...DEFAULT_SETTINGS };
+  }
+  return {
+    sfxEnabled: typeof parsed.sfxEnabled === "boolean" ? parsed.sfxEnabled : DEFAULT_SETTINGS.sfxEnabled,
+    volume: clampVolume(typeof parsed.volume === "number" ? parsed.volume : DEFAULT_SETTINGS.volume),
+    reducedMotion:
+      typeof parsed.reducedMotion === "boolean" ? parsed.reducedMotion : DEFAULT_SETTINGS.reducedMotion,
+  };
+}
+
+/**
+ * Read the persisted settings, guarded so it never throws (localStorage can be
+ * absent or blocked). Delegates all validation/clamping to the pure
+ * {@link parseSettings}. Mirrors {@link readOnboarded}.
+ */
+export function readSettings(): Settings {
   try {
     if (typeof localStorage === "undefined") {
       return { ...DEFAULT_SETTINGS };
     }
-    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (raw === null) {
-      return { ...DEFAULT_SETTINGS };
-    }
-    const parsed = JSON.parse(raw) as Partial<DisplaySettings> | null;
-    if (parsed === null || typeof parsed !== "object") {
-      return { ...DEFAULT_SETTINGS };
-    }
-    return {
-      sfxEnabled: typeof parsed.sfxEnabled === "boolean" ? parsed.sfxEnabled : DEFAULT_SETTINGS.sfxEnabled,
-      volume: clampVolume(typeof parsed.volume === "number" ? parsed.volume : DEFAULT_SETTINGS.volume),
-    };
+    return parseSettings(localStorage.getItem(SETTINGS_STORAGE_KEY));
   } catch {
     return { ...DEFAULT_SETTINGS };
+  }
+}
+
+/**
+ * Persist the given settings, guarded so a blocked/absent localStorage is a
+ * silent no-op (mirrors {@link writeOnboarded}). Stores the whole blob under
+ * {@link SETTINGS_STORAGE_KEY} as JSON.
+ */
+export function writeSettings(settings: Settings): void {
+  try {
+    if (typeof localStorage === "undefined") {
+      return;
+    }
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // Ignore storage failures (private mode, quota, etc.).
   }
 }
 

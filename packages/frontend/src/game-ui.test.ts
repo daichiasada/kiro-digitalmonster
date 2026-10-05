@@ -74,6 +74,8 @@ import {
   shouldPlaySound,
   soundTone,
   DEFAULT_SOUND_VOLUME,
+  parseSettings,
+  DEFAULT_SETTINGS,
 } from "./ui-helpers.ts";
 import type { CareAction, SoundEvent, SoundTone } from "./ui-helpers.ts";
 import {
@@ -1347,4 +1349,48 @@ test("win and evolve are multi-note arpeggios; single events are one note", () =
   assert.ok(Array.isArray(soundTone("evolve")), "evolve is an arpeggio");
   assert.equal(Array.isArray(soundTone("feed")), false, "feed is a single note");
   assert.equal(Array.isArray(soundTone("hit")), false, "hit is a single note");
+});
+
+// --- parseSettings (issue #45) ---------------------------------------------
+
+test("parseSettings round-trips a valid settings blob", () => {
+  const raw = JSON.stringify({ sfxEnabled: true, volume: 0.3, reducedMotion: true });
+  assert.deepEqual(parseSettings(raw), {
+    sfxEnabled: true,
+    volume: 0.3,
+    reducedMotion: true,
+  });
+});
+
+test("parseSettings returns defaults for null and invalid JSON", () => {
+  assert.deepEqual(parseSettings(null), DEFAULT_SETTINGS);
+  assert.deepEqual(parseSettings("not json"), DEFAULT_SETTINGS);
+  assert.deepEqual(parseSettings("{broken"), DEFAULT_SETTINGS);
+  // Valid JSON that is not an object also falls back to defaults.
+  assert.deepEqual(parseSettings("42"), DEFAULT_SETTINGS);
+  assert.deepEqual(parseSettings("null"), DEFAULT_SETTINGS);
+});
+
+test("parseSettings clamps out-of-range volume via clampVolume", () => {
+  assert.equal(parseSettings(JSON.stringify({ volume: 5 })).volume, 1);
+  assert.equal(parseSettings(JSON.stringify({ volume: -2 })).volume, 0);
+  // NaN serializes to null, which is not a number -> default volume.
+  assert.equal(parseSettings(JSON.stringify({ volume: Number.NaN })).volume, DEFAULT_SETTINGS.volume);
+});
+
+test("parseSettings coerces non-boolean flags to their defaults", () => {
+  const parsed = parseSettings(JSON.stringify({ sfxEnabled: "yes", reducedMotion: 1 }));
+  assert.equal(parsed.sfxEnabled, DEFAULT_SETTINGS.sfxEnabled);
+  assert.equal(parsed.reducedMotion, DEFAULT_SETTINGS.reducedMotion);
+});
+
+test("parseSettings fills missing fields from the defaults", () => {
+  // Only sfxEnabled provided: volume and reducedMotion come from defaults.
+  assert.deepEqual(parseSettings(JSON.stringify({ sfxEnabled: true })), {
+    sfxEnabled: true,
+    volume: DEFAULT_SETTINGS.volume,
+    reducedMotion: DEFAULT_SETTINGS.reducedMotion,
+  });
+  // Empty object yields the full defaults.
+  assert.deepEqual(parseSettings("{}"), DEFAULT_SETTINGS);
 });
