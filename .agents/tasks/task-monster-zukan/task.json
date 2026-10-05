@@ -1,7 +1,24 @@
 {
   "task_id": "task-monster-zukan",
   "task_description": "Issue #39: persistent monster zukan (collection of reached appearances = tier x form). Survives reset (separate ddm.zukan localStorage key). Records first-seen timestamp, days raised, and name at first discovery of each appearance. Accessible JA/EN modal opened from a header button, with undiscovered entries shown as silhouettes and a discovered/total count. Pure collection logic (canonical set, entry keying, first-seen merge, counts) in @ddm/shared and unit-tested; frontend-only, additive, no Monster-type/backend/infra change.",
-  "status": "in_progress",
+  "status": "completed",
   "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
-  "blocked_reason": null
+  "blocked_reason": null,
+  "review": {
+    "verdict": "APPROVED",
+    "iterations": 1,
+    "file": ".agents/tasks/task-monster-zukan/2026-10-05-083501-review.md",
+    "non_blocking_notes": [
+      "No historical backfill: a monster loaded already past baby records only its current stageId x form; earlier stages for pre-existing saves are not retroactively recorded (inherent design, not a regression).",
+      "daysRaised is total age-from-bornAt at first discovery, not per-stage dwell time (matches the issue's 育成日数 wording).",
+      "No jsdom/lifecycle tests for the useMonster storage wiring or modal keyboard a11y; only the pure core + glue + formatters are unit-tested."
+    ]
+  },
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build passes for the whole monorepo. Shared tests 126/126 pass (baseline 117 + 9 zukan core tests). Frontend ui-helpers tests 107/107 pass (baseline 99 + 8 zukan glue/formatter tests). Tests exercise real pure logic: canonical 10-appearance enumeration, first-seen merge (object-identity no-op on re-record), days-raised floor/clamp, counts, sanitizeZukan dropping malformed/non-canonical, parseZukan JSON+sanitize, and the localized count/days/date formatters. Verified reset() does NOT read/write/clear ddm.zukan (only a comment references it; no removeItem/clear anywhere in frontend), so the collection survives reset. Discovery recorded in commit() + mount path on every (stageId x form) change. No Docker in repo (frontend-only web app). No new runtime deps; no backend/infra/Monster-type change."
+  }
 }
