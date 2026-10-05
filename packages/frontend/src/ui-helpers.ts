@@ -4,8 +4,9 @@
  * These contain NO DOM / React so they can be unit-tested with the Node
  * built-in test runner (see game-ui.test.ts).
  */
-import type { BattleWinner, GrowthStage, Monster, Stats } from "@ddm/shared";
+import type { BattleWinner, EvolutionProgress, GrowthStage, Monster, Stats } from "@ddm/shared";
 import { HUNGRY_CAUTION_LEVEL, MAX_HUNGRY_LEVEL } from "@ddm/shared";
+import { t } from "./i18n.ts";
 import type { Lang } from "./i18n.ts";
 
 /** Japanese display label per growth stage. */
@@ -427,4 +428,80 @@ export function fullnessPercent(hungryLevel: number): number {
  */
 export function isHungerCaution(hungryLevel: number): boolean {
   return hungryLevel >= HUNGRY_CAUTION_LEVEL;
+}
+
+// --- First-run onboarding hint ---------------------------------------------
+
+/** localStorage key under which the "onboarding seen" flag is persisted. */
+export const ONBOARDED_STORAGE_KEY = "ddm.onboarded";
+
+/**
+ * Read the onboarding flag from localStorage, guarded so it never throws
+ * (localStorage can be absent or blocked). Mirrors readStoredLang in i18n.ts.
+ *
+ * Returns `false` (meaning: still show the hint) when storage is
+ * undefined/blocked OR the key is absent. Returns `true` only when the key is
+ * present with a truthy stored value (e.g. the "1" written by
+ * {@link writeOnboarded}). This is DOM-dependent, so the pure show/hide
+ * decision lives in {@link shouldShowOnboarding} for unit-testing.
+ */
+export function readOnboarded(): boolean {
+  try {
+    if (typeof localStorage === "undefined") {
+      return false;
+    }
+    const stored = localStorage.getItem(ONBOARDED_STORAGE_KEY);
+    return stored !== null && stored !== "" && stored !== "0";
+  } catch {
+    return false;
+  }
+}
+
+/** Persist the onboarding flag ("1") to localStorage, guarded so it never throws. */
+export function writeOnboarded(): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(ONBOARDED_STORAGE_KEY, "1");
+    }
+  } catch {
+    // Ignore storage failures (private mode, quota, etc.).
+  }
+}
+
+/**
+ * Pure show/hide decision for the first-run onboarding hint, decoupled from
+ * storage so it is unit-testable without a DOM.
+ *
+ * Semantics: an unset flag OR unavailable storage both make
+ * {@link readOnboarded} default to `false`, so the hint is shown by default on
+ * a fresh profile. The hint is ONLY shown while a monster is loaded
+ * (`hasMonster`), and is hidden once the flag has been set (dismissed).
+ */
+export function shouldShowOnboarding(onboarded: boolean, hasMonster: boolean): boolean {
+  return !onboarded && hasMonster;
+}
+
+/**
+ * Pure call-to-action line summarizing what remains before the next evolution,
+ * derived from the shared {@link EvolutionProgress}. React/DOM-free so it can
+ * be unit-tested; wording comes from the i18n templates "onboarding.cta" and
+ * "onboarding.ctaFinal".
+ *
+ * At the final stage, returns the "already fully grown" line. Otherwise it
+ * names the next stage and the 『トレーニング』 action, with the remaining
+ * training count (clamped to >= 0) and remaining minutes (via
+ * {@link formatMinutes}, clamped to >= 0).
+ */
+export function onboardingCta(prog: EvolutionProgress, lang: Lang): string {
+  if (prog.isFinalStage) {
+    return t(lang, "onboarding.ctaFinal");
+  }
+  const stage = (lang === "en" ? prog.nextLabelEn : prog.nextLabelJa) ?? "";
+  const remainingTraining = Math.max(0, (prog.trainingRequired ?? 0) - prog.trainingCurrent);
+  const remainingMs = Math.max(0, (prog.requiredMs ?? 0) - prog.elapsedMs);
+  const minutes = formatMinutes(remainingMs, lang);
+  return t(lang, "onboarding.cta")
+    .replace("{stage}", stage)
+    .replace("{count}", String(remainingTraining))
+    .replace("{minutes}", minutes);
 }

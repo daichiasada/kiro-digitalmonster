@@ -1,0 +1,25 @@
+{
+  "project_type": "TypeScript monorepo (npm workspaces): React 18 + Vite frontend, AWS Lambda backend, CDK infra, shared game-logic package. Issue #31 is frontend-only.",
+  "language": "TypeScript",
+  "build_system": "npm workspaces. Root `npm run build` builds shared -> backend -> frontend -> infra in order. Frontend build is `tsc && vite build` (packages/frontend). Node v22.23.3 via nvm; may need `export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"`.",
+  "test_framework": "Node built-in test runner (node:test) with --experimental-strip-types, no external test deps. Shared tests under packages/shared/src/__tests__. Frontend pure-helper tests in packages/frontend/src/game-ui.test.ts (DOM/React-free).",
+  "build_command": "From repo root: `npm run build`. Frontend-only: `cd packages/frontend && npm run build`.",
+  "test_command": "Shared: from root `npm test` (47 passing baseline). Frontend ui-helpers: `cd packages/frontend && env -u NODE_OPTIONS node --experimental-strip-types --test src/game-ui.test.ts` (55 passing baseline).",
+  "verification_instructions": "1) Run shared tests from root: npm test -> expect 47 pass. 2) Run frontend helper tests -> expect 55 + newly added tests all pass. 3) Build frontend: cd packages/frontend && npm run build -> tsc typecheck + vite build must succeed (EN dict is typed Record<MessageKey,string>, so a missing en/ja key fails tsc). 4) Optional Playwright visual check by serving the vite build output.",
+  "snapshot_or_generated_files": "null - no checked-in snapshots or generated fixtures.",
+  "setup_instructions": "Dependencies already installed (node_modules present). If needed: `npm install` at root. Export PATH to the nvm node v22.23.3 bin.",
+  "environment_constraints": "Network OPEN_INTERNET. Headless sandbox browser cannot reach host-localhost dev servers, so a live `vite dev` is not reachable; a Playwright visual check must serve the built dist via request interception (prior tasks did this). CloudFront live site is stale (not redeployed) - do NOT judge changes against it. Cannot push or open PRs.",
+  "contribution_requirements": "No new runtime dependencies. Keep pure helpers DOM/React-free so they stay testable under node:test. i18n EN dict is typed Record<MessageKey,string>, so EVERY new key MUST have BOTH ja and en entries or tsc fails. JA output for existing keys must remain byte-identical. Guarded localStorage access (never throw). Respect prefers-reduced-motion for any animation.",
+  "key_patterns": "EvolutionBanner.tsx is the understated dismissible banner pattern to mirror (role, close button, onClick dismiss, CSS .evolution-banner + .evo-close + @keyframes pop). i18n in i18n.ts: JA_MESSAGES is source of truth, MessageKey derived, EN_MESSAGES typed Record; readStoredLang/writeStoredLang show the guarded try/catch localStorage pattern and LANG_STORAGE_KEY='ddm.lang'. Pure helpers live in ui-helpers.ts and are unit-tested in game-ui.test.ts. Shared evolutionProgress(monster, now) returns nextLabelJa/nextLabelEn, trainingCurrent/trainingRequired, elapsedMs/requiredMs, trainingMet/ageMet/isFinalStage; StatsPanel already consumes it. App.tsx renders EvolutionBanner right before the game-grid and gates the main grid on game.loading / game.monster===null.",
+  "relevant_files": [
+    "packages/frontend/src/App.tsx (wire the hint; render near EvolutionBanner / stage-area)",
+    "packages/frontend/src/components/EvolutionBanner.tsx (pattern to mirror)",
+    "packages/frontend/src/i18n.ts (add new ja+en keys to JA_MESSAGES and EN_MESSAGES)",
+    "packages/frontend/src/ui-helpers.ts (add pure onboarding helper: read/write ddm.onboarded flag + show/hide decision, and optional evolve call-to-action summary derived from EvolutionProgress)",
+    "packages/frontend/src/game-ui.test.ts (unit-test the new pure helper)",
+    "packages/frontend/src/styles.css (new .onboarding-hint styles, mirror .evolution-banner, respect prefers-reduced-motion)",
+    "packages/frontend/src/components/StatsPanel.tsx (reference for evolutionProgress usage)",
+    "packages/shared/src/stages.ts (EvolutionProgress shape + evolutionProgress)"
+  ],
+  "directory_structure": "packages/shared (game logic + types + stages/evolution), packages/backend (lambda handlers), packages/frontend (React app: App.tsx, components/, ui-helpers.ts, i18n.ts, styles.css, game-ui.test.ts, state/useMonster.ts), infra (CDK). .agents/tasks holds prior task plans/reviews."
+}

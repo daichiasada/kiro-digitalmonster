@@ -1108,6 +1108,76 @@ body {
   }
 }
 
+/* --- onboarding hint --- */
+.onboarding-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  color: var(--text, #e8e8ea);
+  animation: hint-fade-in 0.3s ease;
+}
+
+.onboarding-icon {
+  font-size: 1.2rem;
+  line-height: 1.4;
+}
+
+.onboarding-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.onboarding-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.onboarding-body {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.onboarding-cta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted, #a7a7ad);
+}
+
+.onboarding-close {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--muted, #a7a7ad);
+  font-size: 1.2rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+@keyframes hint-fade-in {
+  from {
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-hint {
+    animation: none;
+  }
+}
+
 .app-footer {
   text-align: center;
   margin-top: 24px;

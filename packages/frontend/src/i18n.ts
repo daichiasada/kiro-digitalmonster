@@ -84,6 +84,13 @@ const JA_MESSAGES = {
   "evolution.banner": "進化した！ {stage} になった！",
   "evolution.close": "閉じる",
 
+  // Onboarding hint (first-run)
+  "onboarding.title": "はじめかた",
+  "onboarding.body": "まずは『トレーニング』で成長期を目指そう！",
+  "onboarding.dismiss": "閉じる",
+  "onboarding.cta": "{stage}まで あと トレーニング{count}回・{minutes}",
+  "onboarding.ctaFinal": "もう完全に育ちきっているよ！",
+
   // Reset
   "reset.button": "リセット",
   "reset.confirmPrompt":
@@ -163,6 +170,13 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   // Evolution banner
   "evolution.banner": "It evolved! It became {stage}!",
   "evolution.close": "Close",
+
+  // Onboarding hint (first-run)
+  "onboarding.title": "Getting started",
+  "onboarding.body": "Start with Training to aim for the Rookie stage!",
+  "onboarding.dismiss": "Close",
+  "onboarding.cta": "To reach {stage}: {count} more training, {minutes}",
+  "onboarding.ctaFinal": "It's already fully grown!",
 
   // Reset
   "reset.button": "Reset",

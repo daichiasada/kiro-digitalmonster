@@ -1,0 +1,24 @@
+{
+  "task_id": "task-onboarding-hint",
+  "task_description": "Issue #31: Add a lightweight, dismissible first-run onboarding hint for the AI Monster game. On first load the player only sees the egg (baby) and panels with no guidance. Show a one-time understated hint ('まずは『トレーニング』で成長期を目指そう！' / English equivalent) that is dismissible and persists a ddm.onboarded flag in localStorage so it never shows again. Optionally summarize what is still needed to evolve (remaining training count / minutes) via the shared evolutionProgress. Keep the existing understated tone (no heavy modal). JA/EN parity for all new strings. Frontend-only; ships via frontend redeploy. Agent commits locally on feat/onboarding-hint; orchestrator pushes and opens the PR.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "review": {
+    "iterations": 1,
+    "verdict": "APPROVED",
+    "file": ".agents/tasks/task-onboarding-hint/2026-10-05-052110-review.md",
+    "non_blocking_notes": [
+      "Hint shows until dismissed even for a returning already-evolved monster (matches issue intent: first-run + persisted dismiss flag).",
+      "onboarding.ctaFinal branch is effectively dead for a true first-run player (harmless, still correct and tested).",
+      "No automated coverage of the localStorage guards or the OnboardingHint/App DOM wiring; the pure helpers are well covered."
+    ]
+  },
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "Shared tests 47 pass. Frontend helper tests 59 pass (55 baseline + 4 new). Frontend build (tsc + vite) succeeds, proving JA/EN i18n key parity via the typed EN dict. No Dockerfile for the frontend package; docker build skipped. Test quality verified: new tests drive real evolutionProgress output through onboardingCta with exact JA/EN assertions and >=0 clamping, and cover the shouldShowOnboarding truth table; they exercise the new code paths and would fail if reverted."
+  }
+}
