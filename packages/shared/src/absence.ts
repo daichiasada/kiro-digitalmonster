@@ -170,29 +170,3 @@ export function recommendCareFromMonster(after: Monster): CareRecommendation {
   }
   return "none";
 }
-
-/**
- * Recommend a one-tap care action from an {@link AbsenceSummary}.
- *
- * The summary carries DELTAS, not the absolute post-advance hunger level, so a
- * rising-hunger absence is treated as a "feed" hint; otherwise it defers to the
- * same priority order as {@link recommendCareFromMonster} using the observable
- * flags in the summary. The frontend one-tap button prefers the monster-based
- * variant (which can read the absolute state); this variant exists for callers
- * that only hold the summary.
- *
- * Priority order (documented, highest first): feed (hunger rose during the
- * absence) > clean (became dirty) > wake (was sleeping) > none.
- */
-export function recommendedCareAction(summary: AbsenceSummary): CareRecommendation {
-  if (summary.hungerDelta > 0) {
-    return "feed";
-  }
-  if (summary.becameDirty) {
-    return "clean";
-  }
-  if (summary.wasSleeping) {
-    return "wake";
-  }
-  return "none";
-}

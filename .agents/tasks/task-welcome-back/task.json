@@ -3,5 +3,12 @@
   "task_description": "Issue #40: 不在中の出来事サマリー（おかえり画面）. Add a shared PURE absence-diff function (summarizeAbsence) comparing the monster before/after applyTimePassage (elapsed time, hunger delta, became dirty, HP lost from starving / gained while sleeping, evolution), unit-tested in @ddm/shared. Add a frontend おかえり/welcome-back summary panel shown only when the absence since lastUpdatedAt >= a documented 5-minute threshold, rendered JA/EN, with a one-tap recommended-care button (feed/clean/wake), captured at the mount advance (not the TIME_TICK interval), keyboard-dismissible, color-safe, prefers-reduced-motion aware, dismissed once per return.",
   "status": "in_progress",
   "feature_order": ["FEAT-001", "FEAT-002"],
-  "blocked_reason": null
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build passes (tsc shared+backend+frontend + vite). Shared tests 140/140, frontend tests 112/112, 0 fail. Addressed the 2026-10-05 semantic review: (1) removed the dead, untested recommendedCareAction export from absence.ts; (2) the welcome-back one-tap now dismisses only AFTER the care action applies (bails while busy) so a tap during an in-flight save is no longer dropped; (3) the one-tap recommendation is FROZEN at mount in useMonster (welcomeBackRecommendation) so a background 15s tick can no longer shift the button label; (4) the mount-only gating / tick guard / session dismissal remain untested by design (project tests pure helpers only, no DOM/React). No Dockerfile for app packages, so docker build skipped."
+  }
 }

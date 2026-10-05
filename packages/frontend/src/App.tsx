@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import { evolutionProgress, formOf, recommendCareFromMonster } from "@ddm/shared";
+import { evolutionProgress, formOf } from "@ddm/shared";
 import { useMonster } from "./state/useMonster.ts";
 import { useI18n } from "./i18n.ts";
 import {
@@ -227,33 +227,14 @@ export function App() {
     triggerCareFx("pet", game.pet);
   }, [triggerCareFx, game.pet, game.petsRemaining]);
 
-  // One-tap recommended care from the welcome-back panel (issue #40). Derive
-  // the single most useful action from the shared recommendation helper and run
-  // the existing (tested) care action: feed/clean, or wake via the sleep toggle
-  // when the monster is asleep. Then dismiss the panel so it does not re-show
-  // this session. 'none' only dismisses (the panel hides the button for 'none').
+  // One-tap recommended care from the welcome-back panel (issue #40). The hook
+  // owns both the FROZEN recommendation (captured at mount so a background tick
+  // cannot shift the label) and the runner, which runs the mapped care action
+  // and dismisses only AFTER it actually applies (so a tap during an in-flight
+  // save is not silently dropped). App just forwards the hook's runner.
   const handleWelcomeBackAction = useCallback(() => {
-    if (game.monster === null) {
-      game.dismissWelcomeBack();
-      return;
-    }
-    const recommendation = recommendCareFromMonster(game.monster);
-    switch (recommendation) {
-      case "feed":
-        void game.feed();
-        break;
-      case "clean":
-        void game.clean();
-        break;
-      case "wake":
-        // sleep() is a toggle: it wakes the monster when it is asleep.
-        void game.sleep();
-        break;
-      default:
-        break;
-    }
-    game.dismissWelcomeBack();
-  }, [game.monster, game.feed, game.clean, game.sleep, game.dismissWelcomeBack]);
+    void game.runWelcomeBackCare();
+  }, [game.runWelcomeBackCare]);
 
   const handleSpriteKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -364,10 +345,10 @@ export function App() {
 
       <EvolutionBanner stageId={game.justEvolvedTo} onDismiss={game.dismissEvolution} />
 
-      {game.welcomeBack !== null && game.monster !== null && (
+      {game.welcomeBack !== null && game.welcomeBackRecommendation !== null && (
         <WelcomeBackPanel
           summary={game.welcomeBack}
-          recommendation={recommendCareFromMonster(game.monster)}
+          recommendation={game.welcomeBackRecommendation}
           onRecommendedAction={handleWelcomeBackAction}
           onClose={game.dismissWelcomeBack}
         />
