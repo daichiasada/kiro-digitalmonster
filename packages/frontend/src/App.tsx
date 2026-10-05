@@ -27,6 +27,7 @@ import { ChatPanel } from "./components/ChatPanel.tsx";
 import { SpeechBubble } from "./components/SpeechBubble.tsx";
 import { EvolutionBanner } from "./components/EvolutionBanner.tsx";
 import { OnboardingHint } from "./components/OnboardingHint.tsx";
+import { WelcomeBackPanel } from "./components/WelcomeBackPanel.tsx";
 
 /** Root game screen wiring the state hook to the UI panels. */
 export function App() {
@@ -226,6 +227,15 @@ export function App() {
     triggerCareFx("pet", game.pet);
   }, [triggerCareFx, game.pet, game.petsRemaining]);
 
+  // One-tap recommended care from the welcome-back panel (issue #40). The hook
+  // owns both the FROZEN recommendation (captured at mount so a background tick
+  // cannot shift the label) and the runner, which runs the mapped care action
+  // and dismisses only AFTER it actually applies (so a tap during an in-flight
+  // save is not silently dropped). App just forwards the hook's runner.
+  const handleWelcomeBackAction = useCallback(() => {
+    void game.runWelcomeBackCare();
+  }, [game.runWelcomeBackCare]);
+
   const handleSpriteKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
       if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
@@ -334,6 +344,15 @@ export function App() {
       {zukanOpen && <ZukanModal zukan={readZukan()} onClose={closeZukan} />}
 
       <EvolutionBanner stageId={game.justEvolvedTo} onDismiss={game.dismissEvolution} />
+
+      {game.welcomeBack !== null && game.welcomeBackRecommendation !== null && (
+        <WelcomeBackPanel
+          summary={game.welcomeBack}
+          recommendation={game.welcomeBackRecommendation}
+          onRecommendedAction={handleWelcomeBackAction}
+          onClose={game.dismissWelcomeBack}
+        />
+      )}
 
       {game.error !== null && <p className="app-error" role="alert">{game.error}</p>}
 

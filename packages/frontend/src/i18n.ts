@@ -127,6 +127,20 @@ const JA_MESSAGES = {
   "onboarding.cta": "{stage}まで あと トレーニング{count}回・{minutes}",
   "onboarding.ctaFinal": "もう完全に育ちきっているよ！",
 
+  // Welcome-back / おかえり summary (issue #40)
+  "welcome.title": "おかえり！",
+  "welcome.elapsed": "前回から{duration}経過",
+  "welcome.hunger": "お腹がすいた（空腹度 +{n}）",
+  "welcome.dirty": "よごれてしまった",
+  "welcome.hpLost": "HPが{n}減った",
+  "welcome.hpRecovered": "寝ている間にHPが{n}回復した",
+  "welcome.evolved": "進化した！{stage}になった",
+  "welcome.noChange": "大きな変化はなかったよ",
+  "welcome.recommendFeed": "まずはごはんをあげよう",
+  "welcome.recommendClean": "まずはおそうじしよう",
+  "welcome.recommendWake": "そろそろ起こしてあげよう",
+  "welcome.close": "閉じる",
+
   // Reset
   "reset.button": "リセット",
   "reset.confirmPrompt":
@@ -275,6 +289,20 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   "onboarding.dismiss": "Close",
   "onboarding.cta": "To reach {stage}: {count} more training, {minutes}",
   "onboarding.ctaFinal": "It's already fully grown!",
+
+  // Welcome-back / おかえり summary (issue #40)
+  "welcome.title": "Welcome back!",
+  "welcome.elapsed": "{duration} since your last visit",
+  "welcome.hunger": "It got hungry (hunger +{n})",
+  "welcome.dirty": "It got dirty",
+  "welcome.hpLost": "Lost {n} HP",
+  "welcome.hpRecovered": "Recovered {n} HP while sleeping",
+  "welcome.evolved": "It evolved! It became {stage}",
+  "welcome.noChange": "Nothing major changed",
+  "welcome.recommendFeed": "Let's feed it first",
+  "welcome.recommendClean": "Let's clean it first",
+  "welcome.recommendWake": "Time to wake it up",
+  "welcome.close": "Close",
 
   // Reset
   "reset.button": "Reset",

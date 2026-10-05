@@ -1,0 +1,30 @@
+{
+  "project_type": "TypeScript monorepo: React+Vite frontend, AWS Lambda backend, shared domain package, CDK infra. Monster-raising game (AIモンスター).",
+  "language": "TypeScript (ESM, .ts imports with explicit extensions)",
+  "build_system": "npm workspaces. Root `npm run build` builds shared (tsc) then backend+frontend. Node must be on PATH: export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\".",
+  "test_framework": "Node built-in test runner (node:test) with --experimental-strip-types. Shared tests: src/__tests__/*.ts (one file per area). Frontend tests: a SINGLE file src/game-ui.test.ts covering all pure UI helpers (NO DOM/React in tests).",
+  "build_command": "npm run build (from repo root)",
+  "test_command": "npm test (shared, baseline 126) ; npm test -w @ddm/frontend (frontend, baseline 107)",
+  "verification_instructions": "1) export PATH for node. 2) npm run build must pass (tsc typechecks shared+frontend; EN i18n dict is typed Record<MessageKey,string> so a missing key is a compile error). 3) npm test -> shared pass count must grow from 126 with new absence tests, 0 fail. 4) npm test -w @ddm/frontend -> frontend pass count must grow from 107 with new recommended-action/threshold tests, 0 fail.",
+  "snapshot_or_generated_files": "None checked in. Shared is compiled to dist/ by tsc during build but dist is gitignored/not committed.",
+  "setup_instructions": "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"; dependencies already installed (node_modules present). If missing: npm install at root.",
+  "environment_constraints": "Network OPEN_INTERNET. No backend/Monster-type change needed. Cannot push or open PRs (orchestrator does that). Do NOT touch backup/previous-main branches.",
+  "contribution_requirements": "JA is i18n source-of-truth (JA_MESSAGES const); EN is typed Record<MessageKey,string>; add BOTH ja+en for every new key. Keep JA byte-identical for EXISTING keys. No new runtime dependencies. Pure logic (no DOM/React) must be unit-testable under node:test. localStorage keys use `ddm.` prefix via guarded helpers (but this feature uses SESSION/component state for dismissal, not localStorage).",
+  "key_patterns": "applyTimePassage(monster, now) returns a NEW monster after elapsed-time effects: hunger rises (clamped MAX_HUNGRY_LEVEL=10), dirty set when ticks>=3, HP drains while starving (hungryLevel>=MAX), HP recovers +2/tick while sleeping, affection decays on neglect, multi-stage evolution with #38 form branching. TICK_MS=60000. Stages: baby->rookie(train>=2,age>=1min)->champion->ultimate. useMonster.ts mount effect: loads monster, computes `advance()` (=normalizeForm(normalizeBattleRecord(normalizeAffection(applyTimePassage)))) at `now`, sets state, persists if changed. A 15s TIME_TICK interval re-advances while open (must NOT be counted in welcome-back; summary is only the mount gap). Modal/panel a11y patterns: EvolutionBanner (role=status dismissible strip), OnboardingHint (role=status strip + close btn), ZukanModal/NameDialog/reset-confirm (role=dialog/alertdialog + aria-modal + focus-to-first + Tab trap + Escape close + focus restore). Pure helpers live in ui-helpers.ts and are tested in game-ui.test.ts.",
+  "relevant_files": [
+    "packages/shared/src/game.ts (applyTimePassage, feed/clean/wake, affection consts)",
+    "packages/shared/src/types.ts (Monster, Stats, GrowthStage, MonsterForm)",
+    "packages/shared/src/stages.ts (STAGES thresholds, formBaseStats)",
+    "packages/shared/src/index.ts (barrel export - add absence.ts)",
+    "packages/shared/src/__tests__/game.test.ts (shared test pattern, T0 fixed epoch)",
+    "packages/frontend/src/state/useMonster.ts (mount advance - capture before/after HERE)",
+    "packages/frontend/src/App.tsx (wires hook to UI; render WelcomeBack panel here)",
+    "packages/frontend/src/i18n.ts (JA_MESSAGES + EN_MESSAGES - add welcomeBack.* keys)",
+    "packages/frontend/src/ui-helpers.ts (pure helpers; add welcome-back formatting helper if needed)",
+    "packages/frontend/src/components/OnboardingHint.tsx (strip panel pattern)",
+    "packages/frontend/src/components/ZukanModal.tsx (modal + focus trap pattern)",
+    "packages/frontend/src/game-ui.test.ts (frontend pure-helper tests - single file)",
+    "packages/frontend/src/styles.css (styles)"
+  ],
+  "directory_structure": "packages/shared/src = pure domain logic + __tests__. packages/frontend/src = React app; components/ holds panels/dialogs; state/useMonster.ts owns game state; ui-helpers.ts pure helpers; i18n.ts dictionaries; game-ui.test.ts the single FE test file. packages/backend untouched. infra = CDK."
+}

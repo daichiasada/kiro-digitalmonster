@@ -16,13 +16,16 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
+  AbsenceSummary,
   BattleResult,
+  CareRecommendation,
   ChatResponse,
   Difficulty,
   GrowthStage,
   Monster,
 } from "@ddm/shared";
 import {
+  ABSENCE_SUMMARY_THRESHOLD_MS,
   applyTimePassage,
   clean as cleanLogic,
   createMonster,
@@ -36,7 +39,9 @@ import {
   normalizeForm,
   normalizeMonsterName,
   pet as petLogic,
+  recommendCareFromMonster,
   sleep as sleepLogic,
+  summarizeAbsence,
   train as trainLogic,
   wake as wakeLogic,
 } from "@ddm/shared";
@@ -121,6 +126,43 @@ export interface UseMonsterState {
   dismissNeedsName: () => void;
   /** Normalize + validate a new name, commit it optimistically, and persist. */
   rename: (name: string) => Promise<void>;
+  /**
+   * The "while you were away" summary (issue #40), computed ONCE at mount by
+   * diffing the loaded (pre-advance) monster against the advanced
+   * (post-advance) one, and only when the real absence
+   * (now - loaded.lastUpdatedAt) is at least {@link ABSENCE_SUMMARY_THRESHOLD_MS}.
+   * `null` when the gap was too short, the monster was freshly hatched, or the
+   * panel has been dismissed this session. The 15s TIME_TICK interval never
+   * sets this, so later ticks can never re-open the panel.
+   */
+  welcomeBack: AbsenceSummary | null;
+  /**
+   * The single most useful one-tap care action for the welcome-back panel,
+   * FROZEN at mount from the advanced monster at the same moment the summary is
+   * captured. Kept here (rather than re-derived from the live `monster` on
+   * every render) so a background 15s TIME_TICK cannot shift the panel's button
+   * label while it is open. `null` whenever {@link welcomeBack} is null.
+   */
+  welcomeBackRecommendation: CareRecommendation | null;
+  /**
+   * Dismiss the welcome-back summary for THIS session (sets {@link welcomeBack}
+   * to null). It does not reappear until the next qualifying load/return, since
+   * the summary is only ever recomputed in the mount effect ("閉じるとその回は
+   * 再表示しない").
+   */
+  dismissWelcomeBack: () => void;
+  /**
+   * Run the FROZEN {@link welcomeBackRecommendation} as a single tap, then
+   * dismiss the panel. Maps feed/clean to the matching care action and wake to
+   * the sleep toggle (which wakes when asleep); "none"/null only dismisses.
+   *
+   * The underlying care actions early-return while `busy` (an in-flight save),
+   * so this bails WITHOUT dismissing when busy — leaving the panel open so the
+   * tap can be retried — and dismisses only after a care action has actually
+   * been applied. That way a tap landing during an in-flight save is never
+   * silently dropped.
+   */
+  runWelcomeBackCare: () => Promise<void>;
 }
 
 /**
@@ -192,6 +234,15 @@ export function useMonster(): UseMonsterState {
   const [chatLog, setChatLog] = useState<ChatLine[]>([]);
   const [chatPending, setChatPending] = useState(false);
   const [needsName, setNeedsName] = useState(false);
+  // "While you were away" summary (issue #40). Session/hook state only: set
+  // ONCE in the mount effect from the loaded-vs-advanced diff, cleared by
+  // dismissWelcomeBack. Never touched by the 15s TIME_TICK interval.
+  const [welcomeBack, setWelcomeBack] = useState<AbsenceSummary | null>(null);
+  // The recommended one-tap care action, FROZEN alongside the summary at mount
+  // from the advanced monster. Not re-derived from the live monster, so a 15s
+  // TIME_TICK cannot change the button label while the panel is open.
+  const [welcomeBackRecommendation, setWelcomeBackRecommendation] =
+    useState<CareRecommendation | null>(null);
   // Pets remaining today under the per-day cap. Initialized from localStorage
   // so the limit persists across reloads; recomputed after each pet.
   const [petsRemaining, setPetsRemaining] = useState<number>(() =>
@@ -254,6 +305,20 @@ export function useMonster(): UseMonsterState {
         if (hatchedFresh) {
           setNeedsName(true);
         }
+        // Welcome-back summary (issue #40): compute the REAL absence from the
+        // loaded monster's lastUpdatedAt (its last-visit time) and only build
+        // the summary when the player has been away at least the threshold.
+        // Skip a freshly hatched monster — a brand-new egg has no absence. This
+        // is the ONLY place welcomeBack is set; the 15s TIME_TICK interval must
+        // never recompute it (see that effect).
+        const absenceMs = Math.max(0, now - loaded.lastUpdatedAt);
+        if (!hatchedFresh && absenceMs >= ABSENCE_SUMMARY_THRESHOLD_MS) {
+          setWelcomeBack(summarizeAbsence(loaded, advanced));
+          // Freeze the one-tap recommendation at the SAME moment, from the
+          // advanced (post-advance) monster, so the panel's button label is
+          // stable even if a later 15s tick shifts the live monster's state.
+          setWelcomeBackRecommendation(recommendCareFromMonster(advanced));
+        }
         prevStageRef.current = advanced.stageId;
         monsterRef.current = advanced;
         setMonster(advanced);
@@ -282,6 +347,9 @@ export function useMonster(): UseMonsterState {
   }, []);
 
   // Live time passage ticking (hunger / dirtiness / evolution over time).
+  // NOTE (issue #40): this interval intentionally NEVER touches `welcomeBack`.
+  // The welcome-back summary is mount-only (the loaded-vs-advanced gap captured
+  // above), so these later ticks can never set or re-open the panel.
   useEffect(() => {
     const timer = setInterval(() => {
       const current = monsterRef.current;
@@ -466,6 +534,51 @@ export function useMonster(): UseMonsterState {
 
   const dismissNeedsName = useCallback(() => setNeedsName(false), []);
 
+  // Close the welcome-back panel for this session. Because the summary is only
+  // ever recomputed in the mount effect, clearing it here means it will not
+  // reappear this mount (閉じるとその回は再表示しない). The frozen recommendation
+  // is cleared alongside it so the two can never be out of sync.
+  const dismissWelcomeBack = useCallback(() => {
+    setWelcomeBack(null);
+    setWelcomeBackRecommendation(null);
+  }, []);
+
+  /**
+   * Run the frozen welcome-back recommendation in one tap, THEN dismiss.
+   *
+   * The underlying care actions (feed/clean/sleep) silently early-return while
+   * `busy` (an in-flight save), so dismissing unconditionally would close the
+   * panel while dropping the player's one intended care. To keep the one tap
+   * honest we bail BEFORE touching anything when busy — leaving the panel open
+   * so the tap can be retried — and only run+dismiss when a care action can
+   * actually apply. A "none"/null recommendation has no care to run and simply
+   * dismisses.
+   */
+  const runWelcomeBackCare = useCallback(async () => {
+    if (welcomeBackRecommendation === null || welcomeBackRecommendation === "none") {
+      dismissWelcomeBack();
+      return;
+    }
+    // Don't drop the care into an in-flight save: keep the panel open so the
+    // player can tap again once the current action settles.
+    if (busy) {
+      return;
+    }
+    switch (welcomeBackRecommendation) {
+      case "feed":
+        await feed();
+        break;
+      case "clean":
+        await clean();
+        break;
+      case "wake":
+        // sleep() is a toggle: it wakes the monster when it is asleep.
+        await sleep();
+        break;
+    }
+    dismissWelcomeBack();
+  }, [welcomeBackRecommendation, busy, feed, clean, sleep, dismissWelcomeBack]);
+
   /**
    * Rename the current monster. Normalizes + validates the input with the
    * shared helpers (invalid input is ignored defensively), commits the new
@@ -579,5 +692,9 @@ export function useMonster(): UseMonsterState {
     needsName,
     dismissNeedsName,
     rename,
+    welcomeBack,
+    welcomeBackRecommendation,
+    dismissWelcomeBack,
+    runWelcomeBackCare,
   };
 }
