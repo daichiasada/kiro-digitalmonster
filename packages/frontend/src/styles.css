@@ -1013,6 +1013,152 @@ body {
   }
 }
 
+/* --- difficulty selector + enemy preview + low-HP confirm (issue #41) --- */
+.difficulty-select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.difficulty-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.difficulty-options {
+  display: flex;
+  gap: 8px;
+}
+
+.difficulty-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.difficulty-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.difficulty-btn.active {
+  background: linear-gradient(90deg, #ef4444, #b91c1c);
+  border-color: transparent;
+  color: #fff;
+}
+
+.battle-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+}
+
+.battle-preview-title {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.battle-preview-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.battle-preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.battle-preview-name {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.battle-preview-difficulty,
+.battle-preview-stats {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.low-hp-confirm {
+  margin: 10px 0 0;
+  padding: 14px 16px;
+  background: rgba(255, 107, 107, 0.12);
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+}
+
+.low-hp-confirm-text {
+  margin: 0 0 12px;
+  color: #ffd4d4;
+  line-height: 1.5;
+}
+
+.low-hp-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.low-hp-confirm-actions .battle-btn {
+  width: auto;
+  flex: 1;
+}
+
+.low-hp-cancel-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  padding: 12px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.battle-record {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 4px 0 8px;
+}
+
+.battle-record-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.battle-record-value {
+  font-weight: 700;
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Disable the (cosmetic) difficulty-button transition for users who prefer
+     reduced motion, mirroring the reduced-motion blocks above. */
+  .difficulty-btn {
+    transition: none !important;
+  }
+}
+
 /* --- chat --- */
 .chat-disabled-hint {
   color: var(--muted);

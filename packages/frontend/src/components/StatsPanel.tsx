@@ -1,10 +1,11 @@
 import type { Ref } from "react";
 import type { Monster } from "@ddm/shared";
-import { AFFECTION_MAX, MAX_HUNGRY_LEVEL, affectionOf, evolutionProgress } from "@ddm/shared";
+import { AFFECTION_MAX, MAX_HUNGRY_LEVEL, affectionOf, battleRecordOf, evolutionProgress } from "@ddm/shared";
 import { useI18n } from "../i18n.ts";
 import {
   affectionLevelLabel,
   affectionPercent,
+  battleRecordSummary,
   evolutionReqAriaLabel,
   formatMinutes,
   fullnessPercent,
@@ -40,6 +41,9 @@ export function StatsPanel({ monster, onRename, renameButtonRef }: StatsPanelPro
   const affectionLabel = affectionLevelLabel(affection, lang);
   const atk = statBarPercent(stats.atk, ATK_REFERENCE);
   const def = statBarPercent(stats.def, DEF_REFERENCE);
+  // Read the battle record via the shared helper so legacy state (no field)
+  // is safe, then format a localized win/loss/draw + streak summary.
+  const recordSummary = battleRecordSummary(battleRecordOf(monster), lang);
 
   const now = Date.now();
   const prog = evolutionProgress(monster, now);
@@ -129,6 +133,16 @@ export function StatsPanel({ monster, onRename, renameButtonRef }: StatsPanelPro
       </div>
 
       <p className="train-count">{t("stats.trainingCount")}{monster.trainingCount}</p>
+
+      {/* Battle record (戦績) row. Accessible and NOT color-only: the row
+          aria-label combines the label and the full summary string, mirroring
+          the affection/fullness rows' aria-label pattern. */}
+      <p className="battle-record" aria-label={`${t("stats.record")}: ${recordSummary}`}>
+        <span className="battle-record-label">
+          <span aria-hidden="true">⚔️</span> {t("stats.record")}
+        </span>
+        <span className="battle-record-value">{recordSummary}</span>
+      </p>
 
       <div className="evolution-progress">
         <h3 className="evolution-title">{t("stats.evolveTitle")}</h3>

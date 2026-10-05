@@ -1,0 +1,14 @@
+{
+  "task_id": "task-battle-enhancements",
+  "task_description": "Implement issue #41 (バトルの強化): difficulty selection (弱い/普通/強い) scaling the enemy and the win reward; deterministic enemy generation + reward calc as shared pure functions (seed-param, unit-tested per difficulty branch + determinism); enemy preview before the fight generated client-side via the same shared generateEnemy so preview==actual fight; a persisted win/loss/draw + current win-streak record on the Monster with backward-compatible defaulting (mirroring #42 affection); a low-HP warning/confirm before fighting; all consistent with the existing #9 battle animation (log format + playerStartHp recovery) and with JA/EN i18n parity, no new runtime deps, prefers-reduced-motion respected.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build green across shared/backend/frontend/infra. npm test (shared) 94 pass (baseline 75, +19 battle-enhancements tests: determinism, every difficulty branch, hard>easy strength, reward scaling, record transitions, no-mutation, defaulting/normalization idempotency, validateMonster back-compat). npm run test -w @ddm/frontend 90 pass (baseline 79, +11: difficultyLabel ja+en, DIFFICULTIES order, battleRecordSummary exact strings + legacy-safe read, isLowHp boundaries + guard, pickBattleSeed range, resolveAnimationEnemy fallback + snapshot-precedence regression test). Tests exercise real exported functions with exact-value assertions and would fail if logic reverted. No Dockerfile build path (host validation). Semantic review: v1 NEEDS_CHANGES (replay enemy HP bar scaled against a reseeded enemy, violating #9 animation consistency) -> fixed via a fought-enemy snapshot + pure resolveAnimationEnemy helper + regression test; v2 APPROVED. Redeploy needed: frontend yes; backend Lambda yes (battle.ts + bundled @ddm/shared changed)."
+  }
+}
