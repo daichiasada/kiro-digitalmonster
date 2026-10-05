@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Establish a green baseline and create the feature branch for issue #31. Confirm the existing build and tests pass before any changes so regressions are attributable to this work. This is setup only; no product code changes.",
+  "status": "completed",
+  "steps": [
+    "Ensure Node is on PATH: `export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"`.",
+    "From repo root /projects/sandbox/kiro-digitalmonster, confirm the working tree is clean and the current branch is `main` (git status, git branch).",
+    "Create and check out a new branch off main named `feat/onboarding-hint`. Do NOT touch backup/previous-main branches.",
+    "Run shared tests from root: `npm test` and confirm 47 pass.",
+    "Run frontend helper tests: `cd packages/frontend && env -u NODE_OPTIONS node --experimental-strip-types --test src/game-ui.test.ts` and confirm 55 pass.",
+    "Run the frontend build to confirm the baseline compiles: `cd packages/frontend && npm run build` (tsc + vite build) and confirm it succeeds."
+  ],
+  "acceptance_criteria": [
+    "Branch `feat/onboarding-hint` exists and is checked out off main.",
+    "`npm test` from root reports 47 passing, 0 failing.",
+    "Frontend helper test run reports 55 passing, 0 failing.",
+    "`npm run build` in packages/frontend succeeds with no errors."
+  ],
+  "verification": [
+    "git branch --show-current prints feat/onboarding-hint",
+    "npm test (root) exits 0 with 47 pass",
+    "frontend game-ui.test.ts run exits 0 with 55 pass",
+    "packages/frontend `npm run build` exits 0"
+  ],
+  "blocked_reason": null,
+  "findings": "Baseline green and branch created. Confirmed working tree clean on main (only untracked .agents task-state dir), created and checked out feat/onboarding-hint off main. npm test (root) = 47 pass / 0 fail. Frontend helper tests (env -u NODE_OPTIONS node --experimental-strip-types --test src/game-ui.test.ts) = 55 pass / 0 fail. Frontend build (tsc && vite build) succeeded (53 modules, built in ~5.4s). No commits made (setup only, per instructions). Node v22.23.3 required export of nvm bin to PATH."
+}
