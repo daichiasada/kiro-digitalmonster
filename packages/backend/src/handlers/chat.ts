@@ -1,6 +1,14 @@
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import type { ChatContext, ChatRequest, ChatResponse, Lang, Monster } from "@ddm/shared";
-import { AFFECTION_INITIAL, affectionBand, chooseChatContext, getStage, resolveModelId } from "@ddm/shared";
+import {
+  AFFECTION_INITIAL,
+  affectionBand,
+  chooseChatContext,
+  getStage,
+  resolveModelId,
+  toAnthropicMessages,
+  trimChatHistory,
+} from "@ddm/shared";
 import {
   BedrockRuntimeClient,
   InvokeModelCommand,
@@ -199,16 +207,17 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
   const modelId = resolveModelId(stage.bedrockModelKey, bedrockOverrides());
 
+  // Independently sanitize/truncate the client-sent history: the server NEVER
+  // trusts its length or contents. Absent/malformed history collapses to [],
+  // so the resulting messages array is exactly the single new-user turn
+  // (identical to the pre-#37 behavior).
+  const history = trimChatHistory(body.history);
+
   const requestPayload = {
     anthropic_version: "bedrock-2023-05-31",
     max_tokens: MAX_TOKENS,
     system: buildSystemPrompt(context, lang),
-    messages: [
-      {
-        role: "user",
-        content: body.message,
-      },
-    ],
+    messages: toAnthropicMessages(history, body.message),
   };
 
   try {
