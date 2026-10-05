@@ -1,139 +1,128 @@
 # AIモンスター / AI Monster 🥚🐉
 
-デジモン風の育成ゲームです。卵から孵化させ、お世話（餌やり・トレーニング・睡眠・清掃）とバトルを通じて育て、成長段階ごとに姿が進化します。成長期以降は **Amazon Bedrock（Claude）** を使ってモンスターと会話でき、成長段階が上がるほど賢いモデルに切り替わります。
+**English** | [日本語](README.ja.md)
 
-> **Kiro University Challenge** 提出用プロジェクトです。TypeScript モノレポ + AWS CDK によるワンコマンドデプロイ構成になっています。
+A Digimon-style raising game. Hatch a monster from an egg, raise it through care actions (feeding, training, sleeping, cleaning) and battles, and watch it evolve as it reaches new growth stages. From the Rookie stage onward you can chat with your monster using **Amazon Bedrock (Claude)**, and the model switches to a smarter tier as the monster grows.
+
+> This is a submission project for the **Kiro University Challenge**. It is a TypeScript monorepo + AWS CDK one-command deploy setup.
 >
-> 📝 **審査員の方へ**: 各レッスンをどの成果物でどう実演したかは [`SUBMISSION.md`](./SUBMISSION.md) にまとめています。
+> 📝 **For reviewers**: how each lesson is demonstrated and in which deliverable is summarized in [`SUBMISSION.md`](./SUBMISSION.md).
 
 ---
 
-## 🎮 概要 / Overview
+## 🎮 Overview
 
-- 🥚 **孵化 → 成長 → 進化**: 成長段階ごとに姿（SVG スプライト）が変わります。
-- 🍖 **お世話**: 餌やり・トレーニング・睡眠・清掃をワンタップで。
-- ⚔️ **バトル**: 敵モンスターとの簡易バトル。勝敗でステータスが変化します。
-- 📊 **ステータス**: HP・攻撃力(ATK)・防御力(DEF)。
-- ⏰ **時間経過**: 放置した時間に応じて状態が変化（リアルタイム育成を簡易表現）。
-- 💾 **セーブ**: ブラウザごとに発行される monsterId をキーに DynamoDB へ保存。認証なし。
-- 💬 **会話AI**: 成長段階に応じて Bedrock の Claude モデルを切り替え。
+- 🥚 **Hatch → Grow → Evolve**: the appearance (SVG sprite) changes at every growth stage.
+- 🍖 **Care**: feeding, training, sleeping, and cleaning with a single tap.
+- ⚔️ **Battle**: a simple battle against an enemy monster. Win/loss changes the stats.
+- 📊 **Stats**: HP, attack (ATK), defense (DEF).
+- ⏰ **Time passing**: the state changes according to how long you leave it (a lightweight take on real-time raising).
+- 💾 **Save**: data is stored in DynamoDB keyed by a `monsterId` issued per browser. No authentication.
+- 💬 **Conversational AI**: the Bedrock Claude model switches according to the growth stage.
 
 ---
 
-## 🏗️ アーキテクチャ / Architecture
+## 🏗️ Architecture
 
-```
-ブラウザ (React + Vite SPA)
-      │  静的配信
-      ▼
-CloudFront ──► S3 (private, OAC)      ← フロントの dist/ と config.json を配置
-      │  config.json の apiBaseUrl を参照
-      ▼
-API Gateway (HTTP API, CORS)
-      │  Lambda 統合
-      ▼
-┌──────────────┬───────────────┬──────────────┬──────────────┐
-│ getMonster   │ saveMonster   │ battle       │ chat         │
-│ Lambda       │ Lambda        │ Lambda       │ Lambda       │
-└──────┬───────┴──────┬────────┴──────┬───────┴──────┬───────┘
-       │ R/W          │ W             │ R/W          │ R / InvokeModel
-       ▼              ▼               ▼              ▼
-            DynamoDB (Monsters, PK=id)        Amazon Bedrock (Claude)
-```
+![Architecture](docs/architecture.png)
 
-- **フロント**: React + TypeScript (Vite)。`base: './'` でビルドし CloudFront 配下で動作。
-- **バックエンド**: API Gateway (HTTP API v2) + Lambda (TypeScript, NodejsFunction/esbuild バンドル)。
-- **データ**: DynamoDB（パーティションキー `id`、PAY_PER_REQUEST）。
-- **会話AI**: Amazon Bedrock（Anthropic Claude）。
-- **IaC**: AWS CDK (TypeScript)。`cdk deploy` でまとめて構築。
+The editable diagram is [`docs/architecture.drawio`](docs/architecture.drawio) (open with draw.io / diagrams.net).
+A PNG (`docs/architecture.png`) and vector (`docs/architecture.svg`) are included.
 
-モノレポ構成:
+- The **browser** (React + Vite SPA, EN/JA i18n) loads the static site from a **private S3** bucket via **CloudFront** (HTTPS, OAC) — the bucket blocks all public access and holds the frontend `dist/` plus a generated `config.json`.
+- The SPA reads `/config.json` (`{ "apiBaseUrl": ... }`) at startup, then calls the **API Gateway v2 HTTP API** (CORS enabled).
+- The HTTP API routes to **four Lambdas**: `getMonster` (DynamoDB R/W), `saveMonster` (DynamoDB W), `battle` (DynamoDB R/W), and `chat` (DynamoDB R + Bedrock).
+- All four Lambdas use a single **DynamoDB table** `DigitalMonsterStack-Monsters` (partition key `id`, `PAY_PER_REQUEST`).
+- **Only the `chat` Lambda** calls **Amazon Bedrock** (`bedrock:InvokeModel`, scoped to the Claude inference-profile ARNs). The Claude tier is chosen by growth stage: Baby = none (canned reply, no Bedrock call), Rookie = **Haiku**, Champion = **Sonnet**, Ultimate = **Opus**.
+- Everything is codified with **AWS CDK (TypeScript)** and deployed as a single CloudFormation stack with a one-command `cdk deploy`.
 
-| パッケージ | 役割 |
+Monorepo layout:
+
+| Package | Role |
 |---|---|
-| `packages/shared` | 型・育成/進化/バトルロジック・Bedrock モデルマッピング（純粋関数 + `node:test`） |
-| `packages/backend` | Lambda ハンドラ（getMonster / saveMonster / chat / battle） |
-| `packages/frontend` | React + Vite のゲーム UI、ステージ別 SVG スプライト、API クライアント |
-| `infra` | AWS CDK アプリ |
+| `packages/shared` | Types, raising/evolution/battle logic, Bedrock model mapping (pure functions + `node:test`) |
+| `packages/backend` | Lambda handlers (getMonster / saveMonster / chat / battle) |
+| `packages/frontend` | React + Vite game UI, per-stage SVG sprites, API client |
+| `infra` | AWS CDK app |
 
 ---
 
-## 🧬 成長段階と Bedrock モデル / Growth Stages & Model Mapping
+## 🧬 Growth Stages & Bedrock Model Mapping
 
-進化条件は **トレーニング回数 ＋ 経過時間** で簡易判定します（詳細は `packages/shared/src/stages.ts`）。
+Evolution conditions are a lightweight judgement based on **training count + elapsed time** (see `packages/shared/src/stages.ts`).
 
-| 成長段階 | 英名 | 会話AI | デフォルト Bedrock モデルID |
+| Growth stage | English name | Conversational AI | Default Bedrock model ID |
 |---|---|---|---|
-| 幼年期（卵→赤ちゃん） | Baby | **会話なし** | ―（Bedrock を呼ばず定型の鳴き声を返します） |
+| 幼年期 (egg → baby) | Baby | **no chat** | — (returns a canned cry without calling Bedrock) |
 | 成長期 | Rookie | Claude **Haiku** | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
 | 成熟期 | Champion | Claude **Sonnet** | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
 | 完全体 | Ultimate | Claude **Opus** | `us.anthropic.claude-opus-4-5-20251101-v1:0` |
 
-デフォルトモデルIDは `packages/shared/src/bedrock-models.ts`（`BEDROCK_MODEL_IDS`）に定義されています。これらは Anthropic Claude の **クロスリージョン推論プロファイル ID**（`us.` プレフィックス付き）です。現行世代の Claude はオンデマンドでベアのファウンデーションモデルIDを直接呼び出せず、推論プロファイル経由での呼び出しが必要なためです。IDや提供状況はリージョン/アカウントによって異なるため、すべて上書き可能です。上書き方法は [Bedrock モデルIDの上書き](#-bedrock-モデルidの上書き--overriding-model-ids) を参照してください。
+The default model IDs are defined in `packages/shared/src/bedrock-models.ts` (`BEDROCK_MODEL_IDS`). These are Anthropic Claude **cross-region inference profile IDs** (with the `us.` prefix). Current-generation Claude models cannot be invoked on demand via bare foundation-model IDs; they must be called through an inference profile. Because IDs and availability vary by region/account, they are all overridable. See [Overriding model IDs](#-overriding-model-ids) for how.
 
 ---
 
-## ✅ 前提条件 / Prerequisites
+## ✅ Prerequisites
 
-1. **Node.js >= 18**（推奨 20 以上）と npm。
-2. **AWS アカウント** と、設定済みの **AWS CLI 資格情報**（`aws configure` もしくは環境変数 / SSO）。デプロイ先アカウントに対する管理者相当の権限が必要です。
-3. **Amazon Bedrock のモデルアクセス有効化**（最重要）:
-   - AWS コンソール → **Amazon Bedrock** → **Model access**（モデルアクセス）ページを開く。
-   - **Anthropic Claude Haiku / Sonnet / Opus**（デフォルトは Claude 4.5 系のクロスリージョン推論プロファイル）へのアクセスをリクエスト（有効化）する。
-   - 有効化していないと、会話機能（chat Lambda）が `AccessDenied` で失敗します。
-4. **リージョン**: `us-east-1`（バージニア北部）を推奨します。Claude 各モデルの提供状況・推論プロファイルの可用性はリージョンによって異なるため、まずは `us.` プレフィックス付きプロファイルが使える `us-east-1` が無難です。別リージョンを使う場合は、そのリージョンで上記 3 モデル（または上書き先のモデル）が利用可能か確認してください。
+1. **Node.js >= 18** (20 or later recommended) and npm.
+2. An **AWS account** and configured **AWS CLI credentials** (`aws configure`, environment variables, or SSO). Administrator-equivalent permissions on the deploy target account are required.
+3. **Enable Amazon Bedrock model access** (most important):
+   - Open the AWS console → **Amazon Bedrock** → **Model access** page.
+   - Request (enable) access to **Anthropic Claude Haiku / Sonnet / Opus** (the defaults are the Claude 4.5 cross-region inference profiles).
+   - Without this, the chat feature (chat Lambda) fails with `AccessDenied`.
+4. **Region**: `us-east-1` (N. Virginia) is recommended. Availability of each Claude model and inference profile varies by region, so `us-east-1`, where the `us.`-prefixed profiles are available, is the safest starting point. If you use another region, confirm that the three models above (or your override targets) are available there.
 
 ---
 
-## 🚀 デプロイ手順 / Deploy (one command path)
+## 🚀 Deploy (one command path)
 
-リポジトリのルートで、以下を順番に実行します。
+Run the following in order from the repository root.
 
 ```bash
-# 1) 依存関係のインストール（モノレポ全体）
+# 1) Install dependencies (whole monorepo)
 npm install
 
-# 2) ビルド
-#    - shared をコンパイル
-#    - frontend を Vite でビルドして packages/frontend/dist を生成
-#    （backend は CDK の NodejsFunction/esbuild がデプロイ時にバンドルします）
+# 2) Build
+#    - compile shared
+#    - build frontend with Vite to produce packages/frontend/dist
+#    (backend is bundled at deploy time by CDK NodejsFunction/esbuild)
 npm run build
 
-# 3) CDK でデプロイ
+# 3) Deploy with CDK
 cd infra
-npx cdk bootstrap        # そのアカウント/リージョンで初回のみ必要
+npx cdk bootstrap        # only needed once per account/region
 npx cdk deploy
 ```
 
-> `npm run build` を先に実行して **`packages/frontend/dist` を生成しておく**ことが必須です。CDK の `BucketDeployment` は synth 時に `dist` の存在を前提とします。
+> You **must run `npm run build` first to generate `packages/frontend/dist`**. The CDK `BucketDeployment` assumes `dist` exists at synth time.
 
-### 🔗 1 回のデプロイでフロントと API が自動で繋がる仕組み
+### 🔗 How the frontend and API wire up automatically in a single deploy
 
-デプロイ時、CDK は以下を同時に S3 バケットへ配置します。
+At deploy time, CDK places the following into the S3 bucket at the same time:
 
-- `packages/frontend/dist` のビルド成果物
-- 生成した **`config.json`**（内容: `{ "apiBaseUrl": "<デプロイされた API のURL>" }`）
+- the build artifacts from `packages/frontend/dist`
+- a generated **`config.json`** (contents: `{ "apiBaseUrl": "<deployed API URL>" }`)
 
-フロントは起動時にサイトルートの `/config.json` を取得し、その `apiBaseUrl` を API のベース URL として使います。したがって **API URL を知るための事前ビルドや 2 回デプロイは不要** で、`cdk deploy` 一発で CloudFront URL を開けばそのまま遊べます。
+At startup the frontend fetches `/config.json` from the site root and uses its `apiBaseUrl` as the API base URL. Therefore **no pre-build to learn the API URL and no second deploy are needed** — a single `cdk deploy` is enough, and opening the CloudFront URL lets you play right away.
 
-### 📤 出力の読み方 / Reading the outputs
+### 📤 Reading the outputs
 
-`cdk deploy` 完了後、スタックの **Outputs** に以下が表示されます。
+After `cdk deploy` completes, the stack **Outputs** show the following.
 
-| 出力名 | 内容 |
+| Output name | Contents |
 |---|---|
-| `CloudFrontUrl` | ブラウザで開く URL（ここを開けば遊べます） |
-| `ApiUrl` | HTTP API のベース URL（`config.json` にも書き込まれます） |
-| `BucketName` | フロントを配信している S3 バケット名 |
-| `TableName` | セーブデータを保存する DynamoDB テーブル名 |
+| `CloudFrontUrl` | the URL to open in your browser (open this to play) |
+| `ApiUrl` | the HTTP API base URL (also written into `config.json`) |
+| `BucketName` | the S3 bucket name serving the frontend |
+| `TableName` | the DynamoDB table name storing save data |
 
 ---
 
-## 🔧 Bedrock モデルIDの上書き / Overriding model IDs
+## 🔧 Overriding model IDs
 
-デフォルトのモデルIDは `packages/shared/src/bedrock-models.ts` にあります。上書きしたい場合は、環境変数または CDK コンテキストで指定できます（chat Lambda にのみ渡されます）。
+The default model IDs live in `packages/shared/src/bedrock-models.ts`. To override them, use an environment variable or CDK context (they are passed only to the chat Lambda).
 
-環境変数で上書き:
+Override via environment variables:
 
 ```bash
 export BEDROCK_MODEL_HAIKU=us.anthropic.claude-haiku-4-5-20251001-v1:0
@@ -142,7 +131,7 @@ export BEDROCK_MODEL_OPUS=us.anthropic.claude-opus-4-5-20251101-v1:0
 cd infra && npx cdk deploy
 ```
 
-CDK コンテキストで上書き:
+Override via CDK context:
 
 ```bash
 npx cdk deploy \
@@ -151,24 +140,24 @@ npx cdk deploy \
   -c bedrockModelOpus=us.anthropic.claude-opus-4-5-20251101-v1:0
 ```
 
-`ALLOWED_ORIGIN`（CORS 許可オリジン、デフォルト `*`）も環境変数またはコンテキスト `-c allowedOrigin=...` で指定できます。設定例は [`.env.example`](./.env.example) を参照してください。
+`ALLOWED_ORIGIN` (the CORS allowed origin, default `*`) can also be set via an environment variable or the context `-c allowedOrigin=...`. See [`.env.example`](./.env.example) for a configuration example.
 
 ---
 
-## 💻 ローカル開発 / Local development
+## 💻 Local development
 
-デプロイ済みの API に向けてフロントだけローカルで動かせます。
+You can run just the frontend locally against an already-deployed API.
 
 ```bash
 cd packages/frontend
-# デプロイ出力の ApiUrl を指定
+# use the ApiUrl from the deploy output
 echo "VITE_API_BASE_URL=https://xxxxxxxx.execute-api.us-east-1.amazonaws.com" > .env.local
 npm run dev
 ```
 
-フロントは起動時にまず `/config.json` を探し、見つからなければビルド時の `VITE_API_BASE_URL` にフォールバックします（`packages/frontend/.env.example` 参照）。ローカルで `config.json` を使いたい場合は `public/config.json` を置く方法もあります。
+At startup the frontend first looks for `/config.json`, and if it is not found it falls back to the build-time `VITE_API_BASE_URL` (see `packages/frontend/.env.example`). If you want to use `config.json` locally, you can also place a `public/config.json`.
 
-共有ロジックのユニットテスト（依存ゼロ、`node:test`）:
+Unit tests for the shared logic (dependency-free, `node:test`):
 
 ```bash
 npm run test   # = npm run test -w @ddm/shared
@@ -176,43 +165,43 @@ npm run test   # = npm run test -w @ddm/shared
 
 ---
 
-## 🧹 後片付け / Teardown
+## 🧹 Teardown
 
 ```bash
 cd infra
 npx cdk destroy
 ```
 
-DynamoDB テーブルと S3 バケットは開発向けに `removalPolicy: DESTROY`（S3 は `autoDeleteObjects: true`）で作成しているため、スタック削除時にデータごと削除されます。本番用途では `infra/lib/digital-monster-stack.ts` の `removalPolicy` を `RETAIN` に変更してください。
+The DynamoDB table and S3 bucket are created with `removalPolicy: DESTROY` (S3 with `autoDeleteObjects: true`) for development, so their data is deleted together with the stack. For production use, change the `removalPolicy` in `infra/lib/digital-monster-stack.ts` to `RETAIN`.
 
 ---
 
-## ✅ ビルド・デプロイ検証状況 / Build & deploy status
+## ✅ Build & deploy status
 
-このプロジェクトは、上記「デプロイ手順」のフロー（`npm install` → `npm run build` → `cd infra && npx cdk bootstrap && npx cdk deploy`）で **実際にビルド・デプロイ済み** です。
+This project has been **actually built and deployed** using the flow in "Deploy" above (`npm install` → `npm run build` → `cd infra && npx cdk bootstrap && npx cdk deploy`).
 
-- `npm install` / `npm run build`（`shared` → `backend` → `frontend` → `infra`）がグリーンで通ります。
-- `packages/frontend/dist` が Vite で生成され、CDK の `BucketDeployment` が synth 時にこれを取り込みます。
-- `npx cdk bootstrap` → `npx cdk deploy` が成功し、CloudFront 配信 + API Gateway + DynamoDB + Bedrock IAM を含むスタックがデプロイされます。デプロイ後は `cdk deploy` の **Outputs**（`CloudFrontUrl` / `ApiUrl` ほか）が表示され、`CloudFrontUrl` を開けばそのまま遊べます。
+- `npm install` / `npm run build` (`shared` → `backend` → `frontend` → `infra`) pass green.
+- `packages/frontend/dist` is generated by Vite, and the CDK `BucketDeployment` picks it up at synth time.
+- `npx cdk bootstrap` → `npx cdk deploy` succeeds and deploys a stack that includes CloudFront distribution + API Gateway + DynamoDB + Bedrock IAM. After deploy, the `cdk deploy` **Outputs** (`CloudFrontUrl` / `ApiUrl` and others) are shown, and opening `CloudFrontUrl` lets you play right away.
 
-> 具体的な CloudFront / API の URL はデプロイのたびにアカウント・リージョンごとに新しく払い出されるため、本 README には固定値を記載していません。上記フローを実行すると、お手元のアカウントで同じ構成が再現できます。
+> The concrete CloudFront / API URLs are freshly issued per account and region on every deploy, so no fixed values are recorded in this README. Running the flow above reproduces the same setup in your own account.
 >
-> 初回は **Bedrock のモデルアクセス有効化**（上記「前提条件」3.）を忘れずに行ってください。有効化していないと、ビルド・デプロイ自体は成功しても会話/バトルの Bedrock 呼び出しが実行時に `AccessDenied` になります。
+> On the first run, do not forget to **enable Bedrock model access** (Prerequisites 3. above). Without it, the build/deploy itself can succeed, but the Bedrock calls for chat/battle fail at runtime with `AccessDenied`.
 
 ---
 
-## 📁 ディレクトリ構成 / Layout
+## 📁 Layout
 
 ```
 .
-├── package.json            # npm workspaces ルート
+├── package.json            # npm workspaces root
 ├── tsconfig.base.json
 ├── .env.example
 ├── packages/
-│   ├── shared/             # 型・ロジック・モデルマッピング（+ node:test）
-│   ├── backend/            # Lambda ハンドラ
-│   └── frontend/           # React + Vite ゲーム UI
-└── infra/                  # AWS CDK アプリ
+│   ├── shared/             # types, logic, model mapping (+ node:test)
+│   ├── backend/            # Lambda handlers
+│   └── frontend/           # React + Vite game UI
+└── infra/                  # AWS CDK app
     ├── bin/app.ts
     └── lib/digital-monster-stack.ts
 ```
