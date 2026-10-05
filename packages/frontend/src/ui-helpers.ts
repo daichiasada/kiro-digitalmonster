@@ -4,7 +4,8 @@
  * These contain NO DOM / React so they can be unit-tested with the Node
  * built-in test runner (see game-ui.test.ts).
  */
-import type { BattleWinner, GrowthStage, Monster } from "@ddm/shared";
+import type { BattleWinner, GrowthStage, Monster, Stats } from "@ddm/shared";
+import { HUNGRY_CAUTION_LEVEL, MAX_HUNGRY_LEVEL } from "@ddm/shared";
 import type { Lang } from "./i18n.ts";
 
 /** Japanese display label per growth stage. */
@@ -342,15 +343,33 @@ export function careEffect(action: CareAction): CareEffect {
   return CARE_EFFECTS[action];
 }
 
+/**
+ * The monster fields needed to derive the mood string. Issue #29 makes mood
+ * HP-aware, so this now also requires `stats` (hp/maxHp) in addition to the
+ * sleeping/dirty/hunger flags.
+ */
+type MoodMonster = Pick<Monster, "isSleeping" | "dirty" | "hungryLevel"> & {
+  stats: Pick<Stats, "hp" | "maxHp">;
+};
+
+/**
+ * hpPercent below which the monster is considered low on energy (unwell).
+ * Documented local threshold used only for the mood string (issue #29).
+ */
+const LOW_HP_PERCENT = 30;
+
 /** A short, friendly Japanese mood string derived from the monster's state. */
-export function moodLabelJa(monster: Pick<Monster, "isSleeping" | "dirty" | "hungryLevel">): string {
+export function moodLabelJa(monster: MoodMonster): string {
   if (monster.isSleeping) {
     return "すやすや睡眠中";
   }
   if (monster.dirty) {
     return "よごれている";
   }
-  if (monster.hungryLevel >= 7) {
+  if (hpPercent(monster.stats.hp, monster.stats.maxHp) < LOW_HP_PERCENT) {
+    return "元気がない";
+  }
+  if (monster.hungryLevel >= HUNGRY_CAUTION_LEVEL) {
     return "とてもお腹がすいている";
   }
   if (monster.hungryLevel >= 3) {
@@ -360,14 +379,17 @@ export function moodLabelJa(monster: Pick<Monster, "isSleeping" | "dirty" | "hun
 }
 
 /** English mood string, mirroring the priority order of {@link moodLabelJa}. */
-function moodLabelEn(monster: Pick<Monster, "isSleeping" | "dirty" | "hungryLevel">): string {
+function moodLabelEn(monster: MoodMonster): string {
   if (monster.isSleeping) {
     return "Sleeping soundly";
   }
   if (monster.dirty) {
     return "Dirty";
   }
-  if (monster.hungryLevel >= 7) {
+  if (hpPercent(monster.stats.hp, monster.stats.maxHp) < LOW_HP_PERCENT) {
+    return "Low energy";
+  }
+  if (monster.hungryLevel >= HUNGRY_CAUTION_LEVEL) {
     return "Very hungry";
   }
   if (monster.hungryLevel >= 3) {
@@ -380,9 +402,29 @@ function moodLabelEn(monster: Pick<Monster, "isSleeping" | "dirty" | "hungryLeve
  * Language-aware mood string. `lang==='ja'` is byte-identical to
  * {@link moodLabelJa}.
  */
-export function moodLabel(
-  monster: Pick<Monster, "isSleeping" | "dirty" | "hungryLevel">,
-  lang: Lang,
-): string {
+export function moodLabel(monster: MoodMonster, lang: Lang): string {
   return lang === "en" ? moodLabelEn(monster) : moodLabelJa(monster);
+}
+
+/**
+ * Fullness as an integer percentage in [0, 100], derived from hungryLevel.
+ * hungryLevel 0 (full) => 100% fullness; MAX_HUNGRY_LEVEL (starving) => 0%.
+ * Uses the shared {@link MAX_HUNGRY_LEVEL} cap rather than hardcoding it.
+ * Non-finite input is guarded to 0, like {@link hpPercent}.
+ */
+export function fullnessPercent(hungryLevel: number): number {
+  if (!Number.isFinite(hungryLevel)) {
+    return 0;
+  }
+  const clamped = Math.max(0, Math.min(MAX_HUNGRY_LEVEL, hungryLevel));
+  return Math.round(((MAX_HUNGRY_LEVEL - clamped) / MAX_HUNGRY_LEVEL) * 100);
+}
+
+/**
+ * Whether the hunger level has reached the caution threshold. Drives the
+ * caution color / aria cue on the hunger gauge and badge (FEAT-002). Uses the
+ * shared {@link HUNGRY_CAUTION_LEVEL} rather than hardcoding it.
+ */
+export function isHungerCaution(hungryLevel: number): boolean {
+  return hungryLevel >= HUNGRY_CAUTION_LEVEL;
 }
