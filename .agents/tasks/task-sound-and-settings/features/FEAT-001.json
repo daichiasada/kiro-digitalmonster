@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Environment setup and baseline verification. Confirm Node/npm toolchain, create the feature branch off main, and establish a green baseline before any changes so later features can be verified against it.",
+  "status": "completed",
+  "steps": [
+    "Ensure Node/npm available: `export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"` then `node -v` (expect v22.x) and `npm -v`.",
+    "From repo root /projects/sandbox/kiro-digitalmonster, confirm git is on `main`, clean, and synced. Create and checkout a new branch `feat/sound-and-settings` off main. Do NOT touch backup/previous-main branches.",
+    "Confirm node_modules present; if not, run `npm install` from root.",
+    "Run `npm run build` from root and confirm it completes (shared -> backend -> frontend tsc+vite -> infra).",
+    "Run `npm test` (shared) and confirm 152 tests pass.",
+    "Run `npm test -w @ddm/frontend` and confirm 123 tests pass."
+  ],
+  "acceptance_criteria": [
+    "Branch `feat/sound-and-settings` exists and is checked out, created from main.",
+    "`npm run build` completes with no errors.",
+    "`npm test` reports 152 passing, 0 failing.",
+    "`npm test -w @ddm/frontend` reports 123 passing, 0 failing."
+  ],
+  "verification": [
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && git branch --show-current (expect feat/sound-and-settings)",
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm run build",
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm test && npm test -w @ddm/frontend"
+  ],
+  "blocked_reason": null,
+  "findings": "Baseline verified green on branch feat/sound-and-settings (created off main at 711ab91). Toolchain: node v22.23.3, npm 11.4.2 (PATH export required: /opt/toolchains/.nvm/versions/node/v22.23.3/bin). node_modules already present; no npm install needed. `npm run build` completed with no errors (shared tsc -> backend tsc -> frontend tsc+vite build [63 modules, built in ~5.3s, dist produced but not committed] -> infra tsc). `npm test` (shared, node:test): 152 pass, 0 fail. `npm test -w @ddm/frontend` (node --experimental-strip-types --test src/game-ui.test.ts): 123 pass, 0 fail. No source changes made; only task-state file FEAT-001.json updated (left uncommitted for orchestrator). Git working tree otherwise clean. Note for later features: AudioContext/DOM are not unit-testable here (pure node:test, no jsdom); keep new sound logic as pure helpers in ui-helpers.ts tested via game-ui.test.ts."
+}

@@ -15,13 +15,18 @@ import {
   shouldShowOnboarding,
   writeOnboarded,
   readZukan,
+  readSettings,
+  writeSettings,
   timeOfDay,
   type CareAction,
+  type Settings,
 } from "./ui-helpers.ts";
+import { playSound } from "./sound.ts";
 import { MonsterSprite } from "./assets/monsters/MonsterSprite.tsx";
 import { StatsPanel } from "./components/StatsPanel.tsx";
 import { NameDialog } from "./components/NameDialog.tsx";
 import { ZukanModal } from "./components/ZukanModal.tsx";
+import { SettingsPanel } from "./components/SettingsPanel.tsx";
 import { CarePanel } from "./components/CarePanel.tsx";
 import { BattlePanel } from "./components/BattlePanel.tsx";
 import { ChatPanel } from "./components/ChatPanel.tsx";
@@ -33,13 +38,27 @@ import { WelcomeBackPanel } from "./components/WelcomeBackPanel.tsx";
 /** Root game screen wiring the state hook to the UI panels. */
 export function App() {
   const game = useMonster();
-  const { lang, setLang, t } = useI18n();
+  const { lang, t } = useI18n();
 
   // Transient "last care action" signal used to drive a short, non-blocking
   // overlay animation over the sprite. The counter forces React to remount the
   // overlay so repeating the SAME action re-fires its animation.
   const [careFx, setCareFx] = useState<{ action: CareAction; key: number } | null>(null);
   const fxTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Display/sound settings (issue #45). Reactive state lazily initialized from
+  // the persisted `ddm.settings` store; every change persists via writeSettings
+  // and takes effect immediately. Defaults are MUTED (sfxEnabled=false) so
+  // nothing plays until the user opts in — the autoplay policy is satisfied
+  // because playSound only resumes the AudioContext from a user gesture and
+  // only after SFX is explicitly enabled.
+  const [settings, setSettings] = useState<Settings>(readSettings);
+  const sfxEnabled = settings.sfxEnabled;
+  const sfxVolume = settings.volume;
+  const updateSettings = useCallback((next: Settings) => {
+    setSettings(next);
+    writeSettings(next);
+  }, []);
 
   // Device-local time-of-day phase (issue #43) that keys the stage background
   // gradient. Seeded from the current local hour and recomputed on a cheap
@@ -175,6 +194,16 @@ export function App() {
     zukanTriggerRef.current?.focus();
   }, []);
 
+  // Settings panel (issue #45): a header ⚙ button opens the accessible dialog
+  // that consolidates SFX on/off + volume, reduced motion, and the JA/EN
+  // language toggle. Mirrors the zukan modal's focus-restoration contract.
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeSettings = useCallback(() => {
+    setSettingsOpen(false);
+    settingsTriggerRef.current?.focus();
+  }, []);
+
   // First-run onboarding hint. Lazy initializer reads localStorage once;
   // dismissing persists the "ddm.onboarded" flag so it never shows again.
   const [onboarded, setOnboarded] = useState(readOnboarded);
@@ -209,6 +238,12 @@ export function App() {
         return;
       }
       setCareFx((prev) => ({ action, key: (prev?.key ?? 0) + 1 }));
+      // Sound effect (issue #45): only feed + train have audio in scope; the
+      // other care actions (clean/sleep/wake/pet) stay silent. This runs inside
+      // a user-gesture handler, so the AudioContext can be resumed here.
+      if (action === "feed" || action === "train") {
+        playSound(action, { enabled: sfxEnabled, volume: sfxVolume });
+      }
       clearFxTimer();
       // Fallback clear in case onAnimationEnd never fires (e.g. reduced motion).
       fxTimer.current = setTimeout(() => {
@@ -217,7 +252,7 @@ export function App() {
       }, careEffect(action).durationMs + 50);
       run();
     },
-    [clearFxTimer, game.busy, game.monster],
+    [clearFxTimer, game.busy, game.monster, sfxEnabled, sfxVolume],
   );
 
   const handleFeed = useCallback(() => triggerCareFx("feed", game.feed), [triggerCareFx, game.feed]);
@@ -268,8 +303,27 @@ export function App() {
     setCareFx(null);
   }, [clearFxTimer]);
 
+  // Evolution SFX (issue #45): play the `evolve` jingle when the monster has
+  // just evolved, i.e. when game.justEvolvedTo transitions to a non-null stage
+  // (the same signal that mounts the EvolutionBanner). Keyed on justEvolvedTo
+  // so it fires once per evolution.
+  //
+  // AUTOPLAY NOTE: an evolution can be produced by a background TIME_TICK with
+  // NO user gesture in the current session (e.g. right after a page reload that
+  // restored `sfxEnabled: true` from ddm.settings). SFX defaults to muted, and
+  // playSound enforces the autoplay guarantee itself: it only emits audio when
+  // the AudioContext has actually reached the `running` state (which only
+  // happens inside/after a real user gesture). A suspended / not-yet-resumed
+  // context is a guarded, silent no-op, and playSound never throws — so this
+  // call is safe even with no fresh gesture this session.
+  useEffect(() => {
+    if (game.justEvolvedTo !== null) {
+      playSound("evolve", { enabled: sfxEnabled, volume: sfxVolume });
+    }
+  }, [game.justEvolvedTo, sfxEnabled, sfxVolume]);
+
   return (
-    <div className="app">
+    <div className={`app${settings.reducedMotion ? " force-reduced-motion" : ""}`}>
       <header className="app-header">
         <h1>{t("app.title")}</h1>
         <div className="header-controls">
@@ -292,24 +346,16 @@ export function App() {
           >
             {t("reset.button")}
           </button>
-          <div className="lang-toggle" role="group" aria-label="Language">
-            <button
-              type="button"
-              className={`lang-btn${lang === "ja" ? " active" : ""}`}
-              aria-pressed={lang === "ja"}
-              onClick={() => setLang("ja")}
-            >
-              JA
-            </button>
-            <button
-              type="button"
-              className={`lang-btn${lang === "en" ? " active" : ""}`}
-              aria-pressed={lang === "en"}
-              onClick={() => setLang("en")}
-            >
-              EN
-            </button>
-          </div>
+          <button
+            ref={settingsTriggerRef}
+            type="button"
+            className="settings-btn"
+            aria-label={t("settings.buttonAria")}
+            title={t("settings.buttonAria")}
+            onClick={() => setSettingsOpen(true)}
+          >
+            <span aria-hidden="true">⚙</span> {t("settings.button")}
+          </button>
         </div>
       </header>
 
@@ -359,6 +405,10 @@ export function App() {
       )}
 
       {zukanOpen && <ZukanModal zukan={readZukan()} onClose={closeZukan} />}
+
+      {settingsOpen && (
+        <SettingsPanel settings={settings} onChange={updateSettings} onClose={closeSettings} />
+      )}
 
       <EvolutionBanner stageId={game.justEvolvedTo} onDismiss={game.dismissEvolution} />
 
@@ -511,6 +561,11 @@ export function App() {
               // gives defenderHpAfter + dmg; fall back to full only when the
               // player is never hit. See playerStartHpFromLog.
               playerStartHp={playerStartHpFromLog(game.battleLog, game.monster.stats.maxHp)}
+              // Sound effects (issue #45): the panel plays `hit` per turn and
+              // win/lose/draw at the end of the replay. The Fight click (a user
+              // gesture) resumes the AudioContext before the replay runs.
+              sfxEnabled={sfxEnabled}
+              sfxVolume={sfxVolume}
             />
           </div>
         </main>

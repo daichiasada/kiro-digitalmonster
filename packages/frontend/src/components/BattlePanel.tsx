@@ -18,6 +18,7 @@ import {
   winnerLabel,
   type BattleTurnEvent,
 } from "../ui-helpers.ts";
+import { playSound } from "../sound.ts";
 
 export interface BattlePanelProps {
   busy: boolean;
@@ -40,6 +41,14 @@ export interface BattlePanelProps {
   playerMaxHp: number;
   /** Player's HP at the start of the bar animation (see App.tsx note). */
   playerStartHp: number;
+  /**
+   * Whether sound effects are enabled (issue #45). The battle replay plays a
+   * `hit` blip per turn and a win/lose/draw tone at the end. Defaults to false
+   * (muted) so audio is opt-in and autoplay-policy compliant.
+   */
+  sfxEnabled?: boolean;
+  /** SFX playback volume in [0, 1] (issue #45). */
+  sfxVolume?: number;
 }
 
 /** How long each turn of the battle is shown before advancing, in ms. */
@@ -78,8 +87,15 @@ export function BattlePanel({
   playerForm = "base",
   playerMaxHp,
   playerStartHp,
+  sfxEnabled = false,
+  sfxVolume = 0.5,
 }: BattlePanelProps) {
   const { lang, t } = useI18n();
+
+  // Winner -> sound-event mapping (issue #45): the player winning plays the
+  // triumphant `win`, losing plays `lose`, and a draw plays the neutral `draw`.
+  const winnerSound = (winner: BattleResult["winner"]): "win" | "lose" | "draw" =>
+    winner === "player" ? "win" : winner === "enemy" ? "lose" : "draw";
 
   // Player-chosen difficulty (default 普通/normal) and the current battle seed.
   // The seed is regenerated when the difficulty changes OR after each fight so
@@ -201,6 +217,10 @@ export function BattlePanel({
     const play = (ev: BattleTurnEvent) => {
       setActive({ attacker: ev.attacker, defender: ev.defender });
       setPop({ side: ev.defender, dmg: ev.dmg, key: ev.turn });
+      // Hit blip (issue #45) on each turn. The replay runs on a setInterval
+      // started by the Fight-button gesture, which already resumed the
+      // AudioContext, so this is autoplay-policy compliant.
+      playSound("hit", { enabled: sfxEnabled, volume: sfxVolume });
       if (ev.defender === "enemy") {
         setEnemyHp(ev.defenderHpAfter);
       } else {
@@ -220,6 +240,7 @@ export function BattlePanel({
     if (events.length === 0) {
       // No turns to play (defensive): go straight to the winner.
       setWinner(result.winner);
+      playSound(winnerSound(result.winner), { enabled: sfxEnabled, volume: sfxVolume });
       return;
     }
 
@@ -237,6 +258,8 @@ export function BattlePanel({
         // would stay pinned until the next run.
         setPop(null);
         setWinner(result.winner);
+        // Win/lose/draw result tone (issue #45) once the headline is set.
+        playSound(winnerSound(result.winner), { enabled: sfxEnabled, volume: sfxVolume });
         return;
       }
       play(events[i]);
@@ -248,7 +271,7 @@ export function BattlePanel({
     // run is keyed off the log identity so we intentionally depend on log +
     // result. lang is included so toggling language re-renders the log in the
     // new language (the run restarts since the revealed lines are rebuilt).
-  }, [log, result, playerStartHp, enemyMaxHp, enemyName, playerName, lang]);
+  }, [log, result, playerStartHp, enemyMaxHp, enemyName, playerName, lang, sfxEnabled, sfxVolume]);
 
   // --- Low-HP pre-fight warning ---------------------------------------------
   // When the player's current HP (recovered from the log as playerStartHp) is

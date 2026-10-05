@@ -1,0 +1,28 @@
+{
+  "project_type": "TypeScript monorepo: React+Vite frontend game (@ddm/frontend), @ddm/shared pure logic, @ddm/backend Lambdas, infra CDK. This task touches ONLY packages/frontend + README files.",
+  "language": "TypeScript / React 18",
+  "build_system": "npm workspaces. Root `npm run build` = build shared -> backend -> frontend (tsc && vite build) -> infra. PATH may need: export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"",
+  "test_framework": "node:test with --experimental-strip-types (NO JSX in test files, pure helpers only). Shared: `npm test` (node:test). Frontend: `npm test -w @ddm/frontend` runs `node --experimental-strip-types --test src/game-ui.test.ts`.",
+  "build_command": "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm run build",
+  "test_command": "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm test && npm test -w @ddm/frontend",
+  "verification_instructions": "1) `npm run build` from root (tsc typechecks frontend + vite build). 2) `npm test` (shared, baseline 152). 3) `npm test -w @ddm/frontend` (baseline 123 - new pure sound-helper tests must add to this and pass). Pure helpers must stay DOM/React-free so game-ui.test.ts can import them under node:test. The sound ENGINE (AudioContext/OscillatorNode) is browser-only and NOT unit-tested; document that.",
+  "snapshot_or_generated_files": "None checked in. Vite produces packages/frontend/dist at build (not committed).",
+  "setup_instructions": "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"; `npm install` already done (node_modules present). Network OPEN_INTERNET but NO new runtime deps needed (Web Audio is a browser API).",
+  "environment_constraints": "Network OPEN_INTERNET. No new runtime dependencies allowed. No headless browser/jsdom in tests - only pure TS helpers are unit-testable; AudioContext + DOM cannot be unit-tested here. Keep JA strings byte-identical for existing i18n keys.",
+  "contribution_requirements": "Branch off main as feat/sound-and-settings. Do NOT push or open PR (orchestrator does that). Do NOT touch backup/previous-main. Well-separated commits. JA/EN parity for every new i18n string. Autoplay policy MUST be honored (no audio before first user gesture).",
+  "key_patterns": "Accessible dialog pattern (REUSE): ZukanModal.tsx + App.tsx reset alertdialog + BattlePanel low-HP confirm all do: role=dialog/alertdialog + aria-modal=true + aria-label, focus moved into dialog on mount (useEffect ref.focus()), Escape closes, Tab/Shift+Tab focus trap via querySelectorAll of focusables, focus restored to trigger by PARENT via a triggerRef. i18n: i18n.ts JA_MESSAGES is source of truth for MessageKey; EN_MESSAGES is Record<MessageKey,string> (missing key = compile error) - add BOTH ja+en. localStorage helpers (REUSE pattern): guarded try/catch, `typeof localStorage === 'undefined'` check, keys namespaced `ddm.*` (ddm.lang, ddm.onboarded, ddm.pets, ddm.zukan, ddm.chat.<id>). Event→config pure-helper pattern: ui-helpers.ts CARE_EFFECTS Record<CareAction,CareEffect> + careEffect(action) accessor is the exact model to mirror for event→sound config. Pure helpers live in ui-helpers.ts and are unit-tested in game-ui.test.ts (import list at top). Reduced-motion: 10 `@media (prefers-reduced-motion: reduce)` blocks in styles.css each set animation/transition:none on specific selectors.",
+  "relevant_files": [
+    "packages/frontend/src/App.tsx (header controls incl. #12 lang-toggle to consolidate; handleFeed/handleTrain/handleSleep/handleClean/handlePet via triggerCareFx; EvolutionBanner mount via game.justEvolvedTo; BattlePanel mount)",
+    "packages/frontend/src/components/BattlePanel.tsx (per-turn play() = hit moment; winner headline = win/lose/draw moment; STEP_MS=800 interval)",
+    "packages/frontend/src/components/EvolutionBanner.tsx (shown when stageId !== null)",
+    "packages/frontend/src/state/useMonster.ts (justEvolvedTo set on stage change; dismissEvolution)",
+    "packages/frontend/src/ui-helpers.ts (CARE_EFFECTS/careEffect model to mirror; localStorage guarded helpers readOnboarded/writeOnboarded, ZUKAN_STORAGE_KEY; add sound config + clamp + gating pure helpers here)",
+    "packages/frontend/src/i18n.ts (JA_MESSAGES/EN_MESSAGES, LANG_STORAGE_KEY='ddm.lang', readStoredLang, useI18n().lang/setLang - DO NOT regress #12 persistence)",
+    "packages/frontend/src/game-ui.test.ts (node:test; add tests for new pure sound helpers)",
+    "packages/frontend/src/components/ZukanModal.tsx (accessible modal template to copy for SettingsPanel)",
+    "packages/frontend/src/styles.css (10 reduced-motion blocks; add .force-reduced-motion composition + settings panel styles)",
+    "packages/frontend/src/main.tsx (I18nProvider wraps App; root #root)",
+    "README.md + README.ja.md (asset-license note goes here)"
+  ],
+  "directory_structure": "packages/frontend/src: App.tsx (root screen), i18n.ts, ui-helpers.ts (pure helpers), game-ui.test.ts (node:test), styles.css, main.tsx, components/ (StatsPanel, CarePanel, BattlePanel, ChatPanel, EvolutionBanner, ZukanModal, NameDialog, etc.), state/useMonster.ts, assets/monsters/."
+}

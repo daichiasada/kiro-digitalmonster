@@ -182,6 +182,17 @@ const JA_MESSAGES = {
   "zukan.daysUnit": "日",
   "zukan.name": "なまえ",
   "zukan.empty": "まだ何も発見していません",
+
+  // Settings panel (issue #45)
+  "settings.button": "設定",
+  "settings.buttonAria": "設定を開く",
+  "settings.title": "設定",
+  "settings.close": "閉じる",
+  "settings.sfx": "効果音",
+  "settings.volume": "音量",
+  "settings.volumeValue": "{percent}%",
+  "settings.reducedMotion": "アニメーションを減らす",
+  "settings.language": "言語",
 } as const;
 
 /** The set of valid message keys, derived from the JA dictionary. */
@@ -347,6 +358,17 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   "zukan.daysUnit": " days",
   "zukan.name": "Name",
   "zukan.empty": "Nothing discovered yet",
+
+  // Settings panel (issue #45)
+  "settings.button": "Settings",
+  "settings.buttonAria": "Open settings",
+  "settings.title": "Settings",
+  "settings.close": "Close",
+  "settings.sfx": "Sound effects",
+  "settings.volume": "Volume",
+  "settings.volumeValue": "{percent}%",
+  "settings.reducedMotion": "Reduce motion",
+  "settings.language": "Language",
 };
 
 /**

@@ -448,6 +448,216 @@ export function careEffect(action: CareAction): CareEffect {
   return CARE_EFFECTS[action];
 }
 
+// --- Sound effects (issue #45) -------------------------------------------------
+//
+// These are the PURE, DOM/React-free parts of the sound feature: the
+// event->tone configuration map, the volume clamp, and the enabled-gating
+// predicate. They mirror the CARE_EFFECTS/careEffect pattern above and are
+// unit-tested in game-ui.test.ts.
+//
+// The actual Web Audio side (lazily creating an AudioContext, building
+// OscillatorNode + GainNode envelopes, honoring the browser autoplay policy)
+// lives in sound.ts and is INTENTIONALLY NOT unit-tested: AudioContext is a
+// browser-only API that cannot run under the Node test runner. By keeping all
+// decisions (which tone, how loud, whether to play at all) here as pure
+// functions, the untestable surface in sound.ts stays as thin as possible.
+
+/**
+ * A game moment that has a short synthesized sound effect. Covers the issue
+ * #45 scope: feeding, training, battle hit, battle win/lose/draw, and
+ * evolution. (Care actions clean/sleep/wake/pet are intentionally silent.)
+ */
+export type SoundEvent = "feed" | "train" | "hit" | "win" | "lose" | "draw" | "evolve";
+
+/**
+ * One synthesized blip: a single oscillator note. `freq` is in Hz, `durationMs`
+ * is how long the note sounds (kept short, <= ~250ms, so effects never become
+ * annoying), `type` is the oscillator waveform, and `gain` is the per-note peak
+ * amplitude in [0, 1] BEFORE the user's volume setting is applied. A multi-note
+ * jingle (win/evolve) is expressed as an ARRAY of these steps played in order.
+ */
+export interface SoundTone {
+  freq: number;
+  durationMs: number;
+  type: OscillatorType;
+  gain: number;
+}
+
+/**
+ * Fixed tone configuration per sound event. Single-note events are a lone
+ * {@link SoundTone}; win/evolve are a short 2-3 note arpeggio (an array played
+ * sequentially). Durations are intentionally short so repeated actions never
+ * produce a drawn-out or grating sound.
+ */
+const SOUND_TONES: Record<SoundEvent, SoundTone | SoundTone[]> = {
+  // Feeding: a soft, bright single blip.
+  feed: { freq: 660, durationMs: 120, type: "sine", gain: 0.6 },
+  // Training: a slightly punchier square blip.
+  train: { freq: 440, durationMs: 140, type: "square", gain: 0.4 },
+  // Battle hit: a short, dry percussive tick.
+  hit: { freq: 220, durationMs: 90, type: "triangle", gain: 0.5 },
+  // Win: a rising 3-note major arpeggio (C5-E5-G5) — celebratory but brief.
+  win: [
+    { freq: 523, durationMs: 110, type: "sine", gain: 0.6 },
+    { freq: 659, durationMs: 110, type: "sine", gain: 0.6 },
+    { freq: 784, durationMs: 150, type: "sine", gain: 0.6 },
+  ],
+  // Lose: a short descending two-note motif.
+  lose: [
+    { freq: 392, durationMs: 130, type: "sine", gain: 0.5 },
+    { freq: 262, durationMs: 180, type: "sine", gain: 0.5 },
+  ],
+  // Draw: a single neutral mid tone.
+  draw: { freq: 349, durationMs: 160, type: "sine", gain: 0.45 },
+  // Evolution: a brighter rising 3-note arpeggio (E5-A5-C#6) distinct from win.
+  evolve: [
+    { freq: 659, durationMs: 120, type: "triangle", gain: 0.6 },
+    { freq: 880, durationMs: 120, type: "triangle", gain: 0.6 },
+    { freq: 1109, durationMs: 170, type: "triangle", gain: 0.6 },
+  ],
+};
+
+/**
+ * Map a sound event to its tone configuration. Mirrors {@link careEffect}: a
+ * single-note event returns one {@link SoundTone}; a jingle returns an array.
+ */
+export function soundTone(event: SoundEvent): SoundTone | SoundTone[] {
+  return SOUND_TONES[event];
+}
+
+/** Default playback volume when the stored/supplied value is missing or NaN. */
+export const DEFAULT_SOUND_VOLUME = 0.5;
+
+/**
+ * Clamp a volume into the valid [0, 1] range. A non-finite input (NaN,
+ * Infinity) is guarded to {@link DEFAULT_SOUND_VOLUME} so a corrupt stored
+ * value never silences or over-drives playback.
+ */
+export function clampVolume(v: number): number {
+  if (!Number.isFinite(v)) {
+    return DEFAULT_SOUND_VOLUME;
+  }
+  return Math.max(0, Math.min(1, v));
+}
+
+/**
+ * Whether a sound should actually play for the given settings: effects must be
+ * enabled AND the (clamped) volume must be above zero. This is the single
+ * gating predicate consumed by the sound engine so it can bail out early.
+ */
+export function shouldPlaySound(enabled: boolean, volume: number): boolean {
+  return enabled && clampVolume(volume) > 0;
+}
+
+/**
+ * Display/sound settings surfaced by the Settings panel (issue #45): SFX
+ * on/off, SFX volume, and app-level reduced motion. Language is deliberately
+ * NOT part of this shape — it is owned by i18n.ts under the separate `ddm.lang`
+ * key (the panel only surfaces useI18n().lang/setLang), so toggling it stays
+ * independent of this store and does not regress the #12 persistence.
+ *
+ * Persisted as a single JSON blob under {@link SETTINGS_STORAGE_KEY}
+ * (`ddm.settings`).
+ */
+export interface Settings {
+  /** Whether sound effects play. Defaults OFF (muted) per the autoplay policy. */
+  sfxEnabled: boolean;
+  /** SFX playback volume in [0, 1]. */
+  volume: number;
+  /** App-level "reduce motion" toggle that forces the force-reduced-motion class. */
+  reducedMotion: boolean;
+}
+
+/**
+ * Back-compat alias for the pre-FEAT-003 name. FEAT-002 called this shape
+ * {@link DisplaySettings}; it is now {@link Settings} with the added
+ * `reducedMotion` field. Kept as an alias to avoid churn in older imports.
+ */
+export type DisplaySettings = Settings;
+
+/** localStorage key for persisted display/sound settings. */
+export const SETTINGS_STORAGE_KEY = "ddm.settings";
+
+/**
+ * Default settings. SFX is OFF by default so NOTHING plays until the user
+ * explicitly enables it (autoplay-policy compliant: even the first gesture is
+ * silent until opt-in). Volume defaults to a middle level and reduced motion
+ * is off so the OS prefers-reduced-motion preference remains the default-on
+ * signal.
+ */
+export const DEFAULT_SETTINGS: Settings = {
+  sfxEnabled: false,
+  volume: DEFAULT_SOUND_VOLUME,
+  reducedMotion: false,
+};
+
+/**
+ * Pure, DOM/localStorage-free parser for the persisted settings blob. Given the
+ * raw stored string (or null when absent), it:
+ *   - returns a fresh copy of {@link DEFAULT_SETTINGS} when raw is null, the
+ *     JSON is invalid, or it does not parse to an object;
+ *   - coerces non-boolean `sfxEnabled` / `reducedMotion` to their defaults;
+ *   - clamps `volume` into [0, 1] via {@link clampVolume} (NaN/missing ->
+ *     default);
+ *   - fills any missing field from the defaults.
+ *
+ * Kept pure so it is unit-testable under node:test (no DOM/React). The guarded
+ * localStorage wrappers {@link readSettings} / {@link writeSettings} are thin
+ * shells around this.
+ */
+export function parseSettings(raw: string | null): Settings {
+  if (raw === null) {
+    return { ...DEFAULT_SETTINGS };
+  }
+  let parsed: Partial<Settings> | null;
+  try {
+    parsed = JSON.parse(raw) as Partial<Settings> | null;
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+  if (parsed === null || typeof parsed !== "object") {
+    return { ...DEFAULT_SETTINGS };
+  }
+  return {
+    sfxEnabled: typeof parsed.sfxEnabled === "boolean" ? parsed.sfxEnabled : DEFAULT_SETTINGS.sfxEnabled,
+    volume: clampVolume(typeof parsed.volume === "number" ? parsed.volume : DEFAULT_SETTINGS.volume),
+    reducedMotion:
+      typeof parsed.reducedMotion === "boolean" ? parsed.reducedMotion : DEFAULT_SETTINGS.reducedMotion,
+  };
+}
+
+/**
+ * Read the persisted settings, guarded so it never throws (localStorage can be
+ * absent or blocked). Delegates all validation/clamping to the pure
+ * {@link parseSettings}. Mirrors {@link readOnboarded}.
+ */
+export function readSettings(): Settings {
+  try {
+    if (typeof localStorage === "undefined") {
+      return { ...DEFAULT_SETTINGS };
+    }
+    return parseSettings(localStorage.getItem(SETTINGS_STORAGE_KEY));
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+/**
+ * Persist the given settings, guarded so a blocked/absent localStorage is a
+ * silent no-op (mirrors {@link writeOnboarded}). Stores the whole blob under
+ * {@link SETTINGS_STORAGE_KEY} as JSON.
+ */
+export function writeSettings(settings: Settings): void {
+  try {
+    if (typeof localStorage === "undefined") {
+      return;
+    }
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // Ignore storage failures (private mode, quota, etc.).
+  }
+}
+
 /**
  * The monster fields needed to derive the mood string. Issue #29 makes mood
  * HP-aware, so this now also requires `stats` (hp/maxHp) in addition to the

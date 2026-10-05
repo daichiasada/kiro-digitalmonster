@@ -1,0 +1,15 @@
+{
+  "task_id": "task-sound-and-settings",
+  "task_description": "Issue #45: add short Web Audio SFX for feed/train/battle-hit/win/lose/draw/evolution, plus an accessible Settings panel (SFX on/off, volume, reduced-motion app toggle, consolidated JA/EN language toggle) with localStorage persistence. Autoplay-policy compliant (muted by default; AudioContext created/resumed only on user gesture). Frontend-only change; README asset-license note in both README files. No new runtime deps.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "review": "v1 semantic review APPROVED. Two non-blocking nits addressed in follow-up commit 2cf782a: (1) autoplay guarantee now ENFORCED in sound.ts (playSound schedules oscillators only when AudioContext.state === 'running'; a suspended/not-yet-resumed context is a guarded silent no-op) and the misleading JSDoc/comment corrected; (2) the hardcoded 'ten blocks' reduced-motion comment made count-agnostic.",
+    "summary": "npm run build green (shared->backend->frontend tsc+vite->infra). Shared npm test 152/0 (unchanged baseline). Frontend npm test -w @ddm/frontend 135/0 (up from 123: +7 FEAT-002 sound-helper tests, +5 FEAT-003 parseSettings tests). New tests exercise the real pure helpers (clampVolume boundary/NaN, shouldPlaySound gating, soundTone/SOUND_TONES per-event config, parseSettings validation/clamp/coerce/defaults) with assertions that would fail if the logic were reverted. Both README.md and README.ja.md contain the Web Audio no-bundled-asset license note. No Dockerfile in frontend path; docker build skipped (frontend-only change). No new runtime deps."
+  }
+}
