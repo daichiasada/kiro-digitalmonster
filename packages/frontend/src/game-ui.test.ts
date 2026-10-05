@@ -46,6 +46,9 @@ import {
   petsRemaining,
   parseZukan,
   recordMonsterAppearance,
+  zukanCountLabel,
+  daysRaisedLabel,
+  firstSeenDateLabel,
   ZUKAN_STORAGE_KEY,
   readPetRecord,
   moodLabel,
@@ -1085,4 +1088,31 @@ test("recordMonsterAppearance merges baby -> evolved to 2 entries and re-records
   const afterReBaby = recordMonsterAppearance(afterEvolved, baby, t0 + 999_999);
   assert.equal(afterReBaby, afterEvolved);
   assert.equal(discoveredCount(afterReBaby), 2);
+});
+
+// --- Zukan UI formatters (issue #39, FEAT-003) -----------------------------
+
+test("zukanCountLabel substitutes {discovered} and {total} per language", () => {
+  assert.equal(zukanCountLabel(3, 10, "ja"), "発見 3 / 10");
+  assert.equal(zukanCountLabel(3, 10, "en"), "Discovered 3 / 10");
+  // Zero / full extremes still substitute both placeholders.
+  assert.equal(zukanCountLabel(0, 10, "ja"), "発見 0 / 10");
+  assert.equal(zukanCountLabel(10, 10, "en"), "Discovered 10 / 10");
+});
+
+test("daysRaisedLabel appends the localized unit suffix", () => {
+  // JA unit is 日 with no space; EN unit begins with a space.
+  assert.equal(daysRaisedLabel(0, "ja"), "0日");
+  assert.equal(daysRaisedLabel(5, "ja"), "5日");
+  assert.equal(daysRaisedLabel(0, "en"), "0 days");
+  assert.equal(daysRaisedLabel(5, "en"), "5 days");
+});
+
+test("firstSeenDateLabel returns a non-empty string for finite ms and '' for non-finite", () => {
+  // Do NOT assert the exact locale string (locale-data-dependent); only that a
+  // finite ms yields some text and non-finite input is guarded to ''.
+  assert.ok(firstSeenDateLabel(1_000_000_000_000, "ja").length > 0);
+  assert.ok(firstSeenDateLabel(1_000_000_000_000, "en").length > 0);
+  assert.equal(firstSeenDateLabel(Number.NaN, "ja"), "");
+  assert.equal(firstSeenDateLabel(Number.POSITIVE_INFINITY, "en"), "");
 });

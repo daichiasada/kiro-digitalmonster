@@ -906,3 +906,38 @@ export function recordMonsterAppearance(
 ): Zukan {
   return recordAppearance(zukan, monster, now);
 }
+
+/**
+ * Localized "discovered / total" count label for the zukan header, sourced
+ * from the "zukan.count" i18n template (JA 発見 {discovered} / {total}, EN
+ * Discovered {discovered} / {total}). Pure and React/DOM-free so it can be
+ * unit-tested; the component passes discoveredCount(zukan) + ZUKAN_TOTAL.
+ */
+export function zukanCountLabel(discovered: number, total: number, lang: Lang): string {
+  return t(lang, "zukan.count")
+    .replace("{discovered}", String(discovered))
+    .replace("{total}", String(total));
+}
+
+/**
+ * Localized "days raised" value for a zukan entry: the day count followed by
+ * the localized unit suffix ("zukan.daysUnit" — JA 日 with no space, EN " days"
+ * with a leading space). Pure and React/DOM-free so it can be unit-tested.
+ */
+export function daysRaisedLabel(days: number, lang: Lang): string {
+  return `${days}${t(lang, "zukan.daysUnit")}`;
+}
+
+/**
+ * Localized first-seen date for a zukan entry, formatted via the platform
+ * Intl locale ('en-US' for English, 'ja-JP' otherwise). toLocaleDateString is
+ * available under Node so this stays React/DOM-free and testable, but the
+ * exact output is locale-data-dependent so tests only assert non-empty for a
+ * finite ms and '' for non-finite. Guarded to '' for non-finite input.
+ */
+export function firstSeenDateLabel(epochMs: number, lang: Lang): string {
+  if (!Number.isFinite(epochMs)) {
+    return "";
+  }
+  return new Date(epochMs).toLocaleDateString(lang === "en" ? "en-US" : "ja-JP");
+}

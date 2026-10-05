@@ -14,11 +14,13 @@ import {
   readOnboarded,
   shouldShowOnboarding,
   writeOnboarded,
+  readZukan,
   type CareAction,
 } from "./ui-helpers.ts";
 import { MonsterSprite } from "./assets/monsters/MonsterSprite.tsx";
 import { StatsPanel } from "./components/StatsPanel.tsx";
 import { NameDialog } from "./components/NameDialog.tsx";
+import { ZukanModal } from "./components/ZukanModal.tsx";
 import { CarePanel } from "./components/CarePanel.tsx";
 import { BattlePanel } from "./components/BattlePanel.tsx";
 import { ChatPanel } from "./components/ChatPanel.tsx";
@@ -142,6 +144,19 @@ export function App() {
     setNameDialog({ mode: "rename" });
   }, []);
 
+  // Monster zukan (issue #39): a header 📖 button opens the collection modal.
+  // The collection is independent of the live monster (persisted under a
+  // separate key that survives reset), so the button stays enabled regardless
+  // of load state and the modal reads the latest zukan from storage on open.
+  const [zukanOpen, setZukanOpen] = useState(false);
+  const zukanTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeZukan = useCallback(() => {
+    setZukanOpen(false);
+    // Restore focus to the trigger so keyboard users are not dropped at the
+    // top of the document after the modal closes.
+    zukanTriggerRef.current?.focus();
+  }, []);
+
   // First-run onboarding hint. Lazy initializer reads localStorage once;
   // dismissing persists the "ddm.onboarded" flag so it never shows again.
   const [onboarded, setOnboarded] = useState(readOnboarded);
@@ -232,6 +247,16 @@ export function App() {
         <h1>{t("app.title")}</h1>
         <div className="header-controls">
           <button
+            ref={zukanTriggerRef}
+            type="button"
+            className="zukan-btn"
+            aria-label={t("zukan.buttonAria")}
+            title={t("zukan.buttonAria")}
+            onClick={() => setZukanOpen(true)}
+          >
+            <span aria-hidden="true">📖</span> {t("zukan.button")}
+          </button>
+          <button
             ref={resetTriggerRef}
             type="button"
             className="reset-btn"
@@ -305,6 +330,8 @@ export function App() {
           onClose={closeNameDialog}
         />
       )}
+
+      {zukanOpen && <ZukanModal zukan={readZukan()} onClose={closeZukan} />}
 
       <EvolutionBanner stageId={game.justEvolvedTo} onDismiss={game.dismissEvolution} />
 
