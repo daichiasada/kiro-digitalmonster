@@ -27,8 +27,10 @@ import {
   latestMonsterReply,
   moodLabel,
   moodLabelJa,
+  onboardingCta,
   parseBattleEvents,
   playerStartHpFromLog,
+  shouldShowOnboarding,
   stageLabel,
   stageLabelJa,
   statBarPercent,
@@ -36,7 +38,8 @@ import {
   winnerLabelJa,
 } from "./ui-helpers.ts";
 import type { CareAction } from "./ui-helpers.ts";
-import { HUNGRY_CAUTION_LEVEL, MAX_HUNGRY_LEVEL } from "@ddm/shared";
+import { HUNGRY_CAUTION_LEVEL, MAX_HUNGRY_LEVEL, evolutionProgress } from "@ddm/shared";
+import type { Monster } from "@ddm/shared";
 import { DEFAULT_LANG, MESSAGES, t } from "./i18n.ts";
 import type { Lang, MessageKey } from "./i18n.ts";
 
@@ -515,4 +518,57 @@ test("t() never returns undefined for any defined key in any language", () => {
 
 test("DEFAULT_LANG is 'ja'", () => {
   assert.equal(DEFAULT_LANG, "ja");
+});
+
+// --- Onboarding hint helpers -----------------------------------------------
+
+test("shouldShowOnboarding truth table", () => {
+  // Not onboarded + monster loaded => show.
+  assert.equal(shouldShowOnboarding(false, true), true);
+  // Already onboarded => never show, regardless of monster.
+  assert.equal(shouldShowOnboarding(true, true), false);
+  assert.equal(shouldShowOnboarding(true, false), false);
+  // No monster yet => do not show even when not onboarded.
+  assert.equal(shouldShowOnboarding(false, false), false);
+});
+
+// Minimal Monster factory for the pure evolutionProgress-driven CTA tests.
+function makeMonster(overrides: Partial<Monster>): Monster {
+  return {
+    id: "test",
+    name: "でじたん",
+    stageId: "baby",
+    stats: { hp: 20, maxHp: 20, atk: 5, def: 3 },
+    trainingCount: 0,
+    careCounters: { feed: 0, sleep: 0, clean: 0 },
+    bornAt: 0,
+    lastUpdatedAt: 0,
+    isSleeping: false,
+    dirty: false,
+    hungryLevel: 0,
+    ...overrides,
+  };
+}
+
+test("onboardingCta summarizes a fresh baby's remaining training and minutes", () => {
+  // bornAt == now => 0 elapsed; baby requires 2 training and 1 minute.
+  const now = 1_000_000;
+  const prog = evolutionProgress(makeMonster({ bornAt: now, trainingCount: 0 }), now);
+  assert.equal(onboardingCta(prog, "ja"), "成長期まで あと トレーニング2回・1分");
+  assert.equal(onboardingCta(prog, "en"), "To reach Rookie: 2 more training, 1 min");
+});
+
+test("onboardingCta clamps remaining training and minutes to >= 0", () => {
+  const now = 10 * 60 * 1000; // 10 minutes elapsed, well past the 1-minute gate.
+  const prog = evolutionProgress(makeMonster({ bornAt: 0, trainingCount: 5 }), now);
+  assert.equal(onboardingCta(prog, "ja"), "成長期まで あと トレーニング0回・0分");
+  assert.equal(onboardingCta(prog, "en"), "To reach Rookie: 0 more training, 0 min");
+});
+
+test("onboardingCta returns the final-stage line at the ultimate stage", () => {
+  const now = 100 * 60 * 1000;
+  const prog = evolutionProgress(makeMonster({ stageId: "ultimate", bornAt: 0 }), now);
+  assert.equal(prog.isFinalStage, true);
+  assert.equal(onboardingCta(prog, "ja"), "もう完全に育ちきっているよ！");
+  assert.equal(onboardingCta(prog, "en"), "It's already fully grown!");
 });

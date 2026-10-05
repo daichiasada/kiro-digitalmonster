@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { evolutionProgress } from "@ddm/shared";
 import { useMonster } from "./state/useMonster.ts";
 import { useI18n } from "./i18n.ts";
 import {
@@ -8,6 +9,9 @@ import {
   isHungerCaution,
   latestMonsterReply,
   playerStartHpFromLog,
+  readOnboarded,
+  shouldShowOnboarding,
+  writeOnboarded,
   type CareAction,
 } from "./ui-helpers.ts";
 import { MonsterSprite } from "./assets/monsters/MonsterSprite.tsx";
@@ -17,6 +21,7 @@ import { BattlePanel } from "./components/BattlePanel.tsx";
 import { ChatPanel } from "./components/ChatPanel.tsx";
 import { SpeechBubble } from "./components/SpeechBubble.tsx";
 import { EvolutionBanner } from "./components/EvolutionBanner.tsx";
+import { OnboardingHint } from "./components/OnboardingHint.tsx";
 
 /** Root game screen wiring the state hook to the UI panels. */
 export function App() {
@@ -34,6 +39,14 @@ export function App() {
   // Cancel dismisses.
   const [confirmingReset, setConfirmingReset] = useState(false);
   const resetDisabled = game.busy || game.loading || game.monster === null;
+
+  // First-run onboarding hint. Lazy initializer reads localStorage once;
+  // dismissing persists the "ddm.onboarded" flag so it never shows again.
+  const [onboarded, setOnboarded] = useState(readOnboarded);
+  const handleDismissOnboarding = useCallback(() => {
+    writeOnboarded();
+    setOnboarded(true);
+  }, []);
 
   const handleReset = useCallback(() => {
     void game.reset();
@@ -155,6 +168,12 @@ export function App() {
       ) : (
         <main className="game-grid">
           <div className="stage-area">
+            {shouldShowOnboarding(onboarded, game.monster !== null) && (
+              <OnboardingHint
+                prog={evolutionProgress(game.monster, Date.now())}
+                onDismiss={handleDismissOnboarding}
+              />
+            )}
             <div
               className={`sprite-wrap ${game.monster.isSleeping ? "sleeping" : ""}`}
             >
