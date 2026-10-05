@@ -152,6 +152,20 @@ const JA_MESSAGES = {
   "name.validation": "1〜12文字で入力してください（空白のみは不可）",
   "name.renameButton": "名前を変更",
   "name.renameButtonAria": "名前を変更",
+
+  // Monster zukan (issue #39)
+  "zukan.button": "図鑑",
+  "zukan.buttonAria": "図鑑を開く",
+  "zukan.title": "モンスター図鑑",
+  "zukan.close": "閉じる",
+  "zukan.count": "発見 {discovered} / {total}",
+  "zukan.undiscovered": "？？？",
+  "zukan.undiscoveredAria": "未発見",
+  "zukan.firstSeen": "初到達",
+  "zukan.daysRaised": "育成日数",
+  "zukan.daysUnit": "日",
+  "zukan.name": "なまえ",
+  "zukan.empty": "まだ何も発見していません",
 } as const;
 
 /** The set of valid message keys, derived from the JA dictionary. */
@@ -287,6 +301,20 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   "name.validation": "Please enter 1-12 characters (not blank).",
   "name.renameButton": "Rename",
   "name.renameButtonAria": "Rename monster",
+
+  // Monster zukan (issue #39)
+  "zukan.button": "Collection",
+  "zukan.buttonAria": "Open collection",
+  "zukan.title": "Monster Collection",
+  "zukan.close": "Close",
+  "zukan.count": "Discovered {discovered} / {total}",
+  "zukan.undiscovered": "???",
+  "zukan.undiscoveredAria": "Undiscovered",
+  "zukan.firstSeen": "First reached",
+  "zukan.daysRaised": "Days raised",
+  "zukan.daysUnit": " days",
+  "zukan.name": "Name",
+  "zukan.empty": "Nothing discovered yet",
 };
 
 /**

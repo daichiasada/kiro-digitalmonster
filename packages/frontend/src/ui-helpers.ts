@@ -14,7 +14,15 @@ import type {
   MonsterForm,
   Stats,
 } from "@ddm/shared";
-import { AFFECTION_MAX, HUNGRY_CAUTION_LEVEL, MAX_HUNGRY_LEVEL, affectionBand } from "@ddm/shared";
+import {
+  AFFECTION_MAX,
+  HUNGRY_CAUTION_LEVEL,
+  MAX_HUNGRY_LEVEL,
+  affectionBand,
+  recordAppearance,
+  sanitizeZukan,
+} from "@ddm/shared";
+import type { Zukan } from "@ddm/shared";
 import { t } from "./i18n.ts";
 import type { Lang } from "./i18n.ts";
 
@@ -821,4 +829,115 @@ export const LOW_HP_BATTLE_PERCENT = 30;
  */
 export function isLowHp(hp: number, maxHp: number): boolean {
   return hpPercent(hp, maxHp) < LOW_HP_BATTLE_PERCENT;
+}
+
+// --- Monster zukan (図鑑) persistence — issue #39 ---------------------------
+
+/**
+ * localStorage key under which the monster zukan (collection) is persisted.
+ * Deliberately SEPARATE from the monster save (and the monster id) so the
+ * collection SURVIVES a reset: reset() rewrites the monster but never touches
+ * this key, so previously reached appearances are kept forever (issue #39).
+ */
+export const ZUKAN_STORAGE_KEY = "ddm.zukan";
+
+/**
+ * Read the raw zukan JSON string from localStorage, guarded so it never throws
+ * (localStorage can be absent or blocked). Mirrors {@link readPetRecordRaw}.
+ * Returns `null` when storage is unavailable or the key is absent.
+ */
+export function readZukanRaw(): string | null {
+  try {
+    if (typeof localStorage === "undefined") {
+      return null;
+    }
+    return localStorage.getItem(ZUKAN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parse a stored zukan (raw JSON string or null) into a {@link Zukan}. Pure and
+ * unit-testable: JSON.parse inside a try/catch, then the shared
+ * {@link sanitizeZukan} drops any non-canonical / malformed entries. Returns an
+ * empty zukan (`{}`) when the raw value is null, empty, or malformed JSON.
+ */
+export function parseZukan(raw: string | null): Zukan {
+  if (raw === null || raw === "") {
+    return {};
+  }
+  try {
+    return sanitizeZukan(JSON.parse(raw));
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Read + parse the current zukan from localStorage. Thin composition of
+ * {@link readZukanRaw} and {@link parseZukan}; never throws.
+ */
+export function readZukan(): Zukan {
+  return parseZukan(readZukanRaw());
+}
+
+/** Persist a zukan to localStorage, guarded so it never throws. */
+export function writeZukan(zukan: Zukan): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(ZUKAN_STORAGE_KEY, JSON.stringify(zukan));
+    }
+  } catch {
+    // Ignore storage failures (private mode, quota, etc.).
+  }
+}
+
+/**
+ * Record a monster's current appearance into the zukan, delegating to the
+ * shared pure {@link recordAppearance} merge (first-seen wins, never mutates
+ * the input, returns the SAME object identity when nothing new is added). Kept
+ * here as a thin re-export so the lifecycle hook imports a single function.
+ */
+export function recordMonsterAppearance(
+  zukan: Zukan,
+  monster: Monster,
+  now: number,
+): Zukan {
+  return recordAppearance(zukan, monster, now);
+}
+
+/**
+ * Localized "discovered / total" count label for the zukan header, sourced
+ * from the "zukan.count" i18n template (JA 発見 {discovered} / {total}, EN
+ * Discovered {discovered} / {total}). Pure and React/DOM-free so it can be
+ * unit-tested; the component passes discoveredCount(zukan) + ZUKAN_TOTAL.
+ */
+export function zukanCountLabel(discovered: number, total: number, lang: Lang): string {
+  return t(lang, "zukan.count")
+    .replace("{discovered}", String(discovered))
+    .replace("{total}", String(total));
+}
+
+/**
+ * Localized "days raised" value for a zukan entry: the day count followed by
+ * the localized unit suffix ("zukan.daysUnit" — JA 日 with no space, EN " days"
+ * with a leading space). Pure and React/DOM-free so it can be unit-tested.
+ */
+export function daysRaisedLabel(days: number, lang: Lang): string {
+  return `${days}${t(lang, "zukan.daysUnit")}`;
+}
+
+/**
+ * Localized first-seen date for a zukan entry, formatted via the platform
+ * Intl locale ('en-US' for English, 'ja-JP' otherwise). toLocaleDateString is
+ * available under Node so this stays React/DOM-free and testable, but the
+ * exact output is locale-data-dependent so tests only assert non-empty for a
+ * finite ms and '' for non-finite. Guarded to '' for non-finite input.
+ */
+export function firstSeenDateLabel(epochMs: number, lang: Lang): string {
+  if (!Number.isFinite(epochMs)) {
+    return "";
+  }
+  return new Date(epochMs).toLocaleDateString(lang === "en" ? "en-US" : "ja-JP");
 }
