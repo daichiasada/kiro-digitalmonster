@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import type { Monster } from "@ddm/shared";
 import { MAX_HUNGRY_LEVEL, evolutionProgress } from "@ddm/shared";
 import { useI18n } from "../i18n.ts";
@@ -18,10 +19,14 @@ const DEF_REFERENCE = 30;
 
 export interface StatsPanelProps {
   monster: Monster;
+  /** Optional handler to open the rename dialog from the header affordance. */
+  onRename?: () => void;
+  /** Ref to the rename button so the parent can restore focus on dialog close. */
+  renameButtonRef?: Ref<HTMLButtonElement>;
 }
 
 /** Shows HP / ATK / DEF bars and the localized stage + mood labels. */
-export function StatsPanel({ monster }: StatsPanelProps) {
+export function StatsPanel({ monster, onRename, renameButtonRef }: StatsPanelProps) {
   const { lang, t } = useI18n();
   const { stats } = monster;
   const hp = hpPercent(stats.hp, stats.maxHp);
@@ -36,7 +41,21 @@ export function StatsPanel({ monster }: StatsPanelProps) {
   return (
     <section className="panel stats-panel" aria-label={t("aria.stats")}>
       <header className="panel-head">
-        <h2>{monster.name}</h2>
+        <div className="panel-head-name">
+          <h2>{monster.name}</h2>
+          {onRename && (
+            <button
+              ref={renameButtonRef}
+              type="button"
+              className="rename-btn"
+              aria-label={t("name.renameButtonAria")}
+              title={t("name.renameButton")}
+              onClick={onRename}
+            >
+              <span aria-hidden="true">✎</span>
+            </button>
+          )}
+        </div>
         <span className="stage-badge">{stageLabel(monster.stageId, lang)}</span>
       </header>
       <p className="mood">{t("stats.mood")}{moodLabel(monster, lang)}</p>

@@ -27,6 +27,8 @@ import {
   createMonster,
   feed as feedLogic,
   getStage,
+  isValidMonsterName,
+  normalizeMonsterName,
   sleep as sleepLogic,
   train as trainLogic,
   wake as wakeLogic,
@@ -71,6 +73,16 @@ export interface UseMonsterState {
   dismissEvolution: () => void;
   /** Reset the current monster back to a fresh baby egg under the same id. */
   reset: () => Promise<void>;
+  /**
+   * True right after a brand-new monster is hatched (the getMonster 404 path),
+   * signalling the UI to auto-open the first-run name dialog. Cleared by
+   * {@link UseMonsterState.rename} or {@link UseMonsterState.dismissNeedsName}.
+   */
+  needsName: boolean;
+  /** Clear the {@link UseMonsterState.needsName} first-run signal (e.g. skip). */
+  dismissNeedsName: () => void;
+  /** Normalize + validate a new name, commit it optimistically, and persist. */
+  rename: (name: string) => Promise<void>;
 }
 
 /**
@@ -96,6 +108,7 @@ export function useMonster(): UseMonsterState {
   const [lastBattle, setLastBattle] = useState<BattleResult | null>(null);
   const [chatLog, setChatLog] = useState<ChatLine[]>([]);
   const [chatPending, setChatPending] = useState(false);
+  const [needsName, setNeedsName] = useState(false);
 
   // Mutable ref so action callbacks always see the latest monster without
   // being re-created on every render.
@@ -128,14 +141,20 @@ export function useMonster(): UseMonsterState {
       try {
         const now = Date.now();
         let loaded = await api.getMonster(monsterId);
+        let hatchedFresh = false;
         if (loaded === null) {
-          // Hatch a new egg locally and persist it.
+          // Hatch a new egg locally and persist it. Flag the fresh hatch so the
+          // UI can auto-open the first-run name dialog once mounted.
+          hatchedFresh = true;
           const hatchling = createMonster(monsterId, DEFAULT_MONSTER_NAME, now);
           loaded = await api.saveMonster(hatchling).catch(() => hatchling);
         }
         const advanced = advance(loaded, now);
         if (cancelled) {
           return;
+        }
+        if (hatchedFresh) {
+          setNeedsName(true);
         }
         prevStageRef.current = advanced.stageId;
         monsterRef.current = advanced;
@@ -279,6 +298,46 @@ export function useMonster(): UseMonsterState {
 
   const dismissEvolution = useCallback(() => setJustEvolvedTo(null), []);
 
+  const dismissNeedsName = useCallback(() => setNeedsName(false), []);
+
+  /**
+   * Rename the current monster. Normalizes + validates the input with the
+   * shared helpers (invalid input is ignored defensively), commits the new
+   * name optimistically, then persists via api.saveMonster — mirroring the
+   * optimistic -> commit -> save -> commit shape of runCareAction. Clears the
+   * first-run `needsName` signal regardless of persistence outcome.
+   */
+  const rename = useCallback(
+    async (name: string) => {
+      const current = monsterRef.current;
+      if (current === null || busy) {
+        return;
+      }
+      const normalized = normalizeMonsterName(name);
+      if (!isValidMonsterName(normalized)) {
+        return;
+      }
+      setNeedsName(false);
+      setBusy(true);
+      setError(null);
+      const next: Monster = {
+        ...current,
+        name: normalized,
+        lastUpdatedAt: Date.now(),
+      };
+      commit(next);
+      try {
+        const saved = await api.saveMonster(next);
+        commit(saved);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "保存に失敗しました");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy, commit],
+  );
+
   /**
    * Reset the monster back to a fresh baby egg under the SAME monster id, then
    * persist it (overwrites the single DynamoDB record via api.saveMonster).
@@ -343,5 +402,8 @@ export function useMonster(): UseMonsterState {
     sendChat,
     dismissEvolution,
     reset,
+    needsName,
+    dismissNeedsName,
+    rename,
   };
 }
