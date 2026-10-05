@@ -196,6 +196,27 @@ export function App() {
   );
   const handleClean = useCallback(() => triggerCareFx("clean", game.clean), [triggerCareFx, game.clean]);
 
+  // Pet (なでる): clicking or pressing Enter/Space on the sprite pets the
+  // monster, raising affection and playing the heart-pop FX. When the per-day
+  // cap is reached (game.petsRemaining === 0) petting gives no further
+  // affection — gate here so the FX stays honest and pet() is not called.
+  const handlePet = useCallback(() => {
+    if (game.petsRemaining <= 0) {
+      return;
+    }
+    triggerCareFx("pet", game.pet);
+  }, [triggerCareFx, game.pet, game.petsRemaining]);
+
+  const handleSpriteKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
+        event.preventDefault();
+        handlePet();
+      }
+    },
+    [handlePet],
+  );
+
   const handleFxEnd = useCallback(() => {
     clearFxTimer();
     setCareFx(null);
@@ -300,6 +321,12 @@ export function App() {
             )}
             <div
               className={`sprite-wrap ${game.monster.isSleeping ? "sleeping" : ""}`}
+              role="button"
+              tabIndex={0}
+              aria-label={t("action.petAria")}
+              title={t("action.pet")}
+              onClick={handlePet}
+              onKeyDown={handleSpriteKeyDown}
             >
               {/* Keyed on the FX counter so the bounce remounts and re-fires on
                   every action, including rapid repeats of the same button

@@ -5,7 +5,7 @@
  * built-in test runner (see game-ui.test.ts).
  */
 import type { BattleWinner, EvolutionProgress, GrowthStage, Monster, Stats } from "@ddm/shared";
-import { HUNGRY_CAUTION_LEVEL, MAX_HUNGRY_LEVEL } from "@ddm/shared";
+import { AFFECTION_MAX, HUNGRY_CAUTION_LEVEL, MAX_HUNGRY_LEVEL, affectionBand } from "@ddm/shared";
 import { t } from "./i18n.ts";
 import type { Lang } from "./i18n.ts";
 
@@ -313,8 +313,9 @@ export function formatMinutes(ms: number, lang: Lang): string {
 /**
  * A care action the player can perform on the monster. `sleep` and `wake` are
  * the two halves of the sleep toggle button so each shows a matching cue.
+ * `pet` (なでる) is triggered by clicking the sprite and plays a heart-pop FX.
  */
-export type CareAction = "feed" | "train" | "sleep" | "wake" | "clean";
+export type CareAction = "feed" | "train" | "sleep" | "wake" | "clean" | "pet";
 
 /**
  * Visual-effect descriptor for a care action. Drives the transient overlay
@@ -334,6 +335,7 @@ const CARE_EFFECTS: Record<CareAction, CareEffect> = {
   sleep: { className: "fx-sleep", emoji: "💤", durationMs: 700 },
   wake: { className: "fx-wake", emoji: "⏰", durationMs: 600 },
   clean: { className: "fx-clean", emoji: "✨", durationMs: 700 },
+  pet: { className: "fx-pet", emoji: "💗", durationMs: 700 },
 };
 
 /**
@@ -428,6 +430,147 @@ export function fullnessPercent(hungryLevel: number): number {
  */
 export function isHungerCaution(hungryLevel: number): boolean {
   return hungryLevel >= HUNGRY_CAUTION_LEVEL;
+}
+
+// --- Affection (なつき度) gauge ---------------------------------------------
+
+/**
+ * Affection as an integer percentage in [0, 100], scaled against the shared
+ * {@link AFFECTION_MAX}. Non-finite input is guarded to 0, mirroring
+ * {@link fullnessPercent} / {@link hpPercent}. Drives the heart gauge bar
+ * width in StatsPanel (FEAT-002).
+ */
+export function affectionPercent(affection: number): number {
+  if (!Number.isFinite(affection)) {
+    return 0;
+  }
+  const clamped = Math.max(0, Math.min(AFFECTION_MAX, affection));
+  return Math.round((clamped / AFFECTION_MAX) * 100);
+}
+
+/**
+ * Localized band label for the affection gauge, classified via the shared
+ * {@link affectionBand} (cold / neutral / warm). Sourced from the i18n keys
+ * `affection.cold` / `affection.neutral` / `affection.warm` so JA and EN stay
+ * in one place (JA よそよそしい / ふつう / なかよし, EN Distant / Friendly /
+ * Bonded). React/DOM-free so it can be unit-tested.
+ */
+export function affectionLevelLabel(affection: number, lang: Lang): string {
+  const band = affectionBand(affection);
+  return t(lang, `affection.${band}` as const);
+}
+
+// --- Pet (なでる) daily cap -------------------------------------------------
+
+/**
+ * Maximum number of pet (なでる) actions that raise affection in a single
+ * calendar day. The shared `pet()` action is intentionally UNCAPPED; this cap
+ * is enforced in the frontend via localStorage so the limit resets each day.
+ */
+export const PET_DAILY_CAP = 5;
+
+/** localStorage key under which the per-day pet counter is persisted. */
+export function petStorageKey(): string {
+  return "ddm.pets";
+}
+
+/** A persisted per-day pet record: the calendar `day` and how many pets used. */
+export interface PetRecord {
+  day: string;
+  count: number;
+}
+
+/**
+ * Local calendar-day stamp (`YYYY-MM-DD`) for a timestamp. Pure and
+ * deterministic for a fixed `now`; uses local date parts so the cap resets at
+ * the player's local midnight. Non-finite input falls back to the epoch day.
+ */
+export function dayStamp(now: number): string {
+  const d = Number.isFinite(now) ? new Date(now) : new Date(0);
+  const year = d.getFullYear();
+  const month = `${d.getMonth() + 1}`.padStart(2, "0");
+  const day = `${d.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Parse a stored pet record (raw JSON string or null) into a {@link PetRecord}
+ * for TODAY. When the stored day differs from today's {@link dayStamp}, or the
+ * raw value is missing/invalid, the count resets to 0 for the current day.
+ * Pure: takes `raw` + `now` so it is unit-testable with fixed values.
+ */
+export function readPetRecord(raw: string | null, now: number): PetRecord {
+  const today = dayStamp(now);
+  if (raw === null || raw === "") {
+    return { day: today, count: 0 };
+  }
+  try {
+    const parsed = JSON.parse(raw) as Partial<PetRecord>;
+    if (
+      typeof parsed.day === "string" &&
+      parsed.day === today &&
+      typeof parsed.count === "number" &&
+      Number.isFinite(parsed.count)
+    ) {
+      return { day: today, count: Math.max(0, Math.floor(parsed.count)) };
+    }
+  } catch {
+    // Fall through to the reset below on malformed JSON.
+  }
+  return { day: today, count: 0 };
+}
+
+/**
+ * Pets remaining today = max(0, {@link PET_DAILY_CAP} - count), treating a
+ * record from a previous day as a fresh (0-count) day.
+ */
+export function petsRemaining(record: PetRecord, now: number): number {
+  const today = dayStamp(now);
+  const count = record.day === today ? record.count : 0;
+  return Math.max(0, PET_DAILY_CAP - count);
+}
+
+/** Whether another pet is allowed today (i.e. the cap has not been reached). */
+export function canPet(record: PetRecord, now: number): boolean {
+  return petsRemaining(record, now) > 0;
+}
+
+/**
+ * The next pet record after a successful pet: increments today's count,
+ * resetting to a 1-count record when the stored record is from a prior day.
+ * Pure; does not touch storage.
+ */
+export function nextPetRecord(record: PetRecord, now: number): PetRecord {
+  const today = dayStamp(now);
+  const base = record.day === today ? record.count : 0;
+  return { day: today, count: base + 1 };
+}
+
+/**
+ * Read the raw pet record string from localStorage, guarded so it never throws
+ * (localStorage can be absent or blocked). Mirrors {@link readOnboarded}.
+ * Returns `null` when storage is unavailable or the key is absent.
+ */
+export function readPetRecordRaw(): string | null {
+  try {
+    if (typeof localStorage === "undefined") {
+      return null;
+    }
+    return localStorage.getItem(petStorageKey());
+  } catch {
+    return null;
+  }
+}
+
+/** Persist a pet record to localStorage, guarded so it never throws. */
+export function writePetRecord(record: PetRecord): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(petStorageKey(), JSON.stringify(record));
+    }
+  } catch {
+    // Ignore storage failures (private mode, quota, etc.).
+  }
 }
 
 // --- Accessibility labels (not color-only) ---------------------------------

@@ -48,9 +48,20 @@ const JA_MESSAGES = {
   "stats.mood": "きぶん: ",
   "stats.hp": "HP",
   "stats.fullness": "満腹度",
+  "stats.affection": "なつき度",
   "stats.atk": "攻撃",
   "stats.def": "防御",
   "stats.trainingCount": "トレーニング回数: ",
+
+  // Affection (なつき度) band labels — see shared affectionBand (issue #42)
+  "affection.cold": "よそよそしい",
+  "affection.neutral": "ふつう",
+  "affection.warm": "なかよし",
+
+  // Pet (なでる) action — sprite tap/click (issue #42)
+  "action.pet": "なでる",
+  "action.petAria": "なでる",
+  "action.petCapReached": "きょうはもう十分なでたよ",
 
   // Sprite-adjacent state badges (also used as accessible labels)
   "badge.hungry": "お腹がすいている",
@@ -154,9 +165,20 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   "stats.mood": "Mood: ",
   "stats.hp": "HP",
   "stats.fullness": "Fullness",
+  "stats.affection": "Affection",
   "stats.atk": "ATK",
   "stats.def": "DEF",
   "stats.trainingCount": "Training count: ",
+
+  // Affection (なつき度) band labels — see shared affectionBand (issue #42)
+  "affection.cold": "Distant",
+  "affection.neutral": "Friendly",
+  "affection.warm": "Bonded",
+
+  // Pet (なでる) action — sprite tap/click (issue #42)
+  "action.pet": "Pet",
+  "action.petAria": "Pet",
+  "action.petCapReached": "You've petted it enough for today",
 
   // Sprite-adjacent state badges (also used as accessible labels)
   "badge.hungry": "Hungry",
