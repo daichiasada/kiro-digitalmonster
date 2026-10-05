@@ -53,6 +53,9 @@ import {
   daysRaisedLabel,
   firstSeenDateLabel,
   ZUKAN_STORAGE_KEY,
+  chatStorageKey,
+  parseChatLog,
+  serializeChatLog,
   readPetRecord,
   moodLabel,
   moodLabelJa,
@@ -73,6 +76,7 @@ import {
   AFFECTION_MAX,
   AFFECTION_WARM_THRESHOLD,
   HUNGRY_CAUTION_LEVEL,
+  MAX_CHAT_TURNS,
   MAX_HUNGRY_LEVEL,
   battleRecordOf,
   createMonster,
@@ -1163,4 +1167,80 @@ test("recommendLabelKey results resolve to real messages in both languages", () 
       assert.notEqual(t("ja", key), key);
     }
   }
+});
+
+// --- Chat transcript persistence glue — issue #37 ---------------------------
+// Pure parse/serialize/key helpers only; these never touch localStorage so the
+// suite stays DOM/storage-free under the plain Node test runner.
+
+test("chatStorageKey returns the per-monster ddm.chat.<id> key", () => {
+  assert.equal(chatStorageKey("abc"), "ddm.chat.abc");
+  assert.equal(chatStorageKey("m-123"), "ddm.chat.m-123");
+});
+
+test("parseChatLog returns [] for null / empty input", () => {
+  assert.deepEqual(parseChatLog(null), []);
+  assert.deepEqual(parseChatLog(""), []);
+});
+
+test("parseChatLog returns [] for malformed JSON or non-array payloads", () => {
+  assert.deepEqual(parseChatLog("not json"), []);
+  assert.deepEqual(parseChatLog("{ broken"), []);
+  assert.deepEqual(parseChatLog('{"role":"player","text":"hi"}'), []);
+  assert.deepEqual(parseChatLog("42"), []);
+});
+
+test("parseChatLog keeps well-formed lines and preserves monster modelId", () => {
+  const raw = JSON.stringify([
+    { role: "player", text: "hello" },
+    { role: "monster", text: "hi there", modelId: "claude-x" },
+  ]);
+  assert.deepEqual(parseChatLog(raw), [
+    { role: "player", text: "hello" },
+    { role: "monster", text: "hi there", modelId: "claude-x" },
+  ]);
+});
+
+test("parseChatLog drops entries with a bad role, non-string text, or non-object shape", () => {
+  const raw = JSON.stringify([
+    { role: "player", text: "keep me" },
+    { role: "system", text: "bad role" },
+    { role: "monster", text: 123 },
+    "a string",
+    null,
+    { role: "monster", text: "ok", modelId: 7 },
+  ]);
+  // The last entry survives but with a non-string modelId stripped.
+  assert.deepEqual(parseChatLog(raw), [
+    { role: "player", text: "keep me" },
+    { role: "monster", text: "ok" },
+  ]);
+});
+
+test("serializeChatLog round-trips through parseChatLog", () => {
+  const log = [
+    { role: "player" as const, text: "q1" },
+    { role: "monster" as const, text: "a1", modelId: "m1" },
+  ];
+  assert.deepEqual(parseChatLog(serializeChatLog(log)), log);
+});
+
+test("serializeChatLog trims to the most recent MAX_CHAT_TURNS lines", () => {
+  const log = Array.from({ length: MAX_CHAT_TURNS + 5 }, (_, i) => ({
+    role: (i % 2 === 0 ? "player" : "monster") as "player" | "monster",
+    text: `t${i}`,
+  }));
+  const parsed = parseChatLog(serializeChatLog(log));
+  assert.equal(parsed.length, MAX_CHAT_TURNS);
+  // The kept window is the LAST MAX_CHAT_TURNS entries (most recent).
+  assert.equal(parsed[0].text, `t${log.length - MAX_CHAT_TURNS}`);
+  assert.equal(parsed[parsed.length - 1].text, `t${log.length - 1}`);
+});
+
+test("serializeChatLog leaves a short log untrimmed", () => {
+  const log = [
+    { role: "player" as const, text: "only" },
+    { role: "monster" as const, text: "two" },
+  ];
+  assert.equal(parseChatLog(serializeChatLog(log)).length, 2);
 });

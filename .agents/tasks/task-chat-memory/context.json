@@ -1,0 +1,29 @@
+{
+  "project_type": "TypeScript monorepo for a browser monster-raising game (AIモンスター): React+Vite frontend, AWS Lambda backend, shared pure-logic package, CDK infra.",
+  "language": "TypeScript (ESM, Node 22, --experimental-strip-types for tests)",
+  "build_system": "npm workspaces. Root `npm run build` builds @ddm/shared -> @ddm/backend -> @ddm/frontend -> infra in order. Node may need: export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\".",
+  "test_framework": "node:test. Shared: `node --test --experimental-strip-types src/__tests__/*.ts` (files in packages/shared/src/__tests__/*.test.ts). Frontend: a SINGLE file `node --experimental-strip-types --test src/game-ui.test.ts` (pure helpers only, no DOM/React render).",
+  "build_command": "npm run build (root) — must pass tsc for shared+backend+frontend+infra",
+  "test_command": "npm test -w @ddm/shared  AND  npm test -w @ddm/frontend",
+  "verification_instructions": "1) export PATH as above. 2) `npm run build` at root passes (tsc clean for all packages). 3) `npm test -w @ddm/shared` passes (baseline 140, must grow with new trimChatHistory/validate tests). 4) `npm test -w @ddm/frontend` passes (baseline 112, must grow with new chat-storage helper tests). Review that new tests fail if the implementation is reverted.",
+  "snapshot_or_generated_files": "none",
+  "setup_instructions": "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"; from repo root `npm install` already done (node_modules present). Build shared first if editing it (backend/frontend import @ddm/shared source via workspace).",
+  "environment_constraints": "Network OPEN_INTERNET. CANNOT push or open PRs — commit locally on a feature branch only. Do NOT touch backup/previous-main branches. Tests are node:test only; the frontend test file is pure-logic (no React Testing Library), so new frontend tests must live in src/game-ui.test.ts and cover PURE helpers (localStorage interaction is tested via the pure parse/serialize helpers, not via DOM).",
+  "contribution_requirements": "JA is the i18n source of truth and must stay BYTE-IDENTICAL for existing keys; every new UI string needs BOTH ja + en entries (i18n.ts JA_MESSAGES and EN_MESSAGES, keys derived from JA). No new runtime dependencies. Respect prefers-reduced-motion. Backward compatibility: ChatRequest.history is OPTIONAL (absent => current single-message behavior); baby stage still returns the canned reply WITHOUT Bedrock. Do NOT change the Monster save shape / validateMonster (storage is localStorage, not the monster record).",
+  "key_patterns": "Guarded localStorage helpers under the `ddm.` prefix: see ui-helpers.ts PET_DAILY_CAP/petStorageKey/readPetRecordRaw/writePetRecord and ZUKAN_STORAGE_KEY/readZukanRaw/parseZukan/readZukan/writeZukan. Pattern = a pure parse/serialize helper (unit-tested) + a thin guarded read/write wrapper (try/catch, `typeof localStorage === 'undefined'` guard). Pure trim/validate logic belongs in @ddm/shared (exported via src/index.ts, tested in src/__tests__/*.test.ts) mirroring absence.ts / battle-enhancements.ts. The chat Lambda (packages/backend/src/handlers/chat.ts) builds a Bedrock Anthropic payload { anthropic_version, max_tokens, system, messages:[{role,content}] }; currently messages is a single user turn. useMonster.ts owns chatLog in useState only; sendChat appends player+monster lines; reset() already clears chatLog in memory. ChatPanel.tsx renders transcript+form.",
+  "relevant_files": [
+    "packages/shared/src/types.ts (ChatRequest/ChatResponse DTOs — add optional history + a ChatTurn type)",
+    "packages/shared/src/index.ts (barrel export — add the new chat-history module)",
+    "packages/shared/src/__tests__/ (add chat-history.test.ts; study absence.test.ts for structure)",
+    "packages/shared/src/absence.ts, battle-enhancements.ts (pattern for a new pure shared module)",
+    "packages/backend/src/handlers/chat.ts (server-side: validate+trim history, build alternating Bedrock messages array)",
+    "packages/frontend/src/state/useMonster.ts (persist/load chatLog, send history, clearChat, extend reset to wipe stored key)",
+    "packages/frontend/src/ui-helpers.ts (add guarded chat-storage helpers mirroring pet/zukan; add pure parse/serialize helper)",
+    "packages/frontend/src/api.ts (chat() already forwards ChatRequest — history flows through once the type gains it)",
+    "packages/frontend/src/components/ChatPanel.tsx (add 会話をクリア button + optional clear-confirm)",
+    "packages/frontend/src/App.tsx (wire clearChat prop into ChatPanel)",
+    "packages/frontend/src/i18n.ts (add ja+en keys for the clear button / confirm)",
+    "packages/frontend/src/game-ui.test.ts (add pure chat-storage helper tests)"
+  ],
+  "directory_structure": "packages/shared/src: domain types + pure logic (game.ts, battle*, bedrock-models.ts, zukan.ts, absence.ts) with __tests__/. packages/backend/src/handlers: Lambda handlers (chat.ts, battle.ts, monster CRUD) + lib/http.ts + dynamo.ts + config.ts. packages/frontend/src: React app — state/useMonster.ts (game state hook), ui-helpers.ts (pure helpers, unit-tested), components/*.tsx, api.ts, i18n.ts, config.ts, game-ui.test.ts. infra: CDK."
+}

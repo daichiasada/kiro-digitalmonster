@@ -43,19 +43,24 @@ import {
   sleep as sleepLogic,
   summarizeAbsence,
   train as trainLogic,
+  trimChatHistory,
   wake as wakeLogic,
 } from "@ddm/shared";
+import type { ChatTurn } from "@ddm/shared";
 import * as api from "../api.ts";
 import { getOrCreateMonsterId } from "../api.ts";
 import {
   canPet,
+  clearChatLog,
   nextPetRecord,
   petCapReachedLabel,
   petsRemaining as computePetsRemaining,
+  readChatLog,
   readPetRecord,
   readPetRecordRaw,
   readZukan,
   recordMonsterAppearance,
+  writeChatLog,
   writePetRecord,
   writeZukan,
 } from "../ui-helpers.ts";
@@ -113,6 +118,12 @@ export interface UseMonsterState {
    */
   battle: (difficulty: Difficulty, seed: number) => Promise<void>;
   sendChat: (message: string) => Promise<void>;
+  /**
+   * Clear the conversation: wipes both the in-memory {@link chatLog} and the
+   * persisted `ddm.chat.<monsterId>` key, so a subsequent reload shows an empty
+   * transcript. Less destructive than {@link reset} (the monster is untouched).
+   */
+  clearChat: () => void;
   dismissEvolution: () => void;
   /** Reset the current monster back to a fresh baby egg under the same id. */
   reset: () => Promise<void>;
@@ -322,6 +333,10 @@ export function useMonster(): UseMonsterState {
         prevStageRef.current = advanced.stageId;
         monsterRef.current = advanced;
         setMonster(advanced);
+        // Restore the persisted chat transcript for THIS monster (issue #37)
+        // so a reload re-displays the recent conversation. Keyed per monster id
+        // via readChatLog(ddm.chat.<id>); guarded so it never throws.
+        setChatLog(readChatLog(advanced.id) as ChatLine[]);
         // The mount path sets state directly (bypassing commit), so record the
         // FIRST appearance here too — this is what captures the fresh/loaded
         // monster (e.g. baby:base) into the zukan on first load (issue #39).
@@ -484,7 +499,32 @@ export function useMonster(): UseMonsterState {
       }
       setChatPending(true);
       setError(null);
-      setChatLog((log) => [...log, { role: "player", text: trimmed }]);
+      // Build the continuity `history` from the CURRENT transcript (the turns
+      // BEFORE this new player message), mapped to ChatTurn {role,text}. We
+      // pre-trim client-side with the shared trimChatHistory/MAX_CHAT_TURNS so
+      // the client sends at most N turns; the server STILL re-validates and
+      // truncates it (issue #37). Snapshot the log via the functional setState
+      // so we never read a stale closure value.
+      //
+      // WARNING (issue #37 review follow-up: finding 3): this snapshot of
+      // `history` and `afterPlayer` MUST stay BEFORE the `await api.chat(...)`
+      // below. It is correct only because React runs the functional setState
+      // updater SYNCHRONOUSLY inside this event handler, so both locals are
+      // populated before we await. Do NOT move this block (or the api.chat
+      // call) such that the snapshot runs behind the await — a later async
+      // tick would read the stale initial `[]` values and send empty history.
+      let history: ChatTurn[] = [];
+      let afterPlayer: ChatLine[] = [];
+      setChatLog((log) => {
+        history = trimChatHistory(
+          log.map((line) => ({ role: line.role, text: line.text })),
+        );
+        afterPlayer = [...log, { role: "player", text: trimmed }];
+        // Persist the player line immediately so a reload mid-request still
+        // shows what was asked.
+        writeChatLog(current.id, afterPlayer);
+        return afterPlayer;
+      });
       try {
         const res: ChatResponse = await api.chat({
           monsterId: current.id,
@@ -492,11 +532,14 @@ export function useMonster(): UseMonsterState {
           monsterName: current.name,
           message: trimmed,
           lang: langRef.current,
+          history,
         });
-        setChatLog((log) => [
-          ...log,
+        const afterReply: ChatLine[] = [
+          ...afterPlayer,
           { role: "monster", text: res.reply, modelId: res.modelId },
-        ]);
+        ];
+        setChatLog(afterReply);
+        writeChatLog(current.id, afterReply);
         // A successful (non-baby) chat deepens the bond: raise affection by
         // AFFECTION_GAIN_CHAT via the shared helper, then persist. Read the
         // latest monster from the ref so we don't clobber concurrent updates.
@@ -519,16 +562,32 @@ export function useMonster(): UseMonsterState {
       } catch (err) {
         const msg = err instanceof Error ? err.message : "会話に失敗しました";
         setError(msg);
-        setChatLog((log) => [
-          ...log,
+        const afterError: ChatLine[] = [
+          ...afterPlayer,
           { role: "monster", text: "…（うまく返事ができなかったみたい）" },
-        ]);
+        ];
+        setChatLog(afterError);
+        writeChatLog(current.id, afterError);
       } finally {
         setChatPending(false);
       }
     },
     [chatPending, commit],
   );
+
+  /**
+   * Clear the conversation (issue #37): empty the in-memory transcript AND
+   * remove the persisted `ddm.chat.<monsterId>` key so a reload shows nothing.
+   * The monster record itself is untouched (unlike {@link reset}). Guarded via
+   * clearChatLog, which never throws.
+   */
+  const clearChat = useCallback(() => {
+    setChatLog([]);
+    const current = monsterRef.current;
+    if (current !== null) {
+      clearChatLog(current.id);
+    }
+  }, []);
 
   const dismissEvolution = useCallback(() => setJustEvolvedTo(null), []);
 
@@ -644,6 +703,10 @@ export function useMonster(): UseMonsterState {
     setBattleLog([]);
     setLastBattle(null);
     setChatLog([]);
+    // Reset must also wipe the persisted conversation (issue #37 acceptance):
+    // clear the per-monster ddm.chat.<id> key so the fresh baby starts with no
+    // transcript on reload. Guarded; never throws.
+    clearChatLog(current.id);
     commit(fresh);
     try {
       const saved = await api.saveMonster(fresh);
@@ -687,6 +750,7 @@ export function useMonster(): UseMonsterState {
     petNotice,
     battle,
     sendChat,
+    clearChat,
     dismissEvolution,
     reset,
     needsName,
