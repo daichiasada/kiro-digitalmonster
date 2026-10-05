@@ -70,8 +70,12 @@ import {
   timeOfDay,
   winnerLabel,
   winnerLabelJa,
+  clampVolume,
+  shouldPlaySound,
+  soundTone,
+  DEFAULT_SOUND_VOLUME,
 } from "./ui-helpers.ts";
-import type { CareAction } from "./ui-helpers.ts";
+import type { CareAction, SoundEvent, SoundTone } from "./ui-helpers.ts";
 import {
   AFFECTION_COLD_THRESHOLD,
   AFFECTION_MAX,
@@ -1274,4 +1278,73 @@ test("serializeChatLog leaves a short log untrimmed", () => {
     { role: "monster" as const, text: "two" },
   ];
   assert.equal(parseChatLog(serializeChatLog(log)).length, 2);
+});
+
+// --- Sound effect pure helpers (issue #45) ------------------------------------
+// Only the DOM/React-free logic is tested here; the AudioContext engine in
+// sound.ts is intentionally NOT imported or unit-tested.
+
+test("clampVolume clamps out-of-range values into [0, 1]", () => {
+  assert.equal(clampVolume(-0.5), 0);
+  assert.equal(clampVolume(-100), 0);
+  assert.equal(clampVolume(1.5), 1);
+  assert.equal(clampVolume(100), 1);
+  assert.equal(clampVolume(0), 0);
+  assert.equal(clampVolume(1), 1);
+});
+
+test("clampVolume passes mid-range values through unchanged", () => {
+  assert.equal(clampVolume(0.25), 0.25);
+  assert.equal(clampVolume(0.5), 0.5);
+  assert.equal(clampVolume(0.9), 0.9);
+});
+
+test("clampVolume guards non-finite input to the default volume", () => {
+  assert.equal(clampVolume(Number.NaN), DEFAULT_SOUND_VOLUME);
+  assert.equal(clampVolume(Number.POSITIVE_INFINITY), DEFAULT_SOUND_VOLUME);
+  assert.equal(clampVolume(Number.NEGATIVE_INFINITY), DEFAULT_SOUND_VOLUME);
+});
+
+test("shouldPlaySound is false unless enabled AND volume > 0", () => {
+  // Disabled: never plays, regardless of volume.
+  assert.equal(shouldPlaySound(false, 1), false);
+  assert.equal(shouldPlaySound(false, 0), false);
+  // Enabled but muted (volume 0): still silent.
+  assert.equal(shouldPlaySound(true, 0), false);
+  // Enabled with audible volume: plays.
+  assert.equal(shouldPlaySound(true, 0.5), true);
+  assert.equal(shouldPlaySound(true, 1), true);
+});
+
+test("shouldPlaySound clamps negative volume to silent and NaN to the default", () => {
+  // Negative volume clamps to 0 -> not audible.
+  assert.equal(shouldPlaySound(true, -1), false);
+  // NaN clamps to the (positive) default volume -> audible when enabled.
+  assert.equal(shouldPlaySound(true, Number.NaN), true);
+});
+
+test("soundTone defines a short tone config for every SoundEvent", () => {
+  const events: SoundEvent[] = ["feed", "train", "hit", "win", "lose", "draw", "evolve"];
+  const assertShortTone = (tone: SoundTone) => {
+    assert.ok(tone.freq > 0, "freq must be positive");
+    assert.ok(tone.durationMs > 0, "duration must be positive");
+    assert.ok(tone.durationMs <= 250, "per-note duration must stay short (<= 250ms)");
+    assert.ok(tone.gain > 0 && tone.gain <= 1, "gain must be within (0, 1]");
+    assert.equal(typeof tone.type, "string");
+  };
+  for (const event of events) {
+    const config = soundTone(event);
+    const steps: SoundTone[] = Array.isArray(config) ? config : [config];
+    assert.ok(steps.length > 0, `${event} must have at least one note`);
+    for (const step of steps) {
+      assertShortTone(step);
+    }
+  }
+});
+
+test("win and evolve are multi-note arpeggios; single events are one note", () => {
+  assert.ok(Array.isArray(soundTone("win")), "win is an arpeggio");
+  assert.ok(Array.isArray(soundTone("evolve")), "evolve is an arpeggio");
+  assert.equal(Array.isArray(soundTone("feed")), false, "feed is a single note");
+  assert.equal(Array.isArray(soundTone("hit")), false, "hit is a single note");
 });

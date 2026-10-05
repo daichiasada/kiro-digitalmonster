@@ -1,0 +1,7 @@
+{
+  "task_id": "task-sound-and-settings",
+  "task_description": "Issue #45: add short Web Audio SFX for feed/train/battle-hit/win/lose/draw/evolution, plus an accessible Settings panel (SFX on/off, volume, reduced-motion app toggle, consolidated JA/EN language toggle) with localStorage persistence. Autoplay-policy compliant (muted by default; AudioContext created/resumed only on user gesture). Frontend-only change; README asset-license note in both README files. No new runtime deps.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

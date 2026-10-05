@@ -448,6 +448,162 @@ export function careEffect(action: CareAction): CareEffect {
   return CARE_EFFECTS[action];
 }
 
+// --- Sound effects (issue #45) -------------------------------------------------
+//
+// These are the PURE, DOM/React-free parts of the sound feature: the
+// event->tone configuration map, the volume clamp, and the enabled-gating
+// predicate. They mirror the CARE_EFFECTS/careEffect pattern above and are
+// unit-tested in game-ui.test.ts.
+//
+// The actual Web Audio side (lazily creating an AudioContext, building
+// OscillatorNode + GainNode envelopes, honoring the browser autoplay policy)
+// lives in sound.ts and is INTENTIONALLY NOT unit-tested: AudioContext is a
+// browser-only API that cannot run under the Node test runner. By keeping all
+// decisions (which tone, how loud, whether to play at all) here as pure
+// functions, the untestable surface in sound.ts stays as thin as possible.
+
+/**
+ * A game moment that has a short synthesized sound effect. Covers the issue
+ * #45 scope: feeding, training, battle hit, battle win/lose/draw, and
+ * evolution. (Care actions clean/sleep/wake/pet are intentionally silent.)
+ */
+export type SoundEvent = "feed" | "train" | "hit" | "win" | "lose" | "draw" | "evolve";
+
+/**
+ * One synthesized blip: a single oscillator note. `freq` is in Hz, `durationMs`
+ * is how long the note sounds (kept short, <= ~250ms, so effects never become
+ * annoying), `type` is the oscillator waveform, and `gain` is the per-note peak
+ * amplitude in [0, 1] BEFORE the user's volume setting is applied. A multi-note
+ * jingle (win/evolve) is expressed as an ARRAY of these steps played in order.
+ */
+export interface SoundTone {
+  freq: number;
+  durationMs: number;
+  type: OscillatorType;
+  gain: number;
+}
+
+/**
+ * Fixed tone configuration per sound event. Single-note events are a lone
+ * {@link SoundTone}; win/evolve are a short 2-3 note arpeggio (an array played
+ * sequentially). Durations are intentionally short so repeated actions never
+ * produce a drawn-out or grating sound.
+ */
+const SOUND_TONES: Record<SoundEvent, SoundTone | SoundTone[]> = {
+  // Feeding: a soft, bright single blip.
+  feed: { freq: 660, durationMs: 120, type: "sine", gain: 0.6 },
+  // Training: a slightly punchier square blip.
+  train: { freq: 440, durationMs: 140, type: "square", gain: 0.4 },
+  // Battle hit: a short, dry percussive tick.
+  hit: { freq: 220, durationMs: 90, type: "triangle", gain: 0.5 },
+  // Win: a rising 3-note major arpeggio (C5-E5-G5) — celebratory but brief.
+  win: [
+    { freq: 523, durationMs: 110, type: "sine", gain: 0.6 },
+    { freq: 659, durationMs: 110, type: "sine", gain: 0.6 },
+    { freq: 784, durationMs: 150, type: "sine", gain: 0.6 },
+  ],
+  // Lose: a short descending two-note motif.
+  lose: [
+    { freq: 392, durationMs: 130, type: "sine", gain: 0.5 },
+    { freq: 262, durationMs: 180, type: "sine", gain: 0.5 },
+  ],
+  // Draw: a single neutral mid tone.
+  draw: { freq: 349, durationMs: 160, type: "sine", gain: 0.45 },
+  // Evolution: a brighter rising 3-note arpeggio (E5-A5-C#6) distinct from win.
+  evolve: [
+    { freq: 659, durationMs: 120, type: "triangle", gain: 0.6 },
+    { freq: 880, durationMs: 120, type: "triangle", gain: 0.6 },
+    { freq: 1109, durationMs: 170, type: "triangle", gain: 0.6 },
+  ],
+};
+
+/**
+ * Map a sound event to its tone configuration. Mirrors {@link careEffect}: a
+ * single-note event returns one {@link SoundTone}; a jingle returns an array.
+ */
+export function soundTone(event: SoundEvent): SoundTone | SoundTone[] {
+  return SOUND_TONES[event];
+}
+
+/** Default playback volume when the stored/supplied value is missing or NaN. */
+export const DEFAULT_SOUND_VOLUME = 0.5;
+
+/**
+ * Clamp a volume into the valid [0, 1] range. A non-finite input (NaN,
+ * Infinity) is guarded to {@link DEFAULT_SOUND_VOLUME} so a corrupt stored
+ * value never silences or over-drives playback.
+ */
+export function clampVolume(v: number): number {
+  if (!Number.isFinite(v)) {
+    return DEFAULT_SOUND_VOLUME;
+  }
+  return Math.max(0, Math.min(1, v));
+}
+
+/**
+ * Whether a sound should actually play for the given settings: effects must be
+ * enabled AND the (clamped) volume must be above zero. This is the single
+ * gating predicate consumed by the sound engine so it can bail out early.
+ */
+export function shouldPlaySound(enabled: boolean, volume: number): boolean {
+  return enabled && clampVolume(volume) > 0;
+}
+
+/**
+ * Minimal display/sound settings shape. FEAT-003 formalizes the full settings
+ * state + persistence (SFX on/off + volume, reduced motion, language) under the
+ * `ddm.settings` localStorage key; FEAT-002 only needs the SFX fields so the
+ * event moments can be wired now. FEAT-003 should EXTEND this shape/key rather
+ * than introduce a parallel one.
+ */
+export interface DisplaySettings {
+  /** Whether sound effects play. Defaults OFF (muted) per the autoplay policy. */
+  sfxEnabled: boolean;
+  /** SFX playback volume in [0, 1]. */
+  volume: number;
+}
+
+/** localStorage key for persisted display/sound settings (shared with FEAT-003). */
+export const SETTINGS_STORAGE_KEY = "ddm.settings";
+
+/**
+ * Default settings. SFX is OFF by default so NOTHING plays until the user
+ * explicitly enables it (autoplay-policy compliant: even the first gesture is
+ * silent until opt-in). Volume defaults to a middle level.
+ */
+export const DEFAULT_SETTINGS: DisplaySettings = {
+  sfxEnabled: false,
+  volume: DEFAULT_SOUND_VOLUME,
+};
+
+/**
+ * Read the persisted display/sound settings, guarded so it never throws
+ * (localStorage can be absent or blocked). Unknown/corrupt data falls back to
+ * {@link DEFAULT_SETTINGS}. This is an interim reader for FEAT-002; FEAT-003
+ * will build its settings state on top of this same key/shape.
+ */
+export function readSettings(): DisplaySettings {
+  try {
+    if (typeof localStorage === "undefined") {
+      return { ...DEFAULT_SETTINGS };
+    }
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (raw === null) {
+      return { ...DEFAULT_SETTINGS };
+    }
+    const parsed = JSON.parse(raw) as Partial<DisplaySettings> | null;
+    if (parsed === null || typeof parsed !== "object") {
+      return { ...DEFAULT_SETTINGS };
+    }
+    return {
+      sfxEnabled: typeof parsed.sfxEnabled === "boolean" ? parsed.sfxEnabled : DEFAULT_SETTINGS.sfxEnabled,
+      volume: clampVolume(typeof parsed.volume === "number" ? parsed.volume : DEFAULT_SETTINGS.volume),
+    };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
 /**
  * The monster fields needed to derive the mood string. Issue #29 makes mood
  * HP-aware, so this now also requires `stats` (hp/maxHp) in addition to the
