@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Shared pure chat-history model + trim/validate helpers, and extend the ChatRequest DTO with an optional history. This is the foundation both the backend (FEAT-002) and frontend (FEAT-003) depend on, so it comes first. All logic lives in a new pure module in @ddm/shared with full unit tests. Environment setup/baseline check is folded in here (first feature on an existing project): confirm `npm run build` and both test suites are green BEFORE adding code, then green again after.",
+  "status": "completed",
+  "steps": [
+    "SETUP/BASELINE: export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\". From repo root run `npm run build`, `npm test -w @ddm/shared` (expect 140 pass), `npm test -w @ddm/frontend` (expect 112 pass). Confirm the baseline is green before writing any code.",
+    "In packages/shared/src/types.ts, add a `ChatTurn` type: `export interface ChatTurn { role: 'player' | 'monster'; text: string; }`. Then extend `ChatRequest` with an OPTIONAL field `history?: ChatTurn[]` and document (JSDoc) that it is the recent prior turns for conversational continuity, optional for backward compat (absent => single-message behavior), and that the SERVER independently validates+truncates it (never trusts client length).",
+    "Create packages/shared/src/chat-history.ts as a new PURE, dependency-free module (mirror the style of absence.ts / battle-enhancements.ts). Export: (a) `export const MAX_CHAT_TURNS = 10;` — the cap on how many prior turns are forwarded. (b) `export const MAX_CHAT_MESSAGE_CHARS = 2000;` — per-message character bound. (c) a pure validator/sanitizer `export function trimChatHistory(history: unknown): ChatTurn[]` that: coerces non-array input to []; drops entries that are not objects, or whose role is not exactly 'player'|'monster', or whose text is not a non-empty string after trimming; clamps each surviving entry's text to MAX_CHAT_MESSAGE_CHARS chars (slice) and uses the trimmed text; keeps only the LAST MAX_CHAT_TURNS entries (most recent); THEN enforces Anthropic alternation suitability by dropping a leading 'monster' turn so the sequence can start with a 'player' turn (the new user message is appended by the server after the history). Document each rule in JSDoc.",
+    "Add `export function toAnthropicMessages(history: ChatTurn[], newMessage: string): Array<{ role: 'user' | 'assistant'; content: string }>` in chat-history.ts: maps player->user, monster->assistant for each already-trimmed history turn, then appends the new user message `{ role: 'user', content: newMessage }`. This is the single place that produces the Bedrock messages array so backend + any test share one implementation. Assume `history` is already the output of trimChatHistory (document that precondition).",
+    "Export the new module from packages/shared/src/index.ts by adding `export * from \"./chat-history.ts\";`.",
+    "Add packages/shared/src/__tests__/chat-history.test.ts using node:test + node:assert/strict (follow absence.test.ts structure). Cover: (1) over-long history truncates to the most-recent MAX_CHAT_TURNS keeping the latest; (2) malformed entries dropped — non-object, missing/invalid role, empty/whitespace/non-string text; (3) non-array / null / undefined input returns []; (4) a per-message text longer than MAX_CHAT_MESSAGE_CHARS is clamped to that length; (5) a leading 'monster' turn is dropped so the result starts with 'player' (and a history that is ONLY a monster turn becomes []); (6) toAnthropicMessages maps player->user / monster->assistant, appends the new user message last, and yields an alternating sequence beginning with a user turn.",
+    "VERIFY: run the build + both test suites again and confirm new tests pass and no existing test regressed."
+  ],
+  "acceptance_criteria": [
+    "packages/shared/src/types.ts exports `ChatTurn` and `ChatRequest.history?: ChatTurn[]` (optional).",
+    "packages/shared/src/chat-history.ts exports MAX_CHAT_TURNS (=10), MAX_CHAT_MESSAGE_CHARS, trimChatHistory, toAnthropicMessages, all pure and dependency-free.",
+    "trimChatHistory truncates to the last MAX_CHAT_TURNS, drops malformed entries, clamps over-long text, coerces non-array to [], and drops a leading monster turn so the result can start with a player turn.",
+    "toAnthropicMessages returns an alternating user/assistant array that STARTS with a user turn and ENDS with the new user message.",
+    "New module exported from index.ts.",
+    "`npm test -w @ddm/shared` passes with new tests added (count > 140) and no regressions; `npm run build` passes."
+  ],
+  "verification": [
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm run build (root) passes",
+    "npm test -w @ddm/shared passes; new chat-history tests present and pass; total > 140",
+    "npm test -w @ddm/frontend still passes (112) — unaffected"
+  ],
+  "blocked_reason": null,
+  "findings": "Baseline confirmed green before coding (shared 140, frontend 112). Added ChatTurn + optional ChatRequest.history to types.ts; new pure module packages/shared/src/chat-history.ts (MAX_CHAT_TURNS=10, MAX_CHAT_MESSAGE_CHARS=2000, trimChatHistory, toAnthropicMessages) exported from index.ts; 10 new tests in __tests__/chat-history.test.ts. After change: npm run build passes (tsc all packages + vite), shared 149 pass (+9), frontend still 112. No new deps, no UI/i18n/Monster-shape changes. Note: trimChatHistory's leading-monster-drop happens AFTER the last-N slice, so when the most-recent window begins with a monster turn the result is MAX_CHAT_TURNS-1 turns; backend (FEAT-002) should rely on this normalized output rather than re-deriving alternation."
+}

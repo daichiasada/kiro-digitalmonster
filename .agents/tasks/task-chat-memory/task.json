@@ -1,0 +1,14 @@
+{
+  "task_id": "task-chat-memory",
+  "task_description": "Issue #37: persist chat history (localStorage, per-monster) so it survives reload and is re-displayed, give the monster conversational memory by passing the recent N turns to the chat Lambda as Anthropic-format context, cap/validate history on BOTH client and server (last N turns, per-message + alternation + malformed handling as pure shared helpers), add a 会話をクリア / Clear conversation button, and make reset also wipe the persisted history. JA/EN parity, no new deps, no Monster save-shape change.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build clean (shared/backend/frontend/infra + vite). Shared tests 152/152 (was 140; +9 chat-history then +3 scan-bound). Frontend tests 120/120 (was 112; +8 chat-storage helpers). Test-quality spot-check: reverting serializeChatLog's MAX_CHAT_TURNS trim made exactly 1 frontend test fail, confirming tests exercise the new code; restored via git checkout. Semantic review v1 APPROVED (3 non-blocking findings); follow-up commit 681cd57 addressed all 3 (clamp live message server-side, bound history scan to MAX_CHAT_SCAN=200, snapshot-ordering comment); review v2 APPROVED. No Dockerfile build path for app logic in scope; docker skipped."
+  }
+}

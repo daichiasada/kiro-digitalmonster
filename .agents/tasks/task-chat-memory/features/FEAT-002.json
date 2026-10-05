@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Server-side (chat Lambda) enforcement + continuity. In packages/backend/src/handlers/chat.ts, independently validate and truncate any client-sent history via the shared trimChatHistory, and build the Bedrock Anthropic `messages` array from the recent history + the new message via the shared toAnthropicMessages. The server NEVER trusts client length/content. Baby stage still returns the canned reply WITHOUT Bedrock. Backward compatible: absent history => the exact current single-message behavior. Depends on FEAT-001.",
+  "status": "completed",
+  "steps": [
+    "In packages/backend/src/handlers/chat.ts, import `trimChatHistory` and `toAnthropicMessages` from @ddm/shared (alongside the existing shared imports).",
+    "After the existing message validation and BEFORE building requestPayload, compute `const history = trimChatHistory(body.history);` so the server independently sanitizes/truncates regardless of what the client sent (over-long -> last MAX_CHAT_TURNS, malformed dropped, oversized text clamped, leading assistant turn dropped). Do NOT add a 400 for a malformed history — sanitize to a valid array instead (keeps old/odd clients working); only monsterId/message remain hard-required as today.",
+    "Replace the hardcoded `messages: [{ role: 'user', content: body.message }]` in requestPayload with `messages: toAnthropicMessages(history, body.message)` so the Bedrock request carries the recent turns as context followed by the new user message, always starting with a user turn and alternating.",
+    "Leave the baby-stage branch untouched: it must still return the canned non-verbal reply (modelId 'none') WITHOUT invoking Bedrock, ignoring history entirely.",
+    "Confirm the system prompt, model-tier resolution (resolveModelId), MAX_TOKENS, affection/form tone, and lang handling are all unchanged — only the messages array construction changes.",
+    "Build the backend (tsc) to confirm the handler type-checks against the extended ChatRequest and the shared helpers. If a backend-level unit harness is impractical (no backend test runner exists), rely on the shared tests for trim/toAnthropic correctness plus the tsc build; note this in findings."
+  ],
+  "acceptance_criteria": [
+    "chat.ts imports and uses trimChatHistory + toAnthropicMessages from @ddm/shared.",
+    "The Bedrock requestPayload.messages is built from toAnthropicMessages(trimChatHistory(body.history), body.message), so it is server-validated, truncated to the shared cap, alternating, and starts with a user turn.",
+    "When body.history is absent, the resulting messages array is exactly [{ role:'user', content: body.message }] — identical to the pre-change behavior.",
+    "Baby stage still returns the canned reply with modelId 'none' and never calls Bedrock.",
+    "The server does not 400 on a malformed/oversized history; it sanitizes it. Only monsterId and message remain required.",
+    "`npm run build` passes (backend tsc clean)."
+  ],
+  "verification": [
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm run build (root) passes — backend tsc clean against extended ChatRequest",
+    "npm test -w @ddm/shared passes (the trim/toAnthropic behavior backing this handler is covered by FEAT-001 tests)",
+    "Code review: absent-history path yields the single-user-turn payload identical to pre-change"
+  ],
+  "blocked_reason": null,
+  "findings": "chat.ts now imports trimChatHistory + toAnthropicMessages from @ddm/shared (already re-exported via index.ts). After the existing monsterId/message validation and before requestPayload, it computes const history = trimChatHistory(body.history) and builds messages: toAnthropicMessages(history, body.message). No 400 added for malformed history (sanitized to []); only monsterId/message remain required. Baby-stage branch left untouched (canned reply, modelId 'none', no Bedrock). Absent history => trimChatHistory returns [] => messages is exactly [{role:'user',content:body.message}], identical to pre-change. buildSystemPrompt/resolveModelId/MAX_TOKENS/lang unchanged. No backend test runner exists; correctness of trim/toAnthropic is covered by shared tests. Verified: npm run build (root) tsc clean across shared/backend/frontend/infra; npm test -w @ddm/shared = 149 pass."
+}
