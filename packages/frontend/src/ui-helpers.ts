@@ -595,6 +595,53 @@ export function dayStamp(now: number): string {
   return `${year}-${month}-${day}`;
 }
 
+// --- Time-of-day background phase (issue #43) -------------------------------
+
+/** The four daily background phases the stage gradient cycles through. */
+export type TimeOfDay = "morning" | "day" | "evening" | "night";
+
+/**
+ * Classify a local hour-of-day into one of four {@link TimeOfDay} phases that
+ * drive the stage background gradient (issue #43). Pure and React/DOM-free so
+ * it can be unit-tested under the Node runner, mirroring {@link dayStamp}.
+ *
+ * Hour ranges (24h, player LOCAL time):
+ *   morning  05:00-09:59  (hour 5-9)
+ *   day      10:00-16:59  (hour 10-16)
+ *   evening  17:00-19:59  (hour 17-19)
+ *   night    20:00-04:59  (hour 20-23 and 0-4, wrapping midnight)
+ *
+ * Accepts either a `Date`/timestamp (the hour is derived via
+ * `new Date(...).getHours()`, i.e. the device local hour) or a raw hour number
+ * in [0, 23] used directly. Non-finite input (e.g. `NaN`, or an invalid Date)
+ * falls back to `'day'` so the stage always has a sensible background.
+ */
+export function timeOfDay(input: number | Date): TimeOfDay {
+  let hour: number;
+  if (input instanceof Date) {
+    hour = input.getHours();
+  } else if (Number.isFinite(input)) {
+    // A bare hour (0-23) is used directly; a larger value is treated as a
+    // timestamp and converted to the device-local hour.
+    hour = input >= 0 && input <= 23 ? input : new Date(input).getHours();
+  } else {
+    return "day";
+  }
+  if (!Number.isFinite(hour)) {
+    return "day";
+  }
+  if (hour >= 5 && hour < 10) {
+    return "morning";
+  }
+  if (hour >= 10 && hour < 17) {
+    return "day";
+  }
+  if (hour >= 17 && hour < 20) {
+    return "evening";
+  }
+  return "night";
+}
+
 /**
  * Parse a stored pet record (raw JSON string or null) into a {@link PetRecord}
  * for TODAY. When the stored day differs from today's {@link dayStamp}, or the

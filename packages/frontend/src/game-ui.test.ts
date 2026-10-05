@@ -67,6 +67,7 @@ import {
   stageLabel,
   stageLabelJa,
   statBarPercent,
+  timeOfDay,
   winnerLabel,
   winnerLabelJa,
 } from "./ui-helpers.ts";
@@ -718,6 +719,36 @@ test("dayStamp is deterministic YYYY-MM-DD for a fixed timestamp", () => {
 test("dayStamp zero-pads single-digit months and days", () => {
   const d = new Date(2026, 0, 3, 9, 30, 0); // 2026-01-03 local
   assert.equal(dayStamp(d.getTime()), "2026-01-03");
+});
+
+// --- Time-of-day background phase (issue #43) ------------------------------
+
+test("timeOfDay classifies each boundary hour into the right phase", () => {
+  // night wraps midnight (20:00-04:59)
+  assert.equal(timeOfDay(4), "night");
+  assert.equal(timeOfDay(5), "morning");
+  assert.equal(timeOfDay(9), "morning");
+  assert.equal(timeOfDay(10), "day");
+  assert.equal(timeOfDay(16), "day");
+  assert.equal(timeOfDay(17), "evening");
+  assert.equal(timeOfDay(19), "evening");
+  assert.equal(timeOfDay(20), "night");
+  assert.equal(timeOfDay(23), "night");
+  assert.equal(timeOfDay(0), "night");
+});
+
+test("timeOfDay accepts a Date and reads its local hour", () => {
+  // 08:00 local -> morning. Build with local parts so the host timezone is
+  // irrelevant (getHours is local, matching the helper).
+  assert.equal(timeOfDay(new Date(2026, 9, 5, 8, 0, 0)), "morning");
+  assert.equal(timeOfDay(new Date(2026, 9, 5, 13, 0, 0)), "day");
+  assert.equal(timeOfDay(new Date(2026, 9, 5, 18, 0, 0)), "evening");
+  assert.equal(timeOfDay(new Date(2026, 9, 5, 2, 0, 0)), "night");
+});
+
+test("timeOfDay falls back to 'day' for non-finite input", () => {
+  assert.equal(timeOfDay(Number.NaN), "day");
+  assert.equal(timeOfDay(Number.POSITIVE_INFINITY), "day");
 });
 
 test("readPetRecord returns a zero-count record for null/empty raw", () => {
