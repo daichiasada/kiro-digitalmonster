@@ -49,6 +49,7 @@ import {
   onboardingCta,
   parseBattleEvents,
   playerStartHpFromLog,
+  resolveAnimationEnemy,
   shouldShowOnboarding,
   stageLabel,
   stageLabelJa,
@@ -863,4 +864,36 @@ test("pickBattleSeed returns a finite integer within [0, 0xffffffff]", () => {
     assert.ok(seed >= 0, `seed ${seed} below 0`);
     assert.ok(seed <= 0xffffffff, `seed ${seed} above 0xffffffff`);
   }
+});
+
+// --- Replay enemy snapshot (issue #41 review v1 regression) -----------------
+// The BattlePanel reseeds the preview the instant a fight is dispatched so a
+// repeat fight faces a fresh enemy. The #9 replay must still animate the enemy
+// that was ACTUALLY fought, so BattlePanel snapshots that enemy at dispatch and
+// the replay resolves it via resolveAnimationEnemy. These tests encode that
+// contract at the pure level; the first one FAILS under the old
+// reseed-before-animate behavior (which fed the live, already-reseeded preview
+// straight into the replay).
+
+test("resolveAnimationEnemy falls back to the live preview before any fight", () => {
+  const preview = { name: "普通 野生の成熟期モンスター", maxHp: 70 };
+  // No fight dispatched yet: nothing to snapshot, so the preview is used.
+  assert.deepEqual(resolveAnimationEnemy(preview, null), preview);
+});
+
+test("resolveAnimationEnemy prefers the fought snapshot over a reseeded preview", () => {
+  // Enemy that was actually fought (snapshot captured at dispatch time).
+  const fought = { name: "強い 野生の成熟期モンスター", maxHp: 73 };
+  // The live preview AFTER the post-dispatch reseed: a DIFFERENT enemy with a
+  // different maxHp. Under the old bug this stale-reseeded preview scaled the
+  // replay HP bar; the fix must ignore it in favor of the fought snapshot.
+  const reseededPreview = { name: "弱い 野生の成熟期モンスター", maxHp: 61 };
+  const resolved = resolveAnimationEnemy(reseededPreview, fought);
+  assert.deepEqual(resolved, fought);
+  // The replay must scale against the FOUGHT enemy's maxHp, never the reseeded
+  // preview's; this is the exact scaling the review flagged as wrong.
+  assert.equal(resolved.maxHp, 73);
+  assert.notEqual(resolved.maxHp, reseededPreview.maxHp);
+  // ...and depict the fought enemy's name, not the next preview's.
+  assert.equal(resolved.name, "強い 野生の成熟期モンスター");
 });

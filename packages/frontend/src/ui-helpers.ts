@@ -755,6 +755,40 @@ export function battleRecordSummary(record: BattleRecord, lang: Lang): string {
 }
 
 /**
+ * The enemy identity the #9 replay animation must depict: the localized display
+ * `name` and the `maxHp` used to scale the enemy HP bar. Deliberately minimal
+ * (name + maxHp) because those are the only two enemy facts the replay renders.
+ */
+export interface BattleAnimationEnemy {
+  name: string;
+  maxHp: number;
+}
+
+/**
+ * Decide which enemy the replay animation should depict.
+ *
+ * The bug this guards against (issue #41 review v1): BattlePanel regenerates the
+ * battle seed the instant it dispatches a fight, which recomputes the live
+ * preview enemy (memoized on the seed) to the NEXT enemy BEFORE the just-fought
+ * result/log land and animate. The replay would then scale the enemy HP bar
+ * against the wrong maxHp and show the next enemy's name.
+ *
+ * The fix is to SNAPSHOT the fought enemy at dispatch time and have the replay
+ * prefer that snapshot over the live preview. This helper encodes that
+ * precedence as a pure, unit-testable decision: when a `fought` snapshot exists
+ * it wins; otherwise fall back to the live `preview` enemy (e.g. before any
+ * fight has happened). Because the snapshot is captured from the enemy that was
+ * actually dispatched, reseeding the preview afterwards can no longer corrupt
+ * the replay.
+ */
+export function resolveAnimationEnemy(
+  preview: BattleAnimationEnemy,
+  fought: BattleAnimationEnemy | null,
+): BattleAnimationEnemy {
+  return fought ?? preview;
+}
+
+/**
  * hpPercent below which the player's monster is considered too low on HP to
  * safely enter a battle, surfacing a pre-fight warning (issue #41). Documented
  * local threshold reused by {@link isLowHp}.

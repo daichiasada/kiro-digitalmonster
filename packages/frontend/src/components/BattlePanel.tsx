@@ -13,6 +13,7 @@ import {
   isLowHp,
   parseBattleEvents,
   pickBattleSeed,
+  resolveAnimationEnemy,
   stageLabel,
   winnerLabel,
   type BattleTurnEvent,
@@ -92,14 +93,48 @@ export function BattlePanel({
     [playerStageId, difficulty, seed],
   );
 
-  // Localized enemy display name: the battle.enemyNameWithDifficulty template
-  // combines the difficulty label and the stage label via i18n (NOT the raw
-  // Monster.name, which is the JA-canonical server name). This same name feeds
-  // the #9 replay animation so the animation matches the real fight.
-  const enemyName = t("battle.enemyNameWithDifficulty")
+  // Localized enemy display name for the PREVIEW: the
+  // battle.enemyNameWithDifficulty template combines the difficulty label and
+  // the stage label via i18n (NOT the raw Monster.name, which is the
+  // JA-canonical server name).
+  const previewName = t("battle.enemyNameWithDifficulty")
     .replace("{difficulty}", difficultyLabel(difficulty, lang))
     .replace("{label}", stageLabel(playerStageId, lang));
-  const enemyMaxHp = enemy.stats.maxHp;
+
+  // Snapshot of the enemy that was actually DISPATCHED to fight, captured at
+  // fight time. The replay must animate THIS enemy, not the live preview:
+  // fightNow() reseeds the preview to a fresh enemy immediately after dispatch
+  // (so a repeat fight faces a new foe), which would otherwise recompute the
+  // memoized preview to the next enemy BEFORE the fought result/log land and
+  // animate, scaling the enemy HP bar against the wrong maxHp. The snapshot is
+  // immune to that reseed because it is frozen at dispatch. Null until the
+  // first fight is dispatched.
+  //
+  // We snapshot the fought difficulty + maxHp (NOT a baked-in localized name):
+  // the name is re-derived from the snapshot's difficulty in render so a
+  // mid-replay language toggle still relocalizes the enemy name, matching the
+  // pre-fix behavior where the name tracked the active language.
+  const [foughtEnemy, setFoughtEnemy] = useState<
+    { difficulty: Difficulty; maxHp: number } | null
+  >(null);
+
+  const foughtName =
+    foughtEnemy === null
+      ? null
+      : t("battle.enemyNameWithDifficulty")
+          .replace("{difficulty}", difficultyLabel(foughtEnemy.difficulty, lang))
+          .replace("{label}", stageLabel(playerStageId, lang));
+
+  // The enemy the #9 replay depicts: the fought snapshot when present, else the
+  // live preview (before any fight). resolveAnimationEnemy encodes that
+  // precedence as a pure, unit-tested decision so the replay can never scale
+  // against a reseeded preview.
+  const animationEnemy = resolveAnimationEnemy(
+    { name: previewName, maxHp: enemy.stats.maxHp },
+    foughtEnemy === null ? null : { name: foughtName ?? previewName, maxHp: foughtEnemy.maxHp },
+  );
+  const enemyName = animationEnemy.name;
+  const enemyMaxHp = animationEnemy.maxHp;
 
   // Displayed HP for each bar; tweened down by the CSS width transition.
   const [playerHp, setPlayerHp] = useState(playerStartHp);
@@ -219,10 +254,16 @@ export function BattlePanel({
   const lowHpCancelRef = useRef<HTMLButtonElement>(null);
 
   const fightNow = useCallback(() => {
+    // SNAPSHOT the enemy actually being fought BEFORE reseeding, so the #9
+    // replay animates (and HP-bar-scales) against this exact enemy even though
+    // the preview immediately regenerates to a fresh foe below. We store the
+    // fought difficulty + maxHp; the localized name is re-derived in render so
+    // a mid-replay language toggle still relocalizes it.
+    setFoughtEnemy({ difficulty, maxHp: enemy.stats.maxHp });
     onBattle(difficulty, seed);
     // Fresh seed for the next preview/fight so repeat fights face a new enemy.
     setSeed(pickBattleSeed());
-  }, [onBattle, difficulty, seed]);
+  }, [onBattle, difficulty, seed, enemy.stats.maxHp]);
 
   const handleFightClick = useCallback(() => {
     if (busy) {
@@ -340,7 +381,7 @@ export function BattlePanel({
             <MonsterSprite stageId={playerStageId} size={88} />
           </div>
           <div className="battle-preview-info">
-            <span className="battle-preview-name">{enemyName}</span>
+            <span className="battle-preview-name">{previewName}</span>
             <span className="battle-preview-difficulty">
               {t("difficulty.label")}: {difficultyLabel(difficulty, lang)}
             </span>
