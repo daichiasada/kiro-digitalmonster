@@ -52,6 +52,8 @@ const JA_MESSAGES = {
   "stats.atk": "攻撃",
   "stats.def": "防御",
   "stats.trainingCount": "トレーニング回数: ",
+  "stats.record": "戦績",
+  "stats.recordSummary": "{w}勝 {l}敗 {d}分 / 連勝{s}",
 
   // Affection (なつき度) band labels — see shared affectionBand (issue #42)
   "affection.cold": "よそよそしい",
@@ -81,6 +83,17 @@ const JA_MESSAGES = {
   "battle.win": "勝利！ 🎉",
   "battle.lose": "敗北… 💥",
   "battle.draw": "引き分け 🤝",
+
+  // Battle enhancements — difficulty / preview / low-HP (issue #41)
+  "difficulty.label": "難易度",
+  "difficulty.easy": "弱い",
+  "difficulty.normal": "普通",
+  "difficulty.hard": "強い",
+  "battle.preview": "相手プレビュー",
+  "battle.enemyNameWithDifficulty": "{difficulty} 野生の{label}モンスター",
+  "battle.lowHpWarning": "HPが低い状態です。このまま挑戦しますか？",
+  "battle.lowHpConfirm": "挑戦する",
+  "battle.lowHpCancel": "やめる",
 
   // Action status / busy feedback (care + battle)
   "status.busy": "処理中…",
@@ -169,6 +182,8 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   "stats.atk": "ATK",
   "stats.def": "DEF",
   "stats.trainingCount": "Training count: ",
+  "stats.record": "Record",
+  "stats.recordSummary": "{w}W {l}L {d}D / Streak {s}",
 
   // Affection (なつき度) band labels — see shared affectionBand (issue #42)
   "affection.cold": "Distant",
@@ -198,6 +213,17 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   "battle.win": "Victory! 🎉",
   "battle.lose": "Defeat… 💥",
   "battle.draw": "Draw 🤝",
+
+  // Battle enhancements — difficulty / preview / low-HP (issue #41)
+  "difficulty.label": "Difficulty",
+  "difficulty.easy": "Easy",
+  "difficulty.normal": "Normal",
+  "difficulty.hard": "Hard",
+  "battle.preview": "Enemy preview",
+  "battle.enemyNameWithDifficulty": "{difficulty} Wild {label} Monster",
+  "battle.lowHpWarning": "HP is low. Fight anyway?",
+  "battle.lowHpConfirm": "Fight",
+  "battle.lowHpCancel": "Cancel",
 
   // Action status / busy feedback (care + battle)
   "status.busy": "Working…",

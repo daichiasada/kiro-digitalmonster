@@ -1,13 +1,18 @@
-import { useEffect, useRef, useState } from "react";
-import type { BattleResult, GrowthStage } from "@ddm/shared";
-import { getStage } from "@ddm/shared";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
+import type { BattleResult, Difficulty, GrowthStage } from "@ddm/shared";
+import { generateEnemy } from "@ddm/shared";
 import { MonsterSprite } from "../assets/monsters/MonsterSprite.tsx";
 import { useI18n } from "../i18n.ts";
 import {
+  DIFFICULTIES,
   battleLogLine,
   busyStatusLabel,
+  difficultyLabel,
   hpPercent,
+  isLowHp,
   parseBattleEvents,
+  pickBattleSeed,
   stageLabel,
   winnerLabel,
   type BattleTurnEvent,
@@ -17,7 +22,8 @@ export interface BattlePanelProps {
   busy: boolean;
   log: string[];
   result: BattleResult | null;
-  onBattle: () => void;
+  /** Fight the chosen difficulty with the chosen seed (threaded to the backend). */
+  onBattle: (difficulty: Difficulty, seed: number) => void;
   /** Player's monster name (shown under its sprite). */
   playerName: string;
   /** Player's growth stage; the enemy mirrors it (same stage sprite). */
@@ -39,11 +45,20 @@ interface DamagePop {
 }
 
 /**
- * Animated battle panel. The battle is already resolved by the time `result`
- * arrives (useMonster.battle() commits synchronously), so this component only
- * replays the structured log turn-by-turn: attacker lunge, defender hit flash,
- * a damage popup, a smoothly tweening HP bar, and the log revealed one line at
- * a time. The localized winner headline appears after the final turn.
+ * Animated battle panel with difficulty selection + enemy preview (issue #41).
+ *
+ * The player chooses a difficulty (弱い/普通/強い) and the panel previews the
+ * EXACT enemy the fight will face by calling the shared `generateEnemy` with
+ * the client-chosen seed; the backend regenerates the identical enemy from the
+ * same (stage, difficulty, seed), so preview === actual fight. The previewed
+ * enemy's real maxHp + localized name drive both the preview block and the #9
+ * replay animation (no stage*0.9 reconstruction).
+ *
+ * The battle is already resolved by the time `result` arrives
+ * (useMonster.battle() commits synchronously), so this component only replays
+ * the structured log turn-by-turn: attacker lunge, defender hit flash, a damage
+ * popup, a smoothly tweening HP bar, and the log revealed one line at a time.
+ * The localized winner headline appears after the final turn.
  */
 export function BattlePanel({
   busy,
@@ -56,12 +71,35 @@ export function BattlePanel({
   playerStartHp,
 }: BattlePanelProps) {
   const { lang, t } = useI18n();
-  // The enemy mirrors the backend (packages/backend/src/handlers/battle.ts):
-  // same stageId as the player, maxHp = round(stage.baseStats.maxHp * 0.9),
-  // name `野生の{labelJa}モンスター` (JA). The display name is localized via the
-  // battle.enemyName template; getStage is already a frontend dependency.
-  const enemyMaxHp = Math.round(getStage(playerStageId).baseStats.maxHp * 0.9);
-  const enemyName = t("battle.enemyName").replace("{label}", stageLabel(playerStageId, lang));
+
+  // Player-chosen difficulty (default 普通/normal) and the current battle seed.
+  // The seed is regenerated when the difficulty changes OR after each fight so
+  // every preview/fight pair gets a fresh enemy.
+  const [difficulty, setDifficulty] = useState<Difficulty>("normal");
+  const [seed, setSeed] = useState<number>(() => pickBattleSeed());
+
+  const handleDifficulty = useCallback((next: Difficulty) => {
+    setDifficulty(next);
+    // Regenerate the seed so a new preview is shown for the new difficulty.
+    setSeed(pickBattleSeed());
+  }, []);
+
+  // The previewed enemy: generated with the SHARED generateEnemy so it matches
+  // exactly what the backend regenerates from the same (stage, difficulty,
+  // seed). Memoized so it only recomputes when those inputs change.
+  const enemy = useMemo(
+    () => generateEnemy(playerStageId, difficulty, seed),
+    [playerStageId, difficulty, seed],
+  );
+
+  // Localized enemy display name: the battle.enemyNameWithDifficulty template
+  // combines the difficulty label and the stage label via i18n (NOT the raw
+  // Monster.name, which is the JA-canonical server name). This same name feeds
+  // the #9 replay animation so the animation matches the real fight.
+  const enemyName = t("battle.enemyNameWithDifficulty")
+    .replace("{difficulty}", difficultyLabel(difficulty, lang))
+    .replace("{label}", stageLabel(playerStageId, lang));
+  const enemyMaxHp = enemy.stats.maxHp;
 
   // Displayed HP for each bar; tweened down by the CSS width transition.
   const [playerHp, setPlayerHp] = useState(playerStartHp);
@@ -163,11 +201,86 @@ export function BattlePanel({
     }, STEP_MS);
 
     return clearTimer;
-    // enemyMaxHp/enemyName/playerName are derived from stable props; the run is
-    // keyed off the log identity so we intentionally depend on log + result.
-    // lang is included so toggling language re-renders the log in the new
-    // language (the run restarts since the revealed lines are rebuilt).
+    // enemyMaxHp/enemyName/playerName are derived from stable props/state; the
+    // run is keyed off the log identity so we intentionally depend on log +
+    // result. lang is included so toggling language re-renders the log in the
+    // new language (the run restarts since the revealed lines are rebuilt).
   }, [log, result, playerStartHp, enemyMaxHp, enemyName, playerName, lang]);
+
+  // --- Low-HP pre-fight warning ---------------------------------------------
+  // When the player's current HP (recovered from the log as playerStartHp) is
+  // low, surface an accessible inline warning + explicit confirm BEFORE
+  // fighting; otherwise fight immediately. The confirm reuses the reset-dialog
+  // accessibility pattern (role=alertdialog, aria-modal, focus moved to
+  // confirm, two-button focus trap, Escape cancels, focus restored on close).
+  const [confirmingLowHp, setConfirmingLowHp] = useState(false);
+  const fightTriggerRef = useRef<HTMLButtonElement>(null);
+  const lowHpConfirmRef = useRef<HTMLButtonElement>(null);
+  const lowHpCancelRef = useRef<HTMLButtonElement>(null);
+
+  const fightNow = useCallback(() => {
+    onBattle(difficulty, seed);
+    // Fresh seed for the next preview/fight so repeat fights face a new enemy.
+    setSeed(pickBattleSeed());
+  }, [onBattle, difficulty, seed]);
+
+  const handleFightClick = useCallback(() => {
+    if (busy) {
+      return;
+    }
+    if (isLowHp(playerStartHp, playerMaxHp)) {
+      setConfirmingLowHp(true);
+      return;
+    }
+    fightNow();
+  }, [busy, playerStartHp, playerMaxHp, fightNow]);
+
+  const closeLowHpConfirm = useCallback(() => {
+    setConfirmingLowHp(false);
+    fightTriggerRef.current?.focus();
+  }, []);
+
+  const confirmLowHp = useCallback(() => {
+    setConfirmingLowHp(false);
+    fightNow();
+    fightTriggerRef.current?.focus();
+  }, [fightNow]);
+
+  useEffect(() => {
+    if (confirmingLowHp) {
+      lowHpConfirmRef.current?.focus();
+    }
+  }, [confirmingLowHp]);
+
+  const handleLowHpKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeLowHpConfirm();
+        return;
+      }
+      if (event.key !== "Tab") {
+        return;
+      }
+      // Two-button focus trap keeping Tab / Shift+Tab between Confirm/Cancel.
+      const confirm = lowHpConfirmRef.current;
+      const cancel = lowHpCancelRef.current;
+      if (confirm === null || cancel === null) {
+        return;
+      }
+      const activeEl = document.activeElement;
+      if (event.shiftKey) {
+        if (activeEl === confirm) {
+          event.preventDefault();
+          cancel.focus();
+        }
+      } else if (activeEl === cancel) {
+        event.preventDefault();
+        confirm.focus();
+      }
+    },
+    [closeLowHpConfirm],
+  );
 
   const playerMotion =
     active === null ? "" : active.attacker === "player" ? "attacking" : active.defender === "player" ? "hit" : "";
@@ -187,9 +300,96 @@ export function BattlePanel({
       <span className="visually-hidden" role="status" aria-live="polite">
         {busy ? busyStatusLabel(lang) : ""}
       </span>
-      <button type="button" className="battle-btn" onClick={onBattle} disabled={busy}>
+
+      {/* Difficulty selector: a radio group (role=radiogroup) of toggle
+          buttons. Each button reports aria-checked and is keyboard reachable;
+          selecting a difficulty regenerates the seed and updates the preview
+          live. */}
+      <div
+        className="difficulty-select"
+        role="radiogroup"
+        aria-label={t("difficulty.label")}
+      >
+        <span className="difficulty-label" id="difficulty-label">
+          {t("difficulty.label")}
+        </span>
+        <div className="difficulty-options">
+          {DIFFICULTIES.map((d) => (
+            <button
+              key={d}
+              type="button"
+              className={`difficulty-btn${difficulty === d ? " active" : ""}`}
+              role="radio"
+              aria-checked={difficulty === d}
+              disabled={busy}
+              onClick={() => handleDifficulty(d)}
+            >
+              {difficultyLabel(d, lang)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Enemy preview: the SAME enemy the backend will regenerate from the
+          chosen (stage, difficulty, seed). Shows the localized display name,
+          the stage sprite, the difficulty, and the enemy stats. */}
+      <div className="battle-preview" aria-label={t("battle.preview")}>
+        <span className="battle-preview-title">{t("battle.preview")}</span>
+        <div className="battle-preview-body">
+          <div className="battle-preview-sprite" aria-hidden="true">
+            <MonsterSprite stageId={playerStageId} size={88} />
+          </div>
+          <div className="battle-preview-info">
+            <span className="battle-preview-name">{enemyName}</span>
+            <span className="battle-preview-difficulty">
+              {t("difficulty.label")}: {difficultyLabel(difficulty, lang)}
+            </span>
+            <span className="battle-preview-stats">
+              {t("stats.hp")} {enemy.stats.maxHp} / {t("stats.atk")} {enemy.stats.atk} / {t("stats.def")} {enemy.stats.def}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <button
+        ref={fightTriggerRef}
+        type="button"
+        className="battle-btn"
+        onClick={handleFightClick}
+        disabled={busy}
+      >
         {t("battle.start")}
       </button>
+
+      {confirmingLowHp && (
+        <div
+          className="low-hp-confirm"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label={t("battle.lowHpWarning")}
+          onKeyDown={handleLowHpKeyDown}
+        >
+          <p className="low-hp-confirm-text">{t("battle.lowHpWarning")}</p>
+          <div className="low-hp-confirm-actions">
+            <button
+              ref={lowHpConfirmRef}
+              type="button"
+              className="battle-btn confirm"
+              onClick={confirmLowHp}
+            >
+              {t("battle.lowHpConfirm")}
+            </button>
+            <button
+              ref={lowHpCancelRef}
+              type="button"
+              className="low-hp-cancel-btn"
+              onClick={closeLowHpConfirm}
+            >
+              {t("battle.lowHpCancel")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {result !== null && (
         <>

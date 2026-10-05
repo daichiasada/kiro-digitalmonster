@@ -18,6 +18,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   BattleResult,
   ChatResponse,
+  Difficulty,
   GrowthStage,
   Monster,
 } from "@ddm/shared";
@@ -30,6 +31,7 @@ import {
   getStage,
   isValidMonsterName,
   normalizeAffection,
+  normalizeBattleRecord,
   normalizeMonsterName,
   pet as petLogic,
   sleep as sleepLogic,
@@ -93,7 +95,13 @@ export interface UseMonsterState {
    * say. Cleared on a successful pet or on a fresh-day reset.
    */
   petNotice: string | null;
-  battle: () => Promise<void>;
+  /**
+   * Run a battle at the chosen difficulty with the given seed. The BattlePanel
+   * owns the difficulty + seed (so the previewed enemy matches the fight) and
+   * threads them through to api.battle; the backend regenerates the identical
+   * enemy from the same (stage, difficulty, seed).
+   */
+  battle: (difficulty: Difficulty, seed: number) => Promise<void>;
   sendChat: (message: string) => Promise<void>;
   dismissEvolution: () => void;
   /** Reset the current monster back to a fresh baby egg under the same id. */
@@ -122,7 +130,10 @@ function advance(monster: Monster, now: number): Monster {
   // normalizeAffection backfills AFFECTION_INITIAL for legacy (pre-#42) saves
   // that lack an affection field, so the live state always has a numeric
   // affection for the UI gauge. It is cheap + idempotent (FEAT-001).
-  return normalizeAffection(applyTimePassage(monster, now));
+  // normalizeBattleRecord likewise backfills an all-zeros battle record for
+  // legacy (pre-#41) saves that lack the field, so the StatsPanel record row
+  // always has a numeric record to display. Both helpers are idempotent.
+  return normalizeBattleRecord(normalizeAffection(applyTimePassage(monster, now)));
 }
 
 export function useMonster(): UseMonsterState {
@@ -317,7 +328,7 @@ export function useMonster(): UseMonsterState {
     }
   }, [busy, commit]);
 
-  const battle = useCallback(async () => {
+  const battle = useCallback(async (difficulty: Difficulty, seed: number) => {
     const current = monsterRef.current;
     if (current === null || busy) {
       return;
@@ -325,7 +336,7 @@ export function useMonster(): UseMonsterState {
     setBusy(true);
     setError(null);
     try {
-      const { result, monster: updated } = await api.battle(current.id);
+      const { result, monster: updated } = await api.battle(current.id, difficulty, seed);
       commit(updated);
       setLastBattle(result);
       setBattleLog(result.log);

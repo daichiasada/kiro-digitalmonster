@@ -4,7 +4,15 @@
  * These contain NO DOM / React so they can be unit-tested with the Node
  * built-in test runner (see game-ui.test.ts).
  */
-import type { BattleWinner, EvolutionProgress, GrowthStage, Monster, Stats } from "@ddm/shared";
+import type {
+  BattleRecord,
+  BattleWinner,
+  Difficulty,
+  EvolutionProgress,
+  GrowthStage,
+  Monster,
+  Stats,
+} from "@ddm/shared";
 import { AFFECTION_MAX, HUNGRY_CAUTION_LEVEL, MAX_HUNGRY_LEVEL, affectionBand } from "@ddm/shared";
 import { t } from "./i18n.ts";
 import type { Lang } from "./i18n.ts";
@@ -700,4 +708,65 @@ export function onboardingCta(prog: EvolutionProgress, lang: Lang): string {
     .replace("{stage}", stage)
     .replace("{count}", String(remainingTraining))
     .replace("{minutes}", minutes);
+}
+
+// --- Battle enhancements (難易度・プレビュー・戦績) — issue #41 --------------
+
+/**
+ * Difficulty ordering used to render the selector (弱い -> 普通 -> 強い). Kept
+ * here (not derived from an object) so the rendering order is explicit and
+ * unit-testable, matching the shared DIFFICULTY_CONFIG keys.
+ */
+export const DIFFICULTIES: Difficulty[] = ["easy", "normal", "hard"];
+
+/**
+ * Localized label for a difficulty, sourced from the i18n keys
+ * `difficulty.easy` / `difficulty.normal` / `difficulty.hard`
+ * (JA 弱い/普通/強い, EN Easy/Normal/Hard). React/DOM-free so it is testable.
+ */
+export function difficultyLabel(difficulty: Difficulty, lang: Lang): string {
+  return t(lang, `difficulty.${difficulty}` as const);
+}
+
+/**
+ * Pick a fresh random 32-bit battle seed. A thin wrapper over Math.random so
+ * the RANDOMNESS stays out of the render path; the frontend picks a seed, sends
+ * it to the backend, and previews the SAME enemy via the shared generateEnemy.
+ * Tests assert only that the result is a finite integer in [0, 0xffffffff],
+ * never the value itself.
+ */
+export function pickBattleSeed(): number {
+  return Math.floor(Math.random() * 0xffffffff);
+}
+
+/**
+ * Localized one-line summary of a battle record. JA renders
+ * `{w}勝 {l}敗 {d}分 / 連勝{s}` and EN `{w}W {l}L {d}D / Streak {s}` from the
+ * `stats.recordSummary` i18n template. Pass the record via the shared
+ * {@link import("@ddm/shared").battleRecordOf} at the call site so legacy
+ * (undefined-record) state is read safely. React/DOM-free.
+ */
+export function battleRecordSummary(record: BattleRecord, lang: Lang): string {
+  return t(lang, "stats.recordSummary")
+    .replace("{w}", String(record.wins))
+    .replace("{l}", String(record.losses))
+    .replace("{d}", String(record.draws))
+    .replace("{s}", String(record.streak));
+}
+
+/**
+ * hpPercent below which the player's monster is considered too low on HP to
+ * safely enter a battle, surfacing a pre-fight warning (issue #41). Documented
+ * local threshold reused by {@link isLowHp}.
+ */
+export const LOW_HP_BATTLE_PERCENT = 30;
+
+/**
+ * Whether the monster's HP is low enough to warrant a pre-battle warning: true
+ * when {@link hpPercent}(hp, maxHp) is strictly below
+ * {@link LOW_HP_BATTLE_PERCENT}. Non-finite / non-positive maxHp is guarded by
+ * hpPercent (returns 0%, which is below the threshold => low).
+ */
+export function isLowHp(hp: number, maxHp: number): boolean {
+  return hpPercent(hp, maxHp) < LOW_HP_BATTLE_PERCENT;
 }

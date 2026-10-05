@@ -12,6 +12,8 @@ import assert from "node:assert/strict";
 import {
   BABY_SPEECH_TEXT,
   BABY_SPEECH_TEXT_EN,
+  DIFFICULTIES,
+  LOW_HP_BATTLE_PERCENT,
   PET_DAILY_CAP,
   affectionLevelLabel,
   affectionPercent,
@@ -20,8 +22,12 @@ import {
   battleLogLine,
   battleLogLineJa,
   battleLogList,
+  battleRecordSummary,
   busyStatusLabel,
   canChat,
+  difficultyLabel,
+  isLowHp,
+  pickBattleSeed,
   canPet,
   canPetNow,
   careEffect,
@@ -57,6 +63,7 @@ import {
   AFFECTION_WARM_THRESHOLD,
   HUNGRY_CAUTION_LEVEL,
   MAX_HUNGRY_LEVEL,
+  battleRecordOf,
   evolutionProgress,
 } from "@ddm/shared";
 import type { Monster } from "@ddm/shared";
@@ -782,4 +789,78 @@ test("petSpriteLabel invites petting while pets remain, else shows the cap messa
 test("petCapReachedLabel sources the cap message from the action.petCapReached key", () => {
   assert.equal(petCapReachedLabel("ja"), t("ja", "action.petCapReached"));
   assert.equal(petCapReachedLabel("en"), t("en", "action.petCapReached"));
+});
+
+// --- Battle enhancements (難易度・プレビュー・戦績) — issue #41 --------------
+
+test("DIFFICULTIES lists the three difficulties in easy->normal->hard order", () => {
+  assert.deepEqual(DIFFICULTIES, ["easy", "normal", "hard"]);
+});
+
+test("difficultyLabel returns the JA labels 弱い/普通/強い for each difficulty", () => {
+  assert.equal(difficultyLabel("easy", "ja"), "弱い");
+  assert.equal(difficultyLabel("normal", "ja"), "普通");
+  assert.equal(difficultyLabel("hard", "ja"), "強い");
+});
+
+test("difficultyLabel returns the EN labels Easy/Normal/Hard for each difficulty", () => {
+  assert.equal(difficultyLabel("easy", "en"), "Easy");
+  assert.equal(difficultyLabel("normal", "en"), "Normal");
+  assert.equal(difficultyLabel("hard", "en"), "Hard");
+});
+
+test("difficultyLabel is sourced from the difficulty.* i18n keys", () => {
+  for (const d of DIFFICULTIES) {
+    assert.equal(difficultyLabel(d, "ja"), t("ja", `difficulty.${d}` as const));
+    assert.equal(difficultyLabel(d, "en"), t("en", `difficulty.${d}` as const));
+  }
+});
+
+test("battleRecordSummary formats a sample record exactly (JA and EN)", () => {
+  const record = { wins: 3, losses: 1, draws: 0, streak: 2 };
+  assert.equal(battleRecordSummary(record, "ja"), "3勝 1敗 0分 / 連勝2");
+  assert.equal(battleRecordSummary(record, "en"), "3W 1L 0D / Streak 2");
+});
+
+test("battleRecordSummary reads a legacy (undefined-record) monster safely via battleRecordOf", () => {
+  // A pre-#41 save lacks the battleRecord field; battleRecordOf defaults it to
+  // all-zeros so the summary renders without throwing.
+  const legacy = {} as Monster;
+  const record = battleRecordOf(legacy);
+  assert.deepEqual(record, { wins: 0, losses: 0, draws: 0, streak: 0 });
+  assert.equal(battleRecordSummary(record, "ja"), "0勝 0敗 0分 / 連勝0");
+  assert.equal(battleRecordSummary(record, "en"), "0W 0L 0D / Streak 0");
+});
+
+test("isLowHp is true strictly below the threshold and false at/above it", () => {
+  // LOW_HP_BATTLE_PERCENT is 30. hpPercent rounds, so pick values whose
+  // rounded percentage lands just below / at / above the threshold.
+  assert.equal(LOW_HP_BATTLE_PERCENT, 30);
+  // 29% < 30 -> low.
+  assert.equal(isLowHp(29, 100), true);
+  // Exactly 30% is NOT below the threshold -> not low.
+  assert.equal(isLowHp(30, 100), false);
+  // 31% -> not low.
+  assert.equal(isLowHp(31, 100), false);
+  // Full HP -> not low.
+  assert.equal(isLowHp(100, 100), false);
+  // 0 HP -> low.
+  assert.equal(isLowHp(0, 100), true);
+});
+
+test("isLowHp guards against a non-positive maxHp (treated as low)", () => {
+  // hpPercent returns 0% for maxHp <= 0, which is below the threshold.
+  assert.equal(isLowHp(10, 0), true);
+  assert.equal(isLowHp(10, -5), true);
+});
+
+test("pickBattleSeed returns a finite integer within [0, 0xffffffff]", () => {
+  // Do NOT assert the random value itself; only that it is in range and an int.
+  for (let i = 0; i < 100; i += 1) {
+    const seed = pickBattleSeed();
+    assert.equal(Number.isFinite(seed), true);
+    assert.equal(Number.isInteger(seed), true);
+    assert.ok(seed >= 0, `seed ${seed} below 0`);
+    assert.ok(seed <= 0xffffffff, `seed ${seed} above 0xffffffff`);
+  }
 });

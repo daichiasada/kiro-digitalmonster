@@ -5,12 +5,13 @@
  *   GET  {base}/monster/{monsterId}  -> 200 { monster } | 404 if not found
  *   POST {base}/monster  (bare Monster body) -> 200 { ok, monster }
  *   POST {base}/chat     (ChatRequest body)  -> 200 { reply, modelId }
- *   POST {base}/battle   ({ monsterId })      -> 200 { result, monster }
+ *   POST {base}/battle   ({ monsterId, difficulty, seed }) -> 200 { result, monster }
  */
 import type {
   BattleResult,
   ChatRequest,
   ChatResponse,
+  Difficulty,
   Monster,
 } from "@ddm/shared";
 import { resolveApiBaseUrl } from "./config.ts";
@@ -108,13 +109,21 @@ export interface BattleApiResult {
   monster: Monster;
 }
 
-/** Run a battle for the given monster id. */
-export async function battle(monsterId: string): Promise<BattleApiResult> {
+/**
+ * Run a battle for the given monster id at the chosen difficulty, using the
+ * supplied seed so the backend regenerates the IDENTICAL enemy the frontend
+ * previewed (preview === actual fight). See @ddm/shared generateEnemy.
+ */
+export async function battle(
+  monsterId: string,
+  difficulty: Difficulty,
+  seed: number,
+): Promise<BattleApiResult> {
   const url = await apiUrl("/battle");
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ monsterId }),
+    body: JSON.stringify({ monsterId, difficulty, seed }),
   });
   return parseJson<BattleApiResult>(res);
 }
