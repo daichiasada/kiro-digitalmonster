@@ -163,6 +163,19 @@ export type GetMonster = GetMonsterRequest;
 /** UI / chat language. Defaults to "ja" when absent for backward compatibility. */
 export type Lang = "ja" | "en";
 
+/**
+ * A single prior turn in a chat conversation (issue #37 — 会話の「記憶」).
+ *
+ * `role` is exactly `'player'` (the human) or `'monster'` (the AI reply);
+ * `text` is the plain message text. This is the wire shape the client sends in
+ * {@link ChatRequest.history} and the shape the shared trim/validate helpers
+ * ({@link ../chat-history.ts}) normalize to.
+ */
+export interface ChatTurn {
+  role: "player" | "monster";
+  text: string;
+}
+
 /** Chat with the monster (POST /chat). */
 export interface ChatRequest {
   monsterId: string;
@@ -174,6 +187,18 @@ export interface ChatRequest {
    * the backend defaults to "ja", so already-deployed clients behave as before.
    */
   lang?: Lang;
+  /**
+   * Recent prior conversation turns, oldest-first, giving the monster
+   * conversational continuity ("memory") across messages (issue #37).
+   *
+   * OPTIONAL for backward compatibility: when absent, the backend behaves as
+   * before (single-message, no prior context). The SERVER never trusts the
+   * client-supplied length or contents — it independently re-validates and
+   * truncates this via `trimChatHistory` (dropping malformed turns, clamping
+   * per-message size, and capping the number of turns) before forwarding any
+   * context to the model.
+   */
+  history?: ChatTurn[];
 }
 
 export interface ChatResponse {
