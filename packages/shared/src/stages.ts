@@ -1,4 +1,5 @@
-import type { BedrockModelKey, GrowthStage, Monster, Stats } from "./types.ts";
+import type { BedrockModelKey, GrowthStage, Monster, MonsterForm, Stats } from "./types.ts";
+import { chooseEvolutionForm } from "./evolution.ts";
 
 /** Static configuration for a single growth stage. */
 export interface StageConfig {
@@ -81,9 +82,65 @@ const STAGE_BY_ID: Record<GrowthStage, StageConfig> = Object.fromEntries(
   STAGES.map((stage) => [stage.id, stage]),
 ) as Record<GrowthStage, StageConfig>;
 
+/* --------------------------------------------------------------------------
+ * Per-form base stats (issue #38 — お世話の質による進化分岐).
+ *
+ * The linear TIER (stageId) still drives the overall power budget: the three
+ * variants of a tier are all RE-SHAPES of that tier's existing linear
+ * `baseStats`, so none of them is strictly stronger overall — they trade one
+ * stat for another. The design, relative to the tier's linear baseStats:
+ *   - attack  : 攻撃型 — higher atk, lower def (glass cannon).
+ *   - defense : 防御型 — higher def and hp, lower atk (tank).
+ *   - mischief: やんちゃ型 — balanced-but-quirky: slightly higher atk and hp,
+ *               the LOWEST def of the three (reckless).
+ *   - base    : the neutral form, BYTE-IDENTICAL to the tier's linear
+ *               baseStats so a neutrally-raised / legacy monster is unchanged.
+ *
+ * The baby tier only ever has the "base" form (it never branches), so no baby
+ * entry is defined here and `formBaseStats("baby", ...)` falls back to base.
+ *
+ * `formBaseStats` is a TOTAL function: any unknown form, or "base", or a tier
+ * with no variant entry, falls back to the stage's linear baseStats, so the
+ * default path can never produce undefined stats.
+ * ------------------------------------------------------------------------ */
+export const FORM_CONFIG: Partial<
+  Record<GrowthStage, Partial<Record<MonsterForm, Stats>>>
+> = {
+  rookie: {
+    attack: { hp: 38, maxHp: 38, atk: 13, def: 4 },
+    defense: { hp: 46, maxHp: 46, atk: 8, def: 9 },
+    mischief: { hp: 42, maxHp: 42, atk: 12, def: 3 },
+  },
+  champion: {
+    attack: { hp: 66, maxHp: 66, atk: 23, def: 8 },
+    defense: { hp: 80, maxHp: 80, atk: 14, def: 17 },
+    mischief: { hp: 74, maxHp: 74, atk: 21, def: 7 },
+  },
+  ultimate: {
+    attack: { hp: 104, maxHp: 104, atk: 36, def: 14 },
+    defense: { hp: 126, maxHp: 126, atk: 22, def: 28 },
+    mischief: { hp: 116, maxHp: 116, atk: 33, def: 12 },
+  },
+};
+
 /** Look up the static config for a stage. */
 export function getStage(id: GrowthStage): StageConfig {
   return STAGE_BY_ID[id];
+}
+
+/**
+ * Base stats for a given (tier, form). TOTAL function: returns the variant
+ * stats from {@link FORM_CONFIG} when they exist, and otherwise falls back to
+ * the tier's linear `baseStats`. In particular "base" (and any unknown form,
+ * or the baby tier) always resolves to the stage's existing baseStats, which
+ * are BYTE-IDENTICAL to the pre-#38 game so legacy/neutral monsters are
+ * unaffected. The returned object is a fresh clone (safe to mutate).
+ */
+export function formBaseStats(stageId: GrowthStage, form: MonsterForm): Stats {
+  const stage = getStage(stageId);
+  const variant = FORM_CONFIG[stageId]?.[form];
+  const stats = variant ?? stage.baseStats;
+  return { ...stats };
 }
 
 /** Zero-based index of a stage within the ordered progression. */
@@ -208,4 +265,28 @@ export function evolutionProgress(monster: Monster, now: number): EvolutionProgr
     requiredMs: requirement.minAgeMs,
     ageMet,
   };
+}
+
+/**
+ * Predict the evolution FORM the monster would take at its NEXT tier, for the
+ * StatsPanel branch hint (issue #38). Returns null when there is no branching
+ * next tier to hint at:
+ *   - the monster is already at the final stage, OR
+ *   - the next tier is the baby tier (which never branches; not reachable in
+ *     the current forward-only progression but guarded for totality).
+ *
+ * Otherwise it returns `chooseEvolutionForm(monster, now)` — the SAME pure
+ * function the evolution engine uses to actually assign the form — so the hint
+ * can never contradict the real outcome.
+ */
+export function predictedNextForm(monster: Monster, now: number): MonsterForm | null {
+  const current = getStage(monster.stageId);
+  if (current.evolveRequirement === null) {
+    return null;
+  }
+  const next = STAGES[stageIndex(monster.stageId) + 1] ?? null;
+  if (next === null || next.id === "baby") {
+    return null;
+  }
+  return chooseEvolutionForm(monster, now);
 }

@@ -9,7 +9,8 @@ import {
   reviveMonster,
   validateMonster,
 } from "../game.ts";
-import { getStage } from "../stages.ts";
+import { formBaseStats, getStage } from "../stages.ts";
+import { chooseEvolutionForm } from "../evolution.ts";
 import type { Monster } from "../types.ts";
 
 const T0 = 1_000_000_000_000;
@@ -124,14 +125,26 @@ test("applyTimePassage catches up MULTIPLE stages after a long offline gap", () 
   };
   const after = applyTimePassage(m, T0 + 30 * 60 * 1000);
   assert.equal(after.stageId, "ultimate", "advanced all the way in one call");
-  const ultimate = getStage("ultimate");
+  // issue #38: the TIER contract (reaching ultimate in one call) is what this
+  // regression guards. The stat block is now rebased onto whichever branch the
+  // care profile selected rather than the plain stage baseStats. A monster
+  // left offline for 30 minutes accumulates neglect (hunger + dirtiness), so
+  // chooseEvolutionForm picks the "mischief" branch. Assert against that
+  // variant's base stats, derived from the SAME function the engine used.
+  const form = chooseEvolutionForm(after, T0 + 30 * 60 * 1000);
+  assert.ok(
+    form === "attack" || form === "defense" || form === "mischief",
+    "evolution lands on a valid branch variant",
+  );
+  assert.equal(after.form, form, "evolution persisted the chosen branch form");
   assert.equal(
     after.stats.maxHp,
-    ultimate.baseStats.maxHp,
-    "stats rebased to the final stage base",
+    formBaseStats("ultimate", form).maxHp,
+    "stats rebased to the final stage variant base",
   );
   // original untouched
   assert.equal(m.stageId, "baby");
+  assert.equal(m.form, "base");
 });
 
 test("applyTimePassage stops at the stage whose thresholds are met", () => {
@@ -154,11 +167,14 @@ test("applyTimePassage evolves one stage AND rebases stats to the new base", () 
   };
   const after = applyTimePassage(m, T0 + 2 * 60 * 1000);
   assert.equal(after.stageId, "rookie", "advanced exactly one stage");
-  const rookie = getStage("rookie");
-  // Stats were rebased to the rookie base (maxHp), not left at the baby block.
-  assert.equal(after.stats.maxHp, rookie.baseStats.maxHp);
+  // issue #38: trainingCount=2 (and no other care) steers the branch to the
+  // "attack" form, so stats rebase onto the rookie attack variant.
+  const form = chooseEvolutionForm(after, T0 + 2 * 60 * 1000);
+  const variantBase = formBaseStats("rookie", form);
+  // Stats were rebased to the rookie variant base (maxHp), not left at baby.
+  assert.equal(after.stats.maxHp, variantBase.maxHp);
   assert.ok(
-    after.stats.atk >= rookie.baseStats.atk,
-    "atk rebased to at least the new stage base",
+    after.stats.atk >= variantBase.atk,
+    "atk rebased to at least the new stage variant base",
   );
 });
