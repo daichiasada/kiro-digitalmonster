@@ -11,6 +11,15 @@ export interface SettingsPanelProps {
   onChange: (next: Settings) => void;
   /** Close the panel (button or Escape). Focus restoration handled by parent. */
   onClose: () => void;
+  /**
+   * Called from the notifications toggle's user-gesture handler when the user
+   * ENABLES notifications (issue #44). The parent (App) wires this to
+   * Notification.requestPermission() so the permission prompt originates from a
+   * real user interaction, NEVER on mount/load. Optional and feature-detected:
+   * when omitted or when Notification is unsupported the toggle still flips the
+   * stored setting but no prompt occurs.
+   */
+  onToggleNotifications?: (enabled: boolean) => void;
 }
 
 /**
@@ -28,7 +37,12 @@ export interface SettingsPanelProps {
  * Each control takes effect immediately: changes call back to the parent which
  * updates state and persists, and the language buttons call setLang directly.
  */
-export function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProps) {
+export function SettingsPanel({
+  settings,
+  onChange,
+  onClose,
+  onToggleNotifications,
+}: SettingsPanelProps) {
   const { lang, setLang, t } = useI18n();
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -96,6 +110,22 @@ export function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProp
       onChange({ ...settings, reducedMotion: event.target.checked });
     },
     [onChange, settings],
+  );
+
+  const handleNotificationsToggle = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const enabled = event.target.checked;
+      // Persist the stored setting regardless of permission outcome.
+      onChange({ ...settings, notificationsEnabled: enabled });
+      // Request OS permission ONLY from this user gesture (never on load), and
+      // only when turning the toggle ON. The parent owns the feature-detected
+      // Notification.requestPermission() call; if unsupported the toggle still
+      // flips the stored setting (graceful) and no prompt occurs.
+      if (enabled) {
+        onToggleNotifications?.(true);
+      }
+    },
+    [onChange, onToggleNotifications, settings],
   );
 
   const handleSetLang = useCallback(
@@ -177,6 +207,22 @@ export function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProp
               onChange={handleReducedMotionToggle}
             />
             <label htmlFor="settings-reduced-motion">{t("settings.reducedMotion")}</label>
+          </div>
+
+          {/* Local "care needed" notifications (issue #44). Default OFF.
+              Enabling requests OS permission from THIS user gesture via the
+              parent-provided onToggleNotifications; disabling just clears the
+              stored flag. Feature detection + permission handling live in the
+              parent so an unsupported/denied browser degrades gracefully. */}
+          <div className="settings-row">
+            <input
+              type="checkbox"
+              id="settings-notifications"
+              className="settings-checkbox"
+              checked={settings.notificationsEnabled}
+              onChange={handleNotificationsToggle}
+            />
+            <label htmlFor="settings-notifications">{t("settings.notifications")}</label>
           </div>
 
           {/* Language toggle (moved from the header, issue #12). Language stays

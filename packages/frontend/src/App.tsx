@@ -9,6 +9,7 @@ import {
   careEffect,
   isHungerCaution,
   latestMonsterReply,
+  msUntilHungerCaution,
   petSpriteLabel,
   playerStartHpFromLog,
   readOnboarded,
@@ -81,6 +82,27 @@ export function App() {
   const updateSettings = useCallback((next: Settings) => {
     setSettings(next);
     writeSettings(next);
+  }, []);
+
+  // Permission request for local "care needed" notifications (issue #44). This
+  // is passed to SettingsPanel's notifications toggle and therefore runs INSIDE
+  // the toggle's user-gesture handler — the ONLY place Notification.request-
+  // Permission() is ever called (never on mount/load). Feature-detected so an
+  // unsupported browser is a silent no-op: the stored setting still flips and
+  // the game keeps working, there is just no OS prompt and no scheduled
+  // notification (the effect below also re-checks permission === 'granted').
+  const handleToggleNotifications = useCallback((enabled: boolean) => {
+    if (!enabled) {
+      return;
+    }
+    if (typeof Notification === "undefined") {
+      return;
+    }
+    try {
+      void Notification.requestPermission();
+    } catch {
+      // Older browsers may throw on the promise form; ignore so nothing breaks.
+    }
   }, []);
 
   // Device-local time-of-day phase (issue #43) that keys the stage background
@@ -345,6 +367,83 @@ export function App() {
     }
   }, [game.justEvolvedTo, sfxEnabled, sfxVolume]);
 
+  // Local "care needed" notification scheduling (issue #44). When notifications
+  // are enabled AND supported AND permission is granted AND a monster is loaded,
+  // project when hunger would next reach the caution threshold
+  // (msUntilHungerCaution over the live monster) and schedule a single
+  // setTimeout to fire a LOCAL notification (new Notification(...)) at that
+  // time. This is purely client-side: no push server / VAPID; it only fires
+  // while this tab is alive.
+  //
+  // The effect re-runs (and re-schedules) whenever the setting or the monster's
+  // hunger-relevant fields change, with clearTimeout cleanup so toggling OFF or
+  // a care action (feed resets hunger) cancels/reschedules correctly.
+  //
+  // ALREADY-AT-CAUTION (projection === 0) HANDLING: we deliberately only fire
+  // on a projected FUTURE transition. If the projection is null (sleeping /
+  // non-finite) or <= 0 (already at/over caution on mount or after a reschedule)
+  // we schedule NOTHING, so remounting with an already-hungry monster never
+  // spams an immediate notification. The in-app 🍖 caution badge already covers
+  // the already-hungry case.
+  const monster = game.monster;
+  const monsterHungryLevel = monster?.hungryLevel ?? null;
+  const monsterLastUpdatedAt = monster?.lastUpdatedAt ?? null;
+  const monsterIsSleeping = monster?.isSleeping ?? null;
+  const monsterName = monster?.name ?? null;
+  useEffect(() => {
+    if (!settings.notificationsEnabled) {
+      return;
+    }
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+      return;
+    }
+    if (
+      monsterHungryLevel === null ||
+      monsterLastUpdatedAt === null ||
+      monsterIsSleeping === null
+    ) {
+      return;
+    }
+    const msUntil = msUntilHungerCaution(
+      {
+        hungryLevel: monsterHungryLevel,
+        lastUpdatedAt: monsterLastUpdatedAt,
+        isSleeping: monsterIsSleeping,
+      },
+      Date.now(),
+    );
+    // null (sleeping / non-finite) or <= 0 (already at/over caution): schedule
+    // nothing so we never fire immediately on mount for an already-hungry
+    // monster — only a projected FUTURE transition triggers a notification.
+    if (msUntil === null || msUntil <= 0) {
+      return;
+    }
+    const title = t("notify.hungryTitle");
+    const body = monsterName
+      ? `${monsterName}: ${t("notify.hungryBody")}`
+      : t("notify.hungryBody");
+    const icon = new URL("icon.svg", import.meta.env.BASE_URL ?? "/").toString();
+    const timer = setTimeout(() => {
+      try {
+        // Re-guard inside the timeout: permission could have been revoked while
+        // the page sat open. Feature-detected + wrapped so it never throws.
+        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          new Notification(title, { body, icon });
+        }
+      } catch {
+        // A failed notification must never break the running game.
+      }
+    }, msUntil);
+    return () => clearTimeout(timer);
+  }, [
+    settings.notificationsEnabled,
+    monsterHungryLevel,
+    monsterLastUpdatedAt,
+    monsterIsSleeping,
+    monsterName,
+    t,
+  ]);
+
   return (
     <div className={`app${settings.reducedMotion ? " force-reduced-motion" : ""}`}>
       <header className="app-header">
@@ -430,7 +529,12 @@ export function App() {
       {zukanOpen && <ZukanModal zukan={readZukan()} onClose={closeZukan} />}
 
       {settingsOpen && (
-        <SettingsPanel settings={settings} onChange={updateSettings} onClose={closeSettings} />
+        <SettingsPanel
+          settings={settings}
+          onChange={updateSettings}
+          onToggleNotifications={handleToggleNotifications}
+          onClose={closeSettings}
+        />
       )}
 
       <EvolutionBanner stageId={game.justEvolvedTo} onDismiss={game.dismissEvolution} />

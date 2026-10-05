@@ -76,6 +76,9 @@ import {
   DEFAULT_SOUND_VOLUME,
   parseSettings,
   DEFAULT_SETTINGS,
+  msUntilHungerCaution,
+  hungerCautionTargetTimestamp,
+  HUNGER_TICK_MS,
 } from "./ui-helpers.ts";
 import type { CareAction, SoundEvent, SoundTone } from "./ui-helpers.ts";
 import {
@@ -1354,11 +1357,17 @@ test("win and evolve are multi-note arpeggios; single events are one note", () =
 // --- parseSettings (issue #45) ---------------------------------------------
 
 test("parseSettings round-trips a valid settings blob", () => {
-  const raw = JSON.stringify({ sfxEnabled: true, volume: 0.3, reducedMotion: true });
+  const raw = JSON.stringify({
+    sfxEnabled: true,
+    volume: 0.3,
+    reducedMotion: true,
+    notificationsEnabled: true,
+  });
   assert.deepEqual(parseSettings(raw), {
     sfxEnabled: true,
     volume: 0.3,
     reducedMotion: true,
+    notificationsEnabled: true,
   });
 });
 
@@ -1390,7 +1399,180 @@ test("parseSettings fills missing fields from the defaults", () => {
     sfxEnabled: true,
     volume: DEFAULT_SETTINGS.volume,
     reducedMotion: DEFAULT_SETTINGS.reducedMotion,
+    notificationsEnabled: DEFAULT_SETTINGS.notificationsEnabled,
   });
   // Empty object yields the full defaults.
   assert.deepEqual(parseSettings("{}"), DEFAULT_SETTINGS);
+});
+
+// --- parseSettings notificationsEnabled (issue #44) ------------------------
+
+test("parseSettings defaults notificationsEnabled to false when the key is missing", () => {
+  // A stored blob predating the field (e.g. only the pre-#44 keys) must parse
+  // to notificationsEnabled: false without throwing (backward compatible).
+  const legacy = JSON.stringify({ sfxEnabled: true, volume: 0.3, reducedMotion: true });
+  assert.equal(parseSettings(legacy).notificationsEnabled, false);
+  // The default itself is OFF.
+  assert.equal(DEFAULT_SETTINGS.notificationsEnabled, false);
+  assert.equal(parseSettings("{}").notificationsEnabled, false);
+  assert.equal(parseSettings(null).notificationsEnabled, false);
+});
+
+test("parseSettings preserves an explicit notificationsEnabled true/false", () => {
+  assert.equal(
+    parseSettings(JSON.stringify({ notificationsEnabled: true })).notificationsEnabled,
+    true,
+  );
+  assert.equal(
+    parseSettings(JSON.stringify({ notificationsEnabled: false })).notificationsEnabled,
+    false,
+  );
+});
+
+test("parseSettings coerces a non-boolean notificationsEnabled to the default", () => {
+  assert.equal(
+    parseSettings(JSON.stringify({ notificationsEnabled: "yes" })).notificationsEnabled,
+    DEFAULT_SETTINGS.notificationsEnabled,
+  );
+  assert.equal(
+    parseSettings(JSON.stringify({ notificationsEnabled: 1 })).notificationsEnabled,
+    DEFAULT_SETTINGS.notificationsEnabled,
+  );
+  assert.equal(
+    parseSettings(JSON.stringify({ notificationsEnabled: null })).notificationsEnabled,
+    DEFAULT_SETTINGS.notificationsEnabled,
+  );
+});
+
+test("parseSettings keeps existing fields intact when notificationsEnabled is added", () => {
+  const raw = JSON.stringify({
+    sfxEnabled: true,
+    volume: 0.25,
+    reducedMotion: true,
+    notificationsEnabled: true,
+  });
+  assert.deepEqual(parseSettings(raw), {
+    sfxEnabled: true,
+    volume: 0.25,
+    reducedMotion: true,
+    notificationsEnabled: true,
+  });
+});
+
+// --- msUntilHungerCaution (issue #44) --------------------------------------
+
+test("msUntilHungerCaution returns 0 when already at/over caution", () => {
+  const now = 1_000_000;
+  // Exactly at the caution level.
+  assert.equal(
+    msUntilHungerCaution({ hungryLevel: 7, lastUpdatedAt: now, isSleeping: false }, now),
+    0,
+  );
+  // Over the caution level (and even capped/high values).
+  assert.equal(
+    msUntilHungerCaution({ hungryLevel: 9, lastUpdatedAt: now, isSleeping: false }, now),
+    0,
+  );
+  assert.equal(
+    msUntilHungerCaution({ hungryLevel: 10, lastUpdatedAt: now, isSleeping: false }, now),
+    0,
+  );
+});
+
+test("msUntilHungerCaution returns N*HUNGER_TICK_MS when N levels away and lastUpdatedAt === now", () => {
+  const now = 2_000_000;
+  // hungryLevel 7 - 0 = 7 levels remaining.
+  assert.equal(
+    msUntilHungerCaution({ hungryLevel: 0, lastUpdatedAt: now, isSleeping: false }, now),
+    7 * HUNGER_TICK_MS,
+  );
+  // hungryLevel 7 - 4 = 3 levels remaining.
+  assert.equal(
+    msUntilHungerCaution({ hungryLevel: 4, lastUpdatedAt: now, isSleeping: false }, now),
+    3 * HUNGER_TICK_MS,
+  );
+  // One level away.
+  assert.equal(
+    msUntilHungerCaution({ hungryLevel: 6, lastUpdatedAt: now, isSleeping: false }, now),
+    1 * HUNGER_TICK_MS,
+  );
+});
+
+test("msUntilHungerCaution reduces the remaining time by elapsed since lastUpdatedAt", () => {
+  const lastUpdatedAt = 5_000_000;
+  // 3 levels remaining (hungryLevel 4). Half a tick has already elapsed, so the
+  // remaining time is 3 ticks minus the half-tick elapsed.
+  const elapsed = HUNGER_TICK_MS / 2;
+  const now = lastUpdatedAt + elapsed;
+  assert.equal(
+    msUntilHungerCaution({ hungryLevel: 4, lastUpdatedAt, isSleeping: false }, now),
+    3 * HUNGER_TICK_MS - elapsed,
+  );
+  // When the projected target is already in the past, the result floors at 0.
+  const wayLater = lastUpdatedAt + 100 * HUNGER_TICK_MS;
+  assert.equal(
+    msUntilHungerCaution({ hungryLevel: 4, lastUpdatedAt, isSleeping: false }, wayLater),
+    0,
+  );
+});
+
+test("msUntilHungerCaution returns null while sleeping (hunger does not rise)", () => {
+  const now = 3_000_000;
+  assert.equal(
+    msUntilHungerCaution({ hungryLevel: 0, lastUpdatedAt: now, isSleeping: true }, now),
+    null,
+  );
+  // Sleeping takes precedence even when already at caution.
+  assert.equal(
+    msUntilHungerCaution({ hungryLevel: 9, lastUpdatedAt: now, isSleeping: true }, now),
+    null,
+  );
+});
+
+test("msUntilHungerCaution returns null for non-finite inputs", () => {
+  const now = 4_000_000;
+  assert.equal(
+    msUntilHungerCaution({ hungryLevel: Number.NaN, lastUpdatedAt: now, isSleeping: false }, now),
+    null,
+  );
+  assert.equal(
+    msUntilHungerCaution(
+      { hungryLevel: 2, lastUpdatedAt: Number.POSITIVE_INFINITY, isSleeping: false },
+      now,
+    ),
+    null,
+  );
+  assert.equal(
+    msUntilHungerCaution(
+      { hungryLevel: 2, lastUpdatedAt: now, isSleeping: false },
+      Number.NaN,
+    ),
+    null,
+  );
+});
+
+test("hungerCautionTargetTimestamp returns now + msUntil, or null when there is no projection", () => {
+  const now = 6_000_000;
+  // 7 levels away from a fresh (now) monster -> now + 7 ticks.
+  assert.equal(
+    hungerCautionTargetTimestamp({ hungryLevel: 0, lastUpdatedAt: now, isSleeping: false }, now),
+    now + 7 * HUNGER_TICK_MS,
+  );
+  // Already at caution -> now + 0 = now.
+  assert.equal(
+    hungerCautionTargetTimestamp({ hungryLevel: 8, lastUpdatedAt: now, isSleeping: false }, now),
+    now,
+  );
+  // Sleeping / non-finite -> null.
+  assert.equal(
+    hungerCautionTargetTimestamp({ hungryLevel: 0, lastUpdatedAt: now, isSleeping: true }, now),
+    null,
+  );
+  assert.equal(
+    hungerCautionTargetTimestamp(
+      { hungryLevel: Number.NaN, lastUpdatedAt: now, isSleeping: false },
+      now,
+    ),
+    null,
+  );
 });

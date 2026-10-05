@@ -192,7 +192,12 @@ const JA_MESSAGES = {
   "settings.volume": "音量",
   "settings.volumeValue": "{percent}%",
   "settings.reducedMotion": "アニメーションを減らす",
+  "settings.notifications": "通知",
   "settings.language": "言語",
+
+  // Local "care needed" notifications (issue #44)
+  "notify.hungryTitle": "おなかがすいてきたよ",
+  "notify.hungryBody": "そろそろごはんの時間かも。会いに来てね！",
 } as const;
 
 /** The set of valid message keys, derived from the JA dictionary. */
@@ -368,7 +373,12 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   "settings.volume": "Volume",
   "settings.volumeValue": "{percent}%",
   "settings.reducedMotion": "Reduce motion",
+  "settings.notifications": "Notifications",
   "settings.language": "Language",
+
+  // Local "care needed" notifications (issue #44)
+  "notify.hungryTitle": "Getting hungry",
+  "notify.hungryBody": "It's almost mealtime. Come check in!",
 };
 
 /**

@@ -168,6 +168,52 @@ npm run test   # = npm run test -w @ddm/shared
 
 ---
 
+## 📱 PWA & care notifications
+
+The app is a Progressive Web App: a hand-rolled web app manifest
+(`packages/frontend/public/manifest.webmanifest`) plus a service worker
+(`packages/frontend/public/sw.js`) make it **installable** ("Add to Home
+Screen") on supported browsers. No build plugin or extra dependency is used;
+everything in `public/` is copied verbatim to the deploy root by Vite.
+
+### Service worker caching (CloudFront-safe)
+
+The service worker uses a caching strategy picked so updates always land
+correctly behind CloudFront:
+
+- **HTML (navigation requests): network-first.** The app shell is fetched from
+  the network first and only falls back to cache when offline, so a fresh
+  deploy is picked up on the next load instead of being pinned to a stale
+  shell.
+- **Hashed static assets (JS/CSS with content hashes): stale-while-revalidate.**
+  These are safe to serve from cache immediately while refreshing in the
+  background, because a new build emits new hashed filenames.
+- **`config.json`: never cached.** The runtime API config is always fetched
+  from the network (the app already requests it with `cache: 'no-store'`), so
+  a redeploy that rewrites `config.json` is never served a stale value.
+
+CloudFront invalidates `/*` on each deploy, and the service worker registration
+is **production-only and feature-detected** (it is skipped under `vite dev` so
+local HMR is never confused by SW caching).
+
+### Local "care needed" notifications
+
+When enabled, the app can show a **local** browser notification when the
+monster's hunger is projected to reach the caution level, so you get a nudge to
+come back and feed it even with the tab in the background.
+
+- **Permission is only ever requested from a user gesture** — the Notifications
+  toggle in Settings. The app never prompts for permission on load.
+- **Default OFF.** Nothing is requested or scheduled until you opt in.
+- **Fully optional / graceful.** With notifications off, denied, or on a browser
+  that does not support the Notification API, the game works exactly the same
+  with no errors.
+- **Notifications are LOCAL — there is no push server and no VAPID.** A
+  notification is scheduled with `setTimeout` and only fires while a tab is
+  alive; closing every tab simply means no notification fires.
+
+---
+
 ## 🧹 Teardown
 
 ```bash
