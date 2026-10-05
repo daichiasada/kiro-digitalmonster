@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Set up the docs branch and establish a green baseline. Branch off main, confirm the working tree is clean, and run the project's build and test commands so the coder has a verified baseline before changing anything. No source changes in this feature.",
+  "status": "completed",
+  "steps": [
+    "From /projects/sandbox/kiro-digitalmonster, run: export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" so node/npm are available.",
+    "Confirm you are on main and the tree is clean (git status). Create and switch to a new branch: git checkout -b docs/architecture-and-readme.",
+    "Confirm dependencies are installed (node_modules present at root). If `npm run build` fails for a missing-deps reason, run `npm install` once; otherwise do not reinstall.",
+    "Run the build: `npm run build` (compiles shared -> backend -> frontend -> infra). Record that it is green.",
+    "Run the shared unit tests: `npm run test`. Record that they are green.",
+    "Note the baseline results in findings. Do NOT modify any application or infra source files."
+  ],
+  "acceptance_criteria": [
+    "Current branch is docs/architecture-and-readme, created from main.",
+    "`npm run build` completes successfully (exit 0).",
+    "`npm run test` completes successfully (exit 0).",
+    "No files under packages/ or infra/ have been modified."
+  ],
+  "verification": [
+    "git rev-parse --abbrev-ref HEAD prints docs/architecture-and-readme",
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm run build exits 0",
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\" && npm run test exits 0",
+    "git status shows a clean tree (aside from the new branch) before docs work begins"
+  ],
+  "blocked_reason": null,
+  "findings": "Branched off clean main to docs/architecture-and-readme (git rev-parse confirms). Node v22.23.3 / npm 11.4.2 via the exported PATH; node_modules already present so no reinstall needed. `npm run build` green (exit 0): shared tsc, backend tsc, frontend tsc+vite build (53 modules, dist assets emitted), infra tsc all succeeded. `npm run test` green (exit 0): @ddm/shared node:test ran 47 subtests, 47 pass / 0 fail. No files under packages/ or infra/ modified (git status --porcelain clean for both); only untracked .agents/tasks/task-architecture-docs/ and .tmp-ref/ scratch present, which is expected. Verified green baseline established; nothing committed (no changes to commit)."
+}

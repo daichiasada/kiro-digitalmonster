@@ -1,0 +1,15 @@
+{
+  "task_id": "task-architecture-docs",
+  "task_description": "Implement GitHub issue #23: match the reference repo daichiasada/kiro-worldriskmap's documentation structure. Create docs/architecture.drawio (editable draw.io, AWS icons), docs/architecture.svg (vector), and docs/architecture.png (README-embedded raster) that accurately reflect THIS project's real architecture (verified against the CDK stack + Lambda handlers). Split the README into an English-baseline README.md and a Japanese README.ja.md, each with a language-switcher link as the first content line, and replace the ASCII architecture block with an '## Architecture' section embedding the PNG and linking the editable .drawio and .svg. Docs-only change on branch docs/architecture-and-readme; no application/infra source changes; no push/PR (orchestrator handles that).",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "review": "Semantic review APPROVED on v2 (2026-10-05-001545-review.md). v1 (2026-10-05-000829-review.md) returned NEEDS_CHANGES for one blocking issue (stale intra-page anchor in README.md); fixed in commit eb9a060. One residual non-blocking cosmetic note (two diagram edge labels graze adjacent elements in the raster).",
+    "summary": "Docs-only change on branch docs/architecture-and-readme (3 commits: cf4c947 diagram+icons, 4f64df2 README split, eb9a060 anchor fix + label tidy). `npm run build` exits 0 (shared->backend->frontend->infra); `npm run test` 47/47 node:test pass. No files under packages/ or infra/ changed (git diff main..HEAD -- packages/ infra/ is empty), so the pre-existing green shared test suite is the appropriate sanity gate and no new tests were warranted for a docs change (test_quality pass by that criterion). docs/architecture.{drawio,svg,png} + docs/aws-icons/*.svg validated: drawio and svg are well-formed XML; PNG is a valid 1180x720 raster that visually matches the SVG; exactly one Bedrock edge originates from the chat Lambda (source=lchat). README.md is English-baseline with first content line '**English** | [日本語](README.ja.md)'; README.ja.md Japanese with '[English](README.md) | **日本語**'; both embed ![Architecture](docs/architecture.png) and link the .drawio and .svg; old ASCII block removed; SUBMISSION.md link preserved in both. No Dockerfile in repo so docker_build skipped."
+  }
+}
