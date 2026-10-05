@@ -1,5 +1,6 @@
 import type { Monster } from "@ddm/shared";
 import { useI18n } from "../i18n.ts";
+import { busyStatusLabel } from "../ui-helpers.ts";
 
 export interface CarePanelProps {
   monster: Monster;
@@ -12,10 +13,20 @@ export interface CarePanelProps {
 
 /** Care action buttons: feed / train / sleep / clean. */
 export function CarePanel({ monster, busy, onFeed, onTrain, onSleep, onClean }: CarePanelProps) {
-  const { t } = useI18n();
+  const { lang, t } = useI18n();
   return (
-    <section className="panel care-panel" aria-label={t("aria.care")}>
-      <h2>{t("care.title")}</h2>
+    <section className="panel care-panel" aria-label={t("aria.care")} aria-busy={busy}>
+      <h2>
+        {t("care.title")}
+        {busy && <span className="busy-spinner" aria-hidden="true" />}
+      </h2>
+      {/* Accessible, lightweight busy feedback. Lives in the panel (not over
+          the sprite) so it never double-signals with the #10 care-fx overlay.
+          The visually-hidden live region announces "処理中…"/"Working…" while an
+          action is in flight; the small spinner above is the visual cue. */}
+      <span className="visually-hidden" role="status" aria-live="polite">
+        {busy ? busyStatusLabel(lang) : ""}
+      </span>
       <div className="care-buttons">
         <button type="button" className="care-btn feed" onClick={onFeed} disabled={busy}>
           <span className="care-icon" aria-hidden="true">🍖</span>

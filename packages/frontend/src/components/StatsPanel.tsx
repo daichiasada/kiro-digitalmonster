@@ -2,6 +2,7 @@ import type { Monster } from "@ddm/shared";
 import { MAX_HUNGRY_LEVEL, evolutionProgress } from "@ddm/shared";
 import { useI18n } from "../i18n.ts";
 import {
+  evolutionReqAriaLabel,
   formatMinutes,
   fullnessPercent,
   hpPercent,
@@ -101,12 +102,14 @@ export function StatsPanel({ monster }: StatsPanelProps) {
               <span className="evolution-check" aria-hidden="true">
                 {prog.trainingMet ? "✓" : "・"}
               </span>
+              <span className="visually-hidden">{evolutionReqAriaLabel(prog.trainingMet, lang)}: </span>
               {t("stats.training")}{prog.trainingCurrent}/{prog.trainingRequired}
             </p>
             <p className={`evolution-req${prog.ageMet ? " met" : " unmet"}`}>
               <span className="evolution-check" aria-hidden="true">
                 {prog.ageMet ? "✓" : "・"}
               </span>
+              <span className="visually-hidden">{evolutionReqAriaLabel(prog.ageMet, lang)}: </span>
               {t("stats.elapsed")}{formatMinutes(prog.elapsedMs, lang)}/{formatMinutes(prog.requiredMs ?? 0, lang)}
             </p>
           </>
