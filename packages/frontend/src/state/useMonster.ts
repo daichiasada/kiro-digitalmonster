@@ -30,6 +30,7 @@ import {
   gainAffectionFromChat,
   getStage,
   isValidMonsterName,
+  monsterAppearanceKey,
   normalizeAffection,
   normalizeBattleRecord,
   normalizeForm,
@@ -48,7 +49,10 @@ import {
   petsRemaining as computePetsRemaining,
   readPetRecord,
   readPetRecordRaw,
+  readZukan,
+  recordMonsterAppearance,
   writePetRecord,
+  writeZukan,
 } from "../ui-helpers.ts";
 import { t, useI18n } from "../i18n.ts";
 
@@ -142,6 +146,40 @@ function advance(monster: Monster, now: number): Monster {
   );
 }
 
+/**
+ * Record the monster's current appearance (stageId x form) into the persisted
+ * zukan when it differs from the last-recorded appearance (tracked in
+ * `keyRef`). This is how the collection grows: the fresh baby on first load and
+ * each new tier x form as the monster evolves. Fully guarded so it never throws
+ * (every storage call in ui-helpers is itself guarded):
+ *   - compute the appearance key; bail if unchanged from keyRef,
+ *   - read the current zukan, delegate to the shared pure recordAppearance,
+ *   - only writeZukan when a NEW entry was added (returned object differs),
+ *   - update keyRef so re-encountering the same appearance is a no-op.
+ * The shared recordAppearance ignores non-canonical combos and preserves the
+ * first-seen snapshot, so re-recording an existing appearance never overwrites.
+ */
+function recordAppearanceToStorage(
+  monster: Monster,
+  keyRef: { current: string | null },
+  now: number,
+): void {
+  try {
+    const key = monsterAppearanceKey(monster);
+    if (key === keyRef.current) {
+      return;
+    }
+    const zukan = readZukan();
+    const next = recordMonsterAppearance(zukan, monster, now);
+    if (next !== zukan) {
+      writeZukan(next);
+    }
+    keyRef.current = key;
+  } catch {
+    // Discovery recording is best-effort; never let it break the lifecycle.
+  }
+}
+
 export function useMonster(): UseMonsterState {
   const { lang } = useI18n();
   const [monster, setMonster] = useState<Monster | null>(null);
@@ -166,6 +204,10 @@ export function useMonster(): UseMonsterState {
   // being re-created on every render.
   const monsterRef = useRef<Monster | null>(null);
   const prevStageRef = useRef<GrowthStage | null>(null);
+  // Last appearance key (stageId x form) we recorded into the zukan, so we only
+  // touch storage when the appearance actually changes (issue #39). Null until
+  // the first appearance is recorded on mount.
+  const prevAppearanceKeyRef = useRef<string | null>(null);
 
   // Mirror the active UI language into a ref so sendChat (a useCallback) always
   // sends the current language without being re-created on every lang change.
@@ -180,6 +222,10 @@ export function useMonster(): UseMonsterState {
     prevStageRef.current = next.stageId;
     monsterRef.current = next;
     setMonster(next);
+    // Record this appearance into the zukan whenever (stageId x form) changes.
+    // commit() runs on every monster change (care, time-tick, evolution,
+    // battle, reset), so this captures each new tier x form as it is reached.
+    recordAppearanceToStorage(next, prevAppearanceKeyRef, Date.now());
   }, []);
 
   // Initial load / hatch.
@@ -211,6 +257,10 @@ export function useMonster(): UseMonsterState {
         prevStageRef.current = advanced.stageId;
         monsterRef.current = advanced;
         setMonster(advanced);
+        // The mount path sets state directly (bypassing commit), so record the
+        // FIRST appearance here too — this is what captures the fresh/loaded
+        // monster (e.g. baby:base) into the zukan on first load (issue #39).
+        recordAppearanceToStorage(advanced, prevAppearanceKeyRef, now);
         // Persist if time passage / evolution changed anything.
         if (advanced.lastUpdatedAt !== loaded.lastUpdatedAt || advanced.stageId !== loaded.stageId) {
           api.saveMonster(advanced).catch(() => undefined);
@@ -467,6 +517,11 @@ export function useMonster(): UseMonsterState {
     setBusy(true);
     setError(null);
     const fresh = createMonster(current.id, DEFAULT_MONSTER_NAME, Date.now());
+    // The zukan (ddm.zukan) is INTENTIONALLY left untouched here: reset only
+    // rewrites the monster save, never the collection. Because commit() only
+    // ADDS appearances (never deletes) and reset writes nothing to the zukan
+    // key, the collection survives reset (issue #39 acceptance). The fresh
+    // baby re-records baby:base below, which already exists -> a no-op.
     // Going from a later stage back to baby must NOT fire a spurious evolution
     // banner, so align prevStageRef with the fresh baby BEFORE commit() and
     // dismiss any banner currently showing.

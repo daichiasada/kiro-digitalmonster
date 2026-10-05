@@ -44,6 +44,9 @@ import {
   petCapReachedLabel,
   petSpriteLabel,
   petsRemaining,
+  parseZukan,
+  recordMonsterAppearance,
+  ZUKAN_STORAGE_KEY,
   readPetRecord,
   moodLabel,
   moodLabelJa,
@@ -66,7 +69,10 @@ import {
   HUNGRY_CAUTION_LEVEL,
   MAX_HUNGRY_LEVEL,
   battleRecordOf,
+  createMonster,
+  discoveredCount,
   evolutionProgress,
+  monsterAppearanceKey,
   predictedNextForm,
 } from "@ddm/shared";
 import type { Monster } from "@ddm/shared";
@@ -1005,4 +1011,78 @@ test("stats.evolveHint template has JA and EN entries with the {form} token", ()
     assert.ok(tpl.length > 0, `${lang} evolveHint empty`);
     assert.ok(tpl.includes("{form}"), `${lang} evolveHint missing {form} token`);
   }
+});
+
+// --- Monster zukan (図鑑) persistence glue — issue #39 ----------------------
+// These exercise ONLY the PURE parse/merge glue. They never touch localStorage
+// so the suite stays DOM/storage-free under the plain Node test runner.
+
+test("ZUKAN_STORAGE_KEY is the dedicated ddm.zukan key", () => {
+  assert.equal(ZUKAN_STORAGE_KEY, "ddm.zukan");
+});
+
+test("parseZukan returns an empty zukan for null / empty input", () => {
+  assert.deepEqual(parseZukan(null), {});
+  assert.deepEqual(parseZukan(""), {});
+});
+
+test("parseZukan returns an empty zukan for malformed JSON", () => {
+  assert.deepEqual(parseZukan("not json"), {});
+  assert.deepEqual(parseZukan("{ broken"), {});
+});
+
+test("parseZukan round-trips canonical entries and drops malformed ones (via sanitizeZukan)", () => {
+  // Build a valid zukan by recording an appearance, then serialize it and
+  // inject a non-canonical key + a malformed entry to confirm sanitizeZukan
+  // (delegated to by parseZukan) keeps only the valid canonical entry.
+  const now = 1_000_000_000_000;
+  const baby = createMonster("m-rt", "でじたん", now);
+  const zukan = recordMonsterAppearance({}, baby, now);
+  const babyKey = monsterAppearanceKey(baby);
+
+  const raw = JSON.parse(JSON.stringify(zukan)) as Record<string, unknown>;
+  // Non-canonical key (unreachable base at rookie) -> dropped.
+  raw["rookie:base"] = {
+    key: "rookie:base",
+    stageId: "rookie",
+    form: "base",
+    firstSeenAt: now,
+    daysRaised: 0,
+    name: "bogus",
+  };
+  // Malformed entry (bad field types) -> dropped.
+  raw["champion:attack"] = { key: "champion:attack", stageId: "champion", form: "attack", firstSeenAt: "x", daysRaised: null, name: 5 };
+
+  const parsed = parseZukan(JSON.stringify(raw));
+  assert.deepEqual(Object.keys(parsed), [babyKey]);
+  assert.equal(parsed[babyKey].name, "でじたん");
+  assert.equal(parsed[babyKey].stageId, "baby");
+  assert.equal(parsed[babyKey].form, "base");
+});
+
+test("recordMonsterAppearance merges baby -> evolved to 2 entries and re-records baby as a no-op", () => {
+  const t0 = 1_000_000_000_000;
+  const baby = createMonster("m-merge", "でじたん", t0);
+  const evolved: Monster = {
+    ...baby,
+    stageId: "rookie",
+    form: "attack",
+    name: "しんか",
+    lastUpdatedAt: t0 + 86_400_000,
+  };
+
+  // {} -> baby = 1 entry.
+  const afterBaby = recordMonsterAppearance({}, baby, t0);
+  assert.equal(discoveredCount(afterBaby), 1);
+
+  // baby -> evolved = 2 entries.
+  const afterEvolved = recordMonsterAppearance(afterBaby, evolved, t0 + 86_400_000);
+  assert.equal(discoveredCount(afterEvolved), 2);
+
+  // Re-recording the baby appearance is a pure no-op: same object identity
+  // returned (shared recordAppearance returns the input unchanged) and the
+  // count does not grow.
+  const afterReBaby = recordMonsterAppearance(afterEvolved, baby, t0 + 999_999);
+  assert.equal(afterReBaby, afterEvolved);
+  assert.equal(discoveredCount(afterReBaby), 2);
 });
