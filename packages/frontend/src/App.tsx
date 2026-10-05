@@ -15,6 +15,7 @@ import {
   shouldShowOnboarding,
   writeOnboarded,
   readZukan,
+  timeOfDay,
   type CareAction,
 } from "./ui-helpers.ts";
 import { MonsterSprite } from "./assets/monsters/MonsterSprite.tsx";
@@ -39,6 +40,22 @@ export function App() {
   // overlay so repeating the SAME action re-fires its animation.
   const [careFx, setCareFx] = useState<{ action: CareAction; key: number } | null>(null);
   const fxTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Device-local time-of-day phase (issue #43) that keys the stage background
+  // gradient. Seeded from the current local hour and recomputed on a cheap
+  // ~60s interval so a session left open across a boundary (e.g. 09:59 -> 10:00)
+  // transitions. This interval is SEPARATE from useMonster's 15s TIME_TICK
+  // (game logic) and only updates state when the computed phase actually
+  // CHANGES, so the background does not repaint every tick.
+  const [tod, setTod] = useState(() => timeOfDay(new Date()));
+  useEffect(() => {
+    const id = setInterval(() => {
+      const next = timeOfDay(new Date());
+      // Functional update: only trigger a re-render when the phase flips.
+      setTod((prev) => (prev === next ? prev : next));
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Two-step confirm for the destructive reset action so a single accidental
   // click cannot wipe progress. First click reveals the prompt; Confirm resets,
@@ -370,7 +387,19 @@ export function App() {
         <p className="loading">{t("app.loadError")}</p>
       ) : (
         <main className="game-grid">
-          <div className="stage-area">
+          {/* The stage container carries the time-of-day / per-stage /
+              sleeping / dirty cues (issue #43). The gradient reads BEHIND the
+              sprite and speech bubble; the sprite's own `sleeping` dim and the
+              💤/💢/🍖 badges and care-fx overlay are unchanged and layer on
+              top of this. data-timeofday comes from the device local hour,
+              data-stage from the live growth stage. */}
+          <div
+            className={`stage-area ${game.monster.isSleeping ? "is-sleeping" : ""} ${
+              game.monster.dirty ? "is-dirty" : ""
+            }`}
+            data-timeofday={tod}
+            data-stage={game.monster.stageId}
+          >
             {shouldShowOnboarding(onboarded, game.monster !== null) && (
               <OnboardingHint
                 prog={evolutionProgress(game.monster, Date.now())}
