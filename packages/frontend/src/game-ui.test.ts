@@ -34,9 +34,12 @@ import {
   dayStamp,
   evolutionReqAriaLabel,
   formLabel,
+  formatDuration,
+  formatDurationJa,
   formatMinutes,
   formatMinutesJa,
   fullnessPercent,
+  recommendLabelKey,
   hpPercent,
   isHungerCaution,
   latestMonsterReply,
@@ -1115,4 +1118,49 @@ test("firstSeenDateLabel returns a non-empty string for finite ms and '' for non
   assert.ok(firstSeenDateLabel(1_000_000_000_000, "en").length > 0);
   assert.equal(firstSeenDateLabel(Number.NaN, "ja"), "");
   assert.equal(firstSeenDateLabel(Number.POSITIVE_INFINITY, "en"), "");
+});
+
+// --- Welcome-back / おかえり summary (issue #40) ----------------------------
+
+test("formatDurationJa renders hours+minutes, omitting hours below 1h", () => {
+  assert.equal(formatDurationJa(0), "0分");
+  assert.equal(formatDurationJa(150_000), "2分"); // 2.5 min -> floor 2
+  assert.equal(formatDurationJa(59 * 60_000), "59分");
+  assert.equal(formatDurationJa(60 * 60_000), "1時間0分");
+  assert.equal(formatDurationJa(125 * 60_000), "2時間5分");
+});
+
+test("formatDurationJa guards non-finite / negative input to 0分", () => {
+  assert.equal(formatDurationJa(-1), "0分");
+  assert.equal(formatDurationJa(Number.NaN), "0分");
+  assert.equal(formatDurationJa(Number.POSITIVE_INFINITY), "0分");
+});
+
+test("formatDuration ja matches formatDurationJa; en uses h/m form", () => {
+  assert.equal(formatDuration(125 * 60_000, "ja"), formatDurationJa(125 * 60_000));
+  assert.equal(formatDuration(0, "en"), "0m");
+  assert.equal(formatDuration(5 * 60_000, "en"), "5m");
+  assert.equal(formatDuration(125 * 60_000, "en"), "2h 5m");
+  assert.equal(formatDuration(-1, "en"), "0m");
+  assert.equal(formatDuration(Number.NaN, "en"), "0m");
+});
+
+test("recommendLabelKey maps each care recommendation to its welcome key or null", () => {
+  assert.equal(recommendLabelKey("feed"), "welcome.recommendFeed");
+  assert.equal(recommendLabelKey("clean"), "welcome.recommendClean");
+  assert.equal(recommendLabelKey("wake"), "welcome.recommendWake");
+  assert.equal(recommendLabelKey("none"), null);
+});
+
+test("recommendLabelKey results resolve to real messages in both languages", () => {
+  for (const rec of ["feed", "clean", "wake"] as const) {
+    const key = recommendLabelKey(rec);
+    assert.notEqual(key, null);
+    if (key !== null) {
+      // The key must exist in both dictionaries (non-empty, not the raw key).
+      assert.ok(t("ja", key).length > 0);
+      assert.ok(t("en", key).length > 0);
+      assert.notEqual(t("ja", key), key);
+    }
+  }
 });

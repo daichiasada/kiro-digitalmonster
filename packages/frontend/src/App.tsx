@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import { evolutionProgress, formOf } from "@ddm/shared";
+import { evolutionProgress, formOf, recommendCareFromMonster } from "@ddm/shared";
 import { useMonster } from "./state/useMonster.ts";
 import { useI18n } from "./i18n.ts";
 import {
@@ -27,6 +27,7 @@ import { ChatPanel } from "./components/ChatPanel.tsx";
 import { SpeechBubble } from "./components/SpeechBubble.tsx";
 import { EvolutionBanner } from "./components/EvolutionBanner.tsx";
 import { OnboardingHint } from "./components/OnboardingHint.tsx";
+import { WelcomeBackPanel } from "./components/WelcomeBackPanel.tsx";
 
 /** Root game screen wiring the state hook to the UI panels. */
 export function App() {
@@ -226,6 +227,34 @@ export function App() {
     triggerCareFx("pet", game.pet);
   }, [triggerCareFx, game.pet, game.petsRemaining]);
 
+  // One-tap recommended care from the welcome-back panel (issue #40). Derive
+  // the single most useful action from the shared recommendation helper and run
+  // the existing (tested) care action: feed/clean, or wake via the sleep toggle
+  // when the monster is asleep. Then dismiss the panel so it does not re-show
+  // this session. 'none' only dismisses (the panel hides the button for 'none').
+  const handleWelcomeBackAction = useCallback(() => {
+    if (game.monster === null) {
+      game.dismissWelcomeBack();
+      return;
+    }
+    const recommendation = recommendCareFromMonster(game.monster);
+    switch (recommendation) {
+      case "feed":
+        void game.feed();
+        break;
+      case "clean":
+        void game.clean();
+        break;
+      case "wake":
+        // sleep() is a toggle: it wakes the monster when it is asleep.
+        void game.sleep();
+        break;
+      default:
+        break;
+    }
+    game.dismissWelcomeBack();
+  }, [game.monster, game.feed, game.clean, game.sleep, game.dismissWelcomeBack]);
+
   const handleSpriteKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
       if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
@@ -334,6 +363,15 @@ export function App() {
       {zukanOpen && <ZukanModal zukan={readZukan()} onClose={closeZukan} />}
 
       <EvolutionBanner stageId={game.justEvolvedTo} onDismiss={game.dismissEvolution} />
+
+      {game.welcomeBack !== null && game.monster !== null && (
+        <WelcomeBackPanel
+          summary={game.welcomeBack}
+          recommendation={recommendCareFromMonster(game.monster)}
+          onRecommendedAction={handleWelcomeBackAction}
+          onClose={game.dismissWelcomeBack}
+        />
+      )}
 
       {game.error !== null && <p className="app-error" role="alert">{game.error}</p>}
 

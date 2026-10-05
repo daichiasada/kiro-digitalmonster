@@ -1376,6 +1376,80 @@ body {
   }
 }
 
+/* --- welcome-back / おかえり summary (issue #40) --- */
+.welcome-back {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(120, 180, 255, 0.08);
+  border: 1px solid rgba(120, 180, 255, 0.28);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  color: var(--text, #e8e8ea);
+}
+
+.welcome-back-icon {
+  font-size: 1.3rem;
+  line-height: 1.4;
+}
+
+.welcome-back-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.welcome-back-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.welcome-back-elapsed {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted, #a7a7ad);
+}
+
+.welcome-back-changes {
+  margin: 2px 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.welcome-back-action {
+  margin-top: 6px;
+  align-self: flex-start;
+  background: var(--accent, #4f8cff);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.welcome-back-close {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--muted, #a7a7ad);
+  font-size: 1.2rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .welcome-back {
+    animation: hint-fade-in 0.3s ease;
+  }
+}
+
 .app-footer {
   text-align: center;
   margin-top: 24px;

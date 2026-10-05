@@ -16,6 +16,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
+  AbsenceSummary,
   BattleResult,
   ChatResponse,
   Difficulty,
@@ -23,6 +24,7 @@ import type {
   Monster,
 } from "@ddm/shared";
 import {
+  ABSENCE_SUMMARY_THRESHOLD_MS,
   applyTimePassage,
   clean as cleanLogic,
   createMonster,
@@ -37,6 +39,7 @@ import {
   normalizeMonsterName,
   pet as petLogic,
   sleep as sleepLogic,
+  summarizeAbsence,
   train as trainLogic,
   wake as wakeLogic,
 } from "@ddm/shared";
@@ -121,6 +124,23 @@ export interface UseMonsterState {
   dismissNeedsName: () => void;
   /** Normalize + validate a new name, commit it optimistically, and persist. */
   rename: (name: string) => Promise<void>;
+  /**
+   * The "while you were away" summary (issue #40), computed ONCE at mount by
+   * diffing the loaded (pre-advance) monster against the advanced
+   * (post-advance) one, and only when the real absence
+   * (now - loaded.lastUpdatedAt) is at least {@link ABSENCE_SUMMARY_THRESHOLD_MS}.
+   * `null` when the gap was too short, the monster was freshly hatched, or the
+   * panel has been dismissed this session. The 15s TIME_TICK interval never
+   * sets this, so later ticks can never re-open the panel.
+   */
+  welcomeBack: AbsenceSummary | null;
+  /**
+   * Dismiss the welcome-back summary for THIS session (sets {@link welcomeBack}
+   * to null). It does not reappear until the next qualifying load/return, since
+   * the summary is only ever recomputed in the mount effect ("閉じるとその回は
+   * 再表示しない").
+   */
+  dismissWelcomeBack: () => void;
 }
 
 /**
@@ -192,6 +212,10 @@ export function useMonster(): UseMonsterState {
   const [chatLog, setChatLog] = useState<ChatLine[]>([]);
   const [chatPending, setChatPending] = useState(false);
   const [needsName, setNeedsName] = useState(false);
+  // "While you were away" summary (issue #40). Session/hook state only: set
+  // ONCE in the mount effect from the loaded-vs-advanced diff, cleared by
+  // dismissWelcomeBack. Never touched by the 15s TIME_TICK interval.
+  const [welcomeBack, setWelcomeBack] = useState<AbsenceSummary | null>(null);
   // Pets remaining today under the per-day cap. Initialized from localStorage
   // so the limit persists across reloads; recomputed after each pet.
   const [petsRemaining, setPetsRemaining] = useState<number>(() =>
@@ -254,6 +278,16 @@ export function useMonster(): UseMonsterState {
         if (hatchedFresh) {
           setNeedsName(true);
         }
+        // Welcome-back summary (issue #40): compute the REAL absence from the
+        // loaded monster's lastUpdatedAt (its last-visit time) and only build
+        // the summary when the player has been away at least the threshold.
+        // Skip a freshly hatched monster — a brand-new egg has no absence. This
+        // is the ONLY place welcomeBack is set; the 15s TIME_TICK interval must
+        // never recompute it (see that effect).
+        const absenceMs = Math.max(0, now - loaded.lastUpdatedAt);
+        if (!hatchedFresh && absenceMs >= ABSENCE_SUMMARY_THRESHOLD_MS) {
+          setWelcomeBack(summarizeAbsence(loaded, advanced));
+        }
         prevStageRef.current = advanced.stageId;
         monsterRef.current = advanced;
         setMonster(advanced);
@@ -282,6 +316,9 @@ export function useMonster(): UseMonsterState {
   }, []);
 
   // Live time passage ticking (hunger / dirtiness / evolution over time).
+  // NOTE (issue #40): this interval intentionally NEVER touches `welcomeBack`.
+  // The welcome-back summary is mount-only (the loaded-vs-advanced gap captured
+  // above), so these later ticks can never set or re-open the panel.
   useEffect(() => {
     const timer = setInterval(() => {
       const current = monsterRef.current;
@@ -466,6 +503,11 @@ export function useMonster(): UseMonsterState {
 
   const dismissNeedsName = useCallback(() => setNeedsName(false), []);
 
+  // Close the welcome-back panel for this session. Because the summary is only
+  // ever recomputed in the mount effect, clearing it here means it will not
+  // reappear this mount (閉じるとその回は再表示しない).
+  const dismissWelcomeBack = useCallback(() => setWelcomeBack(null), []);
+
   /**
    * Rename the current monster. Normalizes + validates the input with the
    * shared helpers (invalid input is ignored defensively), commits the new
@@ -579,5 +621,7 @@ export function useMonster(): UseMonsterState {
     needsName,
     dismissNeedsName,
     rename,
+    welcomeBack,
+    dismissWelcomeBack,
   };
 }

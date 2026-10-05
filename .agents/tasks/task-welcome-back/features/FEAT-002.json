@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Frontend welcome-back / おかえり summary UI (issue #40). Capture the loaded (pre-advance) monster and the advanced (post-advance) monster at the SAME point as the mount advance in useMonster.ts, build an AbsenceSummary via the shared summarizeAbsence, and expose it from the hook ONLY when the absence (now - lastUpdatedAt at load) >= ABSENCE_SUMMARY_THRESHOLD_MS. Render an accessible, keyboard-dismissible WelcomeBack panel in JA/EN that lists the elapsed time and the changes, with a one-tap recommended-action button that runs the single most useful care action. Dismiss closes it for THIS session (component/hook state) and it does not reappear until the next qualifying return. Must NOT be triggered by the 15s TIME_TICK interval advances. Depends on FEAT-001.",
-  "status": "pending",
+  "status": "completed",
   "steps": [
     "In packages/frontend/src/state/useMonster.ts mount effect: BEFORE calling advance(), you already have `loaded` (the monster from the backend, pre-advance) and `now`. After computing `advanced = advance(loaded, now)`, compute the gap `absenceMs = Math.max(0, now - loaded.lastUpdatedAt)` using the LOADED monster's lastUpdatedAt (the real last-visit time), and only when absenceMs >= ABSENCE_SUMMARY_THRESHOLD_MS build `summarizeAbsence(loaded, advanced)` and store it in new state `welcomeBack: AbsenceSummary | null`. Do NOT compute/show it for a freshly hatched monster (hatchedFresh === true -> leave welcomeBack null, since a brand-new egg has no absence). Import summarizeAbsence + ABSENCE_SUMMARY_THRESHOLD_MS + recommendCareFromMonster from @ddm/shared.",
     "CRITICAL double-count guard: the welcome-back summary is computed ONLY in the mount effect, from the loaded-vs-advanced pair. The 15s TIME_TICK setInterval effect must NOT set or recompute welcomeBack (leave it entirely out of that interval). Add a code comment there noting welcome-back is mount-only so later ticks never re-open it.",
@@ -29,5 +29,5 @@
     "npm test -w @ddm/frontend  (frontend; 0 fail, pass count > 107)"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Implemented the welcome-back panel as an UNOBTRUSIVE OnboardingHint-style strip (role=status + focusable close button, no focus trap) since it is informational, not blocking. welcomeBack summary is set ONLY in the mount effect (absenceMs = now - loaded.lastUpdatedAt, >= ABSENCE_SUMMARY_THRESHOLD_MS, skipped for hatchedFresh); the 15s TIME_TICK interval was left untouched with an explicit comment. One-tap care is derived in App via recommendCareFromMonster(game.monster) and wired to the existing tested game.feed/clean/sleep(wake toggle) actions, then dismissWelcomeBack(). Added pure helpers formatDuration/formatDurationJa (hours+minutes) and recommendLabelKey to ui-helpers.ts with tests in game-ui.test.ts. Added welcome.* i18n keys in BOTH ja+en; existing keys unchanged. Entrance animation gated behind @media (prefers-reduced-motion: no-preference). Verification: npm run build passes; shared 140 pass / 0 fail; frontend 112 pass / 0 fail (baseline 107, +5 new tests)."
 }

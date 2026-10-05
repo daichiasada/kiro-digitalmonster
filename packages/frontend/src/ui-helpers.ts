@@ -7,6 +7,7 @@
 import type {
   BattleRecord,
   BattleWinner,
+  CareRecommendation,
   Difficulty,
   EvolutionProgress,
   GrowthStage,
@@ -24,7 +25,7 @@ import {
 } from "@ddm/shared";
 import type { Zukan } from "@ddm/shared";
 import { t } from "./i18n.ts";
-import type { Lang } from "./i18n.ts";
+import type { Lang, MessageKey } from "./i18n.ts";
 
 /** Japanese display label per growth stage. */
 const STAGE_LABELS_JA: Record<GrowthStage, string> = {
@@ -342,6 +343,72 @@ export function formatMinutes(ms: number, lang: Lang): string {
     return "0 min";
   }
   return `${Math.floor(ms / 60000)} min`;
+}
+
+/**
+ * Format a duration in milliseconds as an hours+minutes Japanese string, e.g.
+ * `7_500_000` -> `"2時間5分"`, `150000` -> `"2分"`, `0` -> `"0分"`. Rounds DOWN
+ * to whole minutes (Math.floor). The hours segment is omitted when there are
+ * fewer than 60 minutes, so a short absence reads the same as
+ * {@link formatMinutesJa}. Non-finite or negative input is guarded to `"0分"`.
+ *
+ * This exists (vs reusing {@link formatMinutes}) because an absence can span
+ * hours and "125分" is harder to read than "2時間5分".
+ */
+export function formatDurationJa(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) {
+    return "0分";
+  }
+  const totalMinutes = Math.floor(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0) {
+    return `${minutes}分`;
+  }
+  return `${hours}時間${minutes}分`;
+}
+
+/**
+ * Language-aware hours+minutes duration string. `lang==='ja'` is byte-identical
+ * to {@link formatDurationJa}; `lang==='en'` returns e.g. `"2h 5m"`, `"5m"`, or
+ * `"0m"` (hours segment omitted below one hour). Rounds DOWN; non-finite or
+ * negative input is guarded to the zero-minute form.
+ */
+export function formatDuration(ms: number, lang: Lang): string {
+  if (lang !== "en") {
+    return formatDurationJa(ms);
+  }
+  if (!Number.isFinite(ms) || ms < 0) {
+    return "0m";
+  }
+  const totalMinutes = Math.floor(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0) {
+    return `${minutes}m`;
+  }
+  return `${hours}h ${minutes}m`;
+}
+
+/**
+ * Map a {@link CareRecommendation} to the i18n key for its one-tap welcome-back
+ * button label. `"feed"`/`"clean"`/`"wake"` map to the matching
+ * `welcome.recommend*` key; `"none"` has no button so it maps to `null` and the
+ * caller omits the button. Pure and React/DOM-free so it is unit-testable.
+ */
+export function recommendLabelKey(
+  recommendation: CareRecommendation,
+): MessageKey | null {
+  switch (recommendation) {
+    case "feed":
+      return "welcome.recommendFeed";
+    case "clean":
+      return "welcome.recommendClean";
+    case "wake":
+      return "welcome.recommendWake";
+    default:
+      return null;
+  }
 }
 
 /**
