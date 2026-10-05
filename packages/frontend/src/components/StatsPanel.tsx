@@ -1,9 +1,11 @@
 import type { Monster } from "@ddm/shared";
-import { evolutionProgress } from "@ddm/shared";
+import { MAX_HUNGRY_LEVEL, evolutionProgress } from "@ddm/shared";
 import { useI18n } from "../i18n.ts";
 import {
   formatMinutes,
+  fullnessPercent,
   hpPercent,
+  isHungerCaution,
   moodLabel,
   statBarPercent,
   stageLabel,
@@ -22,6 +24,8 @@ export function StatsPanel({ monster }: StatsPanelProps) {
   const { lang, t } = useI18n();
   const { stats } = monster;
   const hp = hpPercent(stats.hp, stats.maxHp);
+  const fullness = fullnessPercent(monster.hungryLevel);
+  const hungerCaution = isHungerCaution(monster.hungryLevel);
   const atk = statBarPercent(stats.atk, ATK_REFERENCE);
   const def = statBarPercent(stats.def, DEF_REFERENCE);
 
@@ -43,6 +47,24 @@ export function StatsPanel({ monster }: StatsPanelProps) {
         </div>
         <span className="stat-value">
           {stats.hp}/{stats.maxHp}
+        </span>
+      </div>
+
+      <div
+        className="stat-row"
+        aria-label={
+          hungerCaution ? `${t("stats.fullness")}: ${t("badge.hungry")}` : undefined
+        }
+      >
+        <span className="stat-label">{t("stats.fullness")}</span>
+        <div className="bar">
+          <div
+            className={`bar-fill fullness${hungerCaution ? " caution" : ""}`}
+            style={{ width: `${fullness}%` }}
+          />
+        </div>
+        <span className="stat-value">
+          {fullness}% ({monster.hungryLevel}/{MAX_HUNGRY_LEVEL})
         </span>
       </div>
 

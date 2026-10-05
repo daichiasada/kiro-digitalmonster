@@ -4,8 +4,21 @@ import { STAGES, evolveStage, getStage } from "./stages.ts";
 /** One in-game "tick" of time passage, in milliseconds. */
 const TICK_MS = 60 * 1000;
 
-/** Upper bound on hungryLevel so it does not grow without limit. */
-const MAX_HUNGRY_LEVEL = 10;
+/**
+ * Upper bound on hungryLevel so it does not grow without limit.
+ *
+ * Single source of truth for the hunger cap. Exported so the frontend fullness
+ * gauge reuses this value rather than hardcoding a second copy (issue #29).
+ */
+export const MAX_HUNGRY_LEVEL = 10;
+
+/**
+ * hungryLevel at/above which the UI should show a caution cue (caution color,
+ * aria-label) on the hunger gauge and badge. Chosen to match the existing
+ * moodLabel 'とてもお腹がすいている' / 'Very hungry' boundary of >=7. This is a
+ * UI-only threshold and does not affect game logic (issue #29).
+ */
+export const HUNGRY_CAUTION_LEVEL = 7;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));

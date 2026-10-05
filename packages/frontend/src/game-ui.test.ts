@@ -21,7 +21,9 @@ import {
   careEffect,
   formatMinutes,
   formatMinutesJa,
+  fullnessPercent,
   hpPercent,
+  isHungerCaution,
   latestMonsterReply,
   moodLabel,
   moodLabelJa,
@@ -34,6 +36,7 @@ import {
   winnerLabelJa,
 } from "./ui-helpers.ts";
 import type { CareAction } from "./ui-helpers.ts";
+import { HUNGRY_CAUTION_LEVEL, MAX_HUNGRY_LEVEL } from "@ddm/shared";
 import { DEFAULT_LANG, MESSAGES, t } from "./i18n.ts";
 import type { Lang, MessageKey } from "./i18n.ts";
 
@@ -73,12 +76,15 @@ test("statBarPercent scales against a reference and clamps", () => {
   assert.equal(statBarPercent(10, 0), 0);
 });
 
+// The mood helpers are now HP-aware (issue #29): the signature requires a
+// `stats: { hp, maxHp }` field. Full HP (20/20) is used here so the low-HP
+// branch never fires and these previously-asserted outcomes are preserved.
 test("moodLabelJa reflects the monster state in priority order", () => {
-  assert.equal(moodLabelJa({ isSleeping: true, dirty: true, hungryLevel: 9 }), "すやすや睡眠中");
-  assert.equal(moodLabelJa({ isSleeping: false, dirty: true, hungryLevel: 9 }), "よごれている");
-  assert.equal(moodLabelJa({ isSleeping: false, dirty: false, hungryLevel: 8 }), "とてもお腹がすいている");
-  assert.equal(moodLabelJa({ isSleeping: false, dirty: false, hungryLevel: 4 }), "お腹がすいてきた");
-  assert.equal(moodLabelJa({ isSleeping: false, dirty: false, hungryLevel: 0 }), "ごきげん");
+  assert.equal(moodLabelJa({ isSleeping: true, dirty: true, hungryLevel: 9, stats: { hp: 20, maxHp: 20 } }), "すやすや睡眠中");
+  assert.equal(moodLabelJa({ isSleeping: false, dirty: true, hungryLevel: 9, stats: { hp: 20, maxHp: 20 } }), "よごれている");
+  assert.equal(moodLabelJa({ isSleeping: false, dirty: false, hungryLevel: 8, stats: { hp: 20, maxHp: 20 } }), "とてもお腹がすいている");
+  assert.equal(moodLabelJa({ isSleeping: false, dirty: false, hungryLevel: 4, stats: { hp: 20, maxHp: 20 } }), "お腹がすいてきた");
+  assert.equal(moodLabelJa({ isSleeping: false, dirty: false, hungryLevel: 0, stats: { hp: 20, maxHp: 20 } }), "ごきげん");
 });
 
 test("winnerLabelJa maps each winner to a Japanese headline", () => {
@@ -308,12 +314,20 @@ test("battleLogJa localizes a full log", () => {
 
 // --- i18n / language-aware helpers ----------------------------------------
 
-const SAMPLE_MONSTERS: ReadonlyArray<{ isSleeping: boolean; dirty: boolean; hungryLevel: number }> = [
-  { isSleeping: true, dirty: true, hungryLevel: 9 },
-  { isSleeping: false, dirty: true, hungryLevel: 9 },
-  { isSleeping: false, dirty: false, hungryLevel: 8 },
-  { isSleeping: false, dirty: false, hungryLevel: 4 },
-  { isSleeping: false, dirty: false, hungryLevel: 0 },
+// Mood is HP-aware since issue #29, so each sample carries a `stats` block.
+// Full HP (20/20) keeps the low-HP branch from firing, preserving the existing
+// asserted mood outcomes below.
+const SAMPLE_MONSTERS: ReadonlyArray<{
+  isSleeping: boolean;
+  dirty: boolean;
+  hungryLevel: number;
+  stats: { hp: number; maxHp: number };
+}> = [
+  { isSleeping: true, dirty: true, hungryLevel: 9, stats: { hp: 20, maxHp: 20 } },
+  { isSleeping: false, dirty: true, hungryLevel: 9, stats: { hp: 20, maxHp: 20 } },
+  { isSleeping: false, dirty: false, hungryLevel: 8, stats: { hp: 20, maxHp: 20 } },
+  { isSleeping: false, dirty: false, hungryLevel: 4, stats: { hp: 20, maxHp: 20 } },
+  { isSleeping: false, dirty: false, hungryLevel: 0, stats: { hp: 20, maxHp: 20 } },
 ];
 
 const SAMPLE_LOG = [
@@ -395,6 +409,59 @@ test("moodLabel('en') maps the same priority order to English", () => {
   assert.equal(moodLabel(SAMPLE_MONSTERS[2], "en"), "Very hungry");
   assert.equal(moodLabel(SAMPLE_MONSTERS[3], "en"), "Getting hungry");
   assert.equal(moodLabel(SAMPLE_MONSTERS[4], "en"), "Happy");
+});
+
+test("moodLabel surfaces the low-HP mood when HP is low (issue #29)", () => {
+  // Not sleeping, not dirty, modest hunger, but HP at 20% (< 30% threshold):
+  // the monster reads as unwell rather than merely hungry.
+  const lowHp = { isSleeping: false, dirty: false, hungryLevel: 4, stats: { hp: 4, maxHp: 20 } };
+  assert.equal(moodLabelJa(lowHp), "元気がない");
+  assert.equal(moodLabel(lowHp, "ja"), "元気がない");
+  assert.equal(moodLabel(lowHp, "en"), "Low energy");
+});
+
+test("mood priority is sleeping > dirty > low-HP > hunger", () => {
+  const lowHp = { hp: 1, maxHp: 20 }; // ~5% -> below the low-HP threshold
+  // Sleeping wins over everything, even dirty + low HP + starving.
+  assert.equal(
+    moodLabelJa({ isSleeping: true, dirty: true, hungryLevel: 10, stats: lowHp }),
+    "すやすや睡眠中",
+  );
+  // Dirty wins over low HP + hunger when awake.
+  assert.equal(
+    moodLabelJa({ isSleeping: false, dirty: true, hungryLevel: 10, stats: lowHp }),
+    "よごれている",
+  );
+  // Low HP wins over hunger when awake and clean.
+  assert.equal(
+    moodLabelJa({ isSleeping: false, dirty: false, hungryLevel: 10, stats: lowHp }),
+    "元気がない",
+  );
+  // With healthy HP the same hunger shows the hunger mood instead.
+  assert.equal(
+    moodLabelJa({ isSleeping: false, dirty: false, hungryLevel: 10, stats: { hp: 20, maxHp: 20 } }),
+    "とてもお腹がすいている",
+  );
+});
+
+test("fullnessPercent maps hungryLevel to a fullness percentage", () => {
+  assert.equal(fullnessPercent(0), 100); // full
+  assert.equal(fullnessPercent(MAX_HUNGRY_LEVEL), 0); // starving
+  assert.equal(fullnessPercent(5), 50); // mid (MAX=10)
+  assert.equal(fullnessPercent(MAX_HUNGRY_LEVEL + 5), 0); // clamps above MAX
+  assert.equal(fullnessPercent(-3), 100); // clamps below 0
+});
+
+test("fullnessPercent guards non-finite input to 0", () => {
+  assert.equal(fullnessPercent(Number.NaN), 0);
+  assert.equal(fullnessPercent(Number.POSITIVE_INFINITY), 0);
+});
+
+test("isHungerCaution is true at/above the caution threshold and false below", () => {
+  assert.equal(isHungerCaution(HUNGRY_CAUTION_LEVEL), true);
+  assert.equal(isHungerCaution(HUNGRY_CAUTION_LEVEL + 1), true);
+  assert.equal(isHungerCaution(HUNGRY_CAUTION_LEVEL - 1), false);
+  assert.equal(isHungerCaution(0), false);
 });
 
 test("babySpeechText returns the correct canned reply per language", () => {

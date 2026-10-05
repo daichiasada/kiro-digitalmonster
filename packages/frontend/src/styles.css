@@ -263,6 +263,38 @@ body {
   left: 18px;
 }
 
+/* Hunger caution badge. Positioned at the bottom-right corner so it never
+   overlaps the top .zzz (right) / .dirt (left) badges. The caution state is
+   signalled by the 🍖 icon + aria-label/title (set in markup) AND a warm
+   caution tint — never color alone. */
+.sprite-wrap .hunger-badge {
+  position: absolute;
+  bottom: 14px;
+  right: 18px;
+  font-size: 1.6rem;
+}
+
+.sprite-wrap .hunger-badge.caution {
+  filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.9));
+  animation: hunger-badge-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes hunger-badge-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sprite-wrap .hunger-badge.caution {
+    animation: none;
+  }
+}
+
 /* --- speech bubble (latest monster reply, near the sprite) --- */
 /* Anchored above the sprite inside the relatively-positioned .sprite-wrap so
    it reads as coming from the monster. Palette matches the monster chat
@@ -563,6 +595,18 @@ body {
 
 .bar-fill.def {
   background: linear-gradient(90deg, #8fd3f4, #3b82f6);
+}
+
+/* Fullness gauge: amber-to-green while well-fed. When hunger reaches the
+   caution threshold the fill switches to a warning orange/red. The caution
+   state is never conveyed by color alone: the hunger badge (icon + aria-label)
+   and the row aria-label accompany it. */
+.bar-fill.fullness {
+  background: linear-gradient(90deg, #fcd34d, #84cc16);
+}
+
+.bar-fill.fullness.caution {
+  background: linear-gradient(90deg, #f97316, #ef4444);
 }
 
 .stat-value {

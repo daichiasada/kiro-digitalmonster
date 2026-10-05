@@ -1,0 +1,14 @@
+{
+  "task_id": "task-care-needs-indicators",
+  "task_description": "GitHub issue #29: visualize the monster's care needs. Add a hunger/fullness gauge to StatsPanel (hungryLevel 0..10, full->hungry), enhance sprite-adjacent state badges (hunger NEW, dirty 💢, sleeping 💤) with a caution color near threshold that is not color-only (icon + accessible label), refactor mood derivation into an HP-aware pure function in ui-helpers.ts with unit tests, source the hunger cap/threshold from shared, and provide JA/EN parity for all new strings. Frontend-only (plus exporting the existing MAX_HUNGRY_LEVEL const from shared); no backend/infra. Branch feat/care-needs-indicators; commit locally only (orchestrator pushes/opens PR/redeploys).",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "Root `npm run build` green; shared `npm test` 47/47; frontend `npm test` 55/55 (baseline 50 + 5 new). Reviewed the new/updated tests against the diff: low-HP mood tests cross the documented 30% hpPercent threshold and would fail if the branch were removed; priority-ordering tests assert sleeping>dirty>low-HP>hunger with distinct inputs; fullnessPercent/isHungerCaution tests cover boundaries, clamping, and non-finite guards and import MAX_HUNGRY_LEVEL/HUNGRY_CAUTION_LEVEL from @ddm/shared rather than hardcoding. Existing moodLabel tests were intentionally updated for the HP-aware signature with an explanatory comment. No Dockerfile relevant to this frontend-only change, so docker_build skipped."
+  }
+}
