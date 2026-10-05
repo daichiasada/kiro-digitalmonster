@@ -6,8 +6,13 @@ import {
   clean,
   createMonster,
   feed,
+  isValidMonsterName,
+  MONSTER_NAME_MAX_LENGTH,
+  MONSTER_NAME_MIN_LENGTH,
+  normalizeMonsterName,
   sleep,
   train,
+  validateMonster,
   wake,
 } from "../game.ts";
 import type { Monster } from "../types.ts";
@@ -92,4 +97,52 @@ test("time passage never produces negative elapsed effects for past 'now'", () =
   const m = baseBaby();
   const same = applyTimePassage(m, T0 - 5000); // now before lastUpdated
   assert.equal(same.hungryLevel, 0);
+});
+
+test("name length constants reflect the issue #36 1..12 bound", () => {
+  assert.equal(MONSTER_NAME_MIN_LENGTH, 1);
+  assert.equal(MONSTER_NAME_MAX_LENGTH, 12);
+});
+
+test("normalizeMonsterName trims leading and trailing whitespace", () => {
+  assert.equal(normalizeMonsterName("  でじたん  "), "でじたん");
+  assert.equal(normalizeMonsterName("\tHero\n"), "Hero");
+  assert.equal(normalizeMonsterName("A"), "A");
+});
+
+test("isValidMonsterName accepts valid 1..12 names (code-point counted)", () => {
+  assert.equal(isValidMonsterName("でじたん"), true, "default JA name is valid");
+  assert.equal(isValidMonsterName("A"), true, "single char is valid");
+  assert.equal(isValidMonsterName("  トリム  "), true, "trims before measuring");
+  assert.equal(isValidMonsterName("あいうえおかきくけこさし"), true, "12 JA code points");
+  assert.equal(isValidMonsterName("A".repeat(12)), true, "12 ASCII chars");
+});
+
+test("isValidMonsterName rejects empty, whitespace-only, too-long and non-strings", () => {
+  assert.equal(isValidMonsterName(""), false, "empty");
+  assert.equal(isValidMonsterName("   "), false, "whitespace only");
+  assert.equal(isValidMonsterName("あいうえおかきくけこさしす"), false, "13 JA code points");
+  assert.equal(isValidMonsterName("A".repeat(13)), false, "13 ASCII chars");
+  assert.equal(isValidMonsterName(null), false, "null");
+  assert.equal(isValidMonsterName(42), false, "number");
+  assert.equal(isValidMonsterName(undefined), false, "undefined");
+});
+
+test("validateMonster enforces the name rule", () => {
+  assert.equal(
+    validateMonster(createMonster("m-1", "でじたん", T0)),
+    true,
+    "default-named monster validates",
+  );
+  assert.equal(validateMonster({ ...baseBaby(), name: "" }), false, "empty name");
+  assert.equal(
+    validateMonster({ ...baseBaby(), name: "   " }),
+    false,
+    "whitespace-only name",
+  );
+  assert.equal(
+    validateMonster({ ...baseBaby(), name: "A".repeat(13) }),
+    false,
+    "name over 12 chars",
+  );
 });

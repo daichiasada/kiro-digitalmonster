@@ -20,6 +20,50 @@ export const MAX_HUNGRY_LEVEL = 10;
  */
 export const HUNGRY_CAUTION_LEVEL = 7;
 
+/**
+ * Upper bound on a monster's display name length, in Unicode code points.
+ *
+ * Issue #36 asks for a "1〜12文字程度" bound on the name the player chooses.
+ * This is the single source of truth shared by the frontend naming/rename
+ * dialog and the server-side `validateMonster` guard so the cap cannot be
+ * bypassed by a crafted save.
+ */
+export const MONSTER_NAME_MAX_LENGTH = 12;
+
+/** Lower bound on a monster's display name length (issue #36: at least 1 char). */
+export const MONSTER_NAME_MIN_LENGTH = 1;
+
+/**
+ * Trim leading/trailing whitespace from a candidate monster name.
+ *
+ * Pure helper (no I/O, no mutation). Used by the naming/rename UI before
+ * persisting and by `isValidMonsterName` so validation and the stored value
+ * agree on what "the name" is.
+ */
+export function normalizeMonsterName(name: string): string {
+  return name.trim();
+}
+
+/**
+ * Return true iff `name` is a usable monster name per issue #36:
+ * a string whose trimmed, whitespace-stripped length is within
+ * [MONSTER_NAME_MIN_LENGTH, MONSTER_NAME_MAX_LENGTH] code points
+ * (so a whitespace-only name is rejected).
+ *
+ * Length is counted with `Array.from(trimmed).length` (code points) rather
+ * than `String.prototype.length` (UTF-16 code units) so multi-byte Japanese
+ * characters each count as one, matching the "1〜12文字程度" intent (the
+ * default name 'でじたん' is 4 code points -> valid).
+ */
+export function isValidMonsterName(name: unknown): boolean {
+  if (typeof name !== "string") {
+    return false;
+  }
+  const trimmed = normalizeMonsterName(name);
+  const length = Array.from(trimmed).length;
+  return length >= MONSTER_NAME_MIN_LENGTH && length <= MONSTER_NAME_MAX_LENGTH;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -195,6 +239,11 @@ export function clean(monster: Monster, now: number = Date.now()): Monster {
  * NOTE: saves are client-authoritative by design (there is no auth; the
  * browser owns the monsterId and the full payload). This predicate only
  * guards structural integrity, not anti-tamper.
+ *
+ * The `name` field must additionally satisfy `isValidMonsterName` (issue #36):
+ * a non-whitespace-only string of 1..MONSTER_NAME_MAX_LENGTH code points, so a
+ * name that is empty, whitespace-only, or over the length cap is rejected
+ * server-side before it can be persisted.
  */
 export function validateMonster(value: unknown): value is Monster {
   if (typeof value !== "object" || value === null) {
@@ -207,7 +256,7 @@ export function validateMonster(value: unknown): value is Monster {
   const okTop =
     typeof m.id === "string" &&
     m.id !== "" &&
-    typeof m.name === "string" &&
+    isValidMonsterName(m.name) &&
     asGrowthStage(m.stageId) !== undefined &&
     typeof m.trainingCount === "number" &&
     Number.isFinite(m.trainingCount) &&
