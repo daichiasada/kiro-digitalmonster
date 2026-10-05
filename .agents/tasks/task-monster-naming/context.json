@@ -1,0 +1,27 @@
+{
+  "project_type": "Monorepo (npm workspaces) monster-raising game 'AIモンスター育成'. packages/shared (@ddm/shared pure TS game logic), packages/backend (@ddm/backend AWS Lambda handlers), packages/frontend (@ddm/frontend React + Vite, JA/EN i18n), infra (CDK).",
+  "language": "TypeScript",
+  "build_system": "npm workspaces. Root `npm run build` builds shared -> backend -> frontend -> infra via tsc/vite. Node v22.23.3 at /opt/toolchains/.nvm/versions/node/v22.23.3/bin (may need: export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\").",
+  "test_framework": "node:test with --experimental-strip-types (no external test deps, DOM/React kept out of test files).",
+  "build_command": "npm run build (from repo root)",
+  "test_command": "npm test (shared, baseline 47) AND npm test -w @ddm/frontend (frontend ui-helpers/i18n suite, baseline 62)",
+  "verification_instructions": "1) export PATH for node. 2) npm run build must succeed (tsc typecheck across all workspaces + vite build). 3) npm test shows shared >=47 incl new validation tests. 4) npm test -w @ddm/frontend shows >=62. 5) Confirm createMonster('m','でじたん',T0) still validateMonster()->true (existing default name of 4 chars must pass).",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"; from repo root run `npm run build` once to confirm baseline green. Dependencies already installed (node_modules present).",
+  "environment_constraints": "Network OPEN_INTERNET. Cannot push or open PRs (orchestrator does that). No new runtime dependencies allowed. There is an unrelated 1-line uncommitted change to package-lock.json already in the working tree at session start; do NOT revert it and do NOT include it in feature commits (leave it alone / it belongs to orchestrator). Do not touch backup/previous-main branches.",
+  "contribution_requirements": "i18n: packages/frontend/src/i18n.ts has JA_MESSAGES as source of truth; MessageKey is derived; EN_MESSAGES is typed Record<MessageKey,string> so EVERY new key MUST have BOTH ja and en entries or the build fails. Keep JA output byte-identical for existing keys. Respect prefers-reduced-motion for dialog animation. Mirror the accessible #20/#32 reset-confirm dialog pattern (role=alertdialog, aria-modal, focus input on open, Escape cancels, focus restore on close, simple focus trap).",
+  "key_patterns": "Shared game logic is pure (no I/O, returns new objects). validateMonster is a pure predicate used server-side in saveMonster.ts before putMonster (DynamoDB) - tightening it enforces the cap on save. Frontend state owned by useMonster.ts hook: mount flow does api.getMonster; on 404 (null) it hatches via createMonster(id, DEFAULT_MONSTER_NAME='でじたん', now) and api.saveMonster. monster.name flows to StatsPanel header (h2), BattlePanel playerName, SpeechBubble, and chat (api.chat monsterName). Dialog state pattern lives in App.tsx (confirmingReset + focus refs + handleResetDialogKeyDown).",
+  "relevant_files": [
+    "packages/shared/src/game.ts (validateMonster ~line 185-245; add isValidMonsterName/normalizeMonsterName pure helpers + length rule in validateMonster)",
+    "packages/shared/src/index.ts (re-exports game.ts; new helpers auto-exported)",
+    "packages/shared/src/__tests__/game.test.ts (test pattern to mirror for new validation tests)",
+    "packages/backend/src/handlers/saveMonster.ts (calls validateMonster; no change needed but verify cap enforced)",
+    "packages/frontend/src/state/useMonster.ts (DEFAULT_MONSTER_NAME line 45; mount hatch flow; add rename + first-run-name-needed signal + persist)",
+    "packages/frontend/src/App.tsx (reset-confirm dialog pattern to mirror; wire name dialog + rename control)",
+    "packages/frontend/src/components/StatsPanel.tsx (header h2 shows monster.name; add rename affordance)",
+    "packages/frontend/src/i18n.ts (add JA+EN keys for dialog title/label/placeholder/save/cancel/skip/validation + rename button)",
+    "packages/frontend/src/styles.css (reset-confirm styles ~line 142; prefers-reduced-motion blocks exist; add name-dialog + rename-btn styles)",
+    "packages/frontend/src/game-ui.test.ts (frontend test pattern; add tests for any pure name helper usage/i18n parity if applicable)"
+  ],
+  "directory_structure": "packages/shared/src/{game,battle,stages,types,bedrock-models}.ts + __tests__/. packages/backend/src/handlers/{saveMonster,getMonster,chat,battle}.ts. packages/frontend/src/{App.tsx,i18n.ts,api.ts,styles.css,ui-helpers.ts}, components/, state/useMonster.ts, assets/."
+}

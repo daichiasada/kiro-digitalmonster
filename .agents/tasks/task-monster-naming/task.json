@@ -1,0 +1,14 @@
+{
+  "task_id": "task-monster-naming",
+  "task_description": "Implement GitHub issue #36: let players name their monster. Add a tested shared name-validation helper and enforce a trimmed-length 1..12 bound in validateMonster (so the backend saveMonster Lambda rejects bad names). Add a first-run name-entry dialog shown right after a brand-new monster is hatched and a rename affordance from the StatsPanel header, both accessible (mirroring the #20/#32 reset-confirm pattern), validating via the shared helper and persisting via api.saveMonster. The name must reach chat (monsterName), battle log (playerName), speech bubble, and StatsPanel header. JA/EN parity for all new strings; no new runtime deps; respect prefers-reduced-motion.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "npm run build succeeds across all workspaces (tsc + vite). Shared tests 52/52 (baseline 47 + 5 new name-validation tests). Frontend tests 63/63 (baseline 62 + 1 i18n-parity test). New shared tests exercise the real isValidMonsterName/normalizeMonsterName/validateMonster logic with boundary cases (12 vs 13 code points, whitespace-only, non-strings) and would fail if the length rule were reverted. validateMonster now calls isValidMonsterName so the 1..12 cap is enforced server-side. No Dockerfile build applicable to this change."
+  }
+}

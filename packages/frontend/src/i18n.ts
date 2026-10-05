@@ -111,6 +111,18 @@ const JA_MESSAGES = {
   "aria.stats": "ステータス",
   "aria.battle": "バトル",
   "aria.chat": "会話",
+
+  // Monster naming (issue #36)
+  "name.firstRunTitle": "名前をつけよう",
+  "name.renameTitle": "名前を変更",
+  "name.label": "なまえ",
+  "name.placeholder": "なまえを入力（1〜12文字）",
+  "name.save": "決定",
+  "name.skip": "スキップ",
+  "name.cancel": "キャンセル",
+  "name.validation": "1〜12文字で入力してください（空白のみは不可）",
+  "name.renameButton": "名前を変更",
+  "name.renameButtonAria": "名前を変更",
 } as const;
 
 /** The set of valid message keys, derived from the JA dictionary. */
@@ -205,6 +217,18 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   "aria.stats": "Stats",
   "aria.battle": "Battle",
   "aria.chat": "Chat",
+
+  // Monster naming (issue #36)
+  "name.firstRunTitle": "Name your monster",
+  "name.renameTitle": "Rename",
+  "name.label": "Name",
+  "name.placeholder": "Enter a name (1-12 chars)",
+  "name.save": "Save",
+  "name.skip": "Skip",
+  "name.cancel": "Cancel",
+  "name.validation": "Please enter 1-12 characters (not blank).",
+  "name.renameButton": "Rename",
+  "name.renameButtonAria": "Rename monster",
 };
 
 /**

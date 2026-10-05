@@ -1223,3 +1223,175 @@ body {
     animation: none;
   }
 }
+
+/* --- monster naming dialog (issue #36) --- */
+.panel-head-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rename-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.rename-btn:hover {
+  background: #2a3d66;
+  color: var(--text);
+}
+
+.rename-btn:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.name-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.name-dialog-box {
+  width: 100%;
+  max-width: 360px;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  animation: name-dialog-in 0.2s ease-out;
+}
+
+@keyframes name-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.name-dialog-title {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+.name-dialog-label {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.name-dialog-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+}
+
+.name-dialog-input:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.name-dialog-input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.name-dialog-error {
+  margin: 8px 0 0;
+  color: #ffd4d4;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.name-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.name-dialog-save {
+  appearance: none;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #30240a;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.name-dialog-save:hover:not(:disabled) {
+  background: #ffd978;
+}
+
+.name-dialog-save:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.name-dialog-save:focus-visible,
+.name-dialog-cancel:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.name-dialog-cancel {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.name-dialog-cancel:hover {
+  background: #2a3d66;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .name-dialog-box {
+    animation: none;
+  }
+}

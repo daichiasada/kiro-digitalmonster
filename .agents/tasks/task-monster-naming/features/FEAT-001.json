@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Add tested pure name-validation helpers in @ddm/shared and enforce a trimmed-length 1..12 bound inside validateMonster so a bad name cannot be persisted server-side. This is the shared-logic foundation that both the backend saveMonster handler and the frontend dialog build on. Independent of the frontend UI work in FEAT-002 except that FEAT-002 imports these helpers.",
+  "status": "completed",
+  "steps": [
+    "Confirm baseline green first: export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"; from repo root run `npm run build`, `npm test` (expect 47 pass), `npm test -w @ddm/frontend` (expect 62 pass).",
+    "In packages/shared/src/game.ts add exported constants and pure helpers near the top-of-file constants (e.g. after MAX_HUNGRY_LEVEL / HUNGRY_CAUTION_LEVEL): export const MONSTER_NAME_MAX_LENGTH = 12; export const MONSTER_NAME_MIN_LENGTH = 1;",
+    "Add `export function normalizeMonsterName(name: string): string` that trims leading/trailing whitespace and returns the trimmed string. Pure, no I/O.",
+    "Add `export function isValidMonsterName(name: unknown): boolean` returning true iff name is a string whose normalized (trimmed) length is within [MONSTER_NAME_MIN_LENGTH, MONSTER_NAME_MAX_LENGTH] and is not whitespace-only. Use Array.from(trimmed).length (code-point count) rather than .length so multi-byte JA characters count as expected; document this choice in a JSDoc comment and note the '1〜12文字程度' bound from issue #36. (Note: existing default 'でじたん' is 4 code points -> valid.)",
+    "Tighten validateMonster in game.ts: replace the current `typeof m.name === \"string\"` check in the okTop block with a call to isValidMonsterName(m.name) so the length/trim/whitespace rule is enforced structurally. Keep validateMonster a pure predicate returning a boolean type guard; do not throw. Update the JSDoc on validateMonster to mention the name-length rule.",
+    "Add unit tests in packages/shared/src/__tests__/game.test.ts (append; mirror existing test(...) style with node:test + assert/strict). Cover: normalizeMonsterName trims both ends; isValidMonsterName accepts 'でじたん' and 'A' and a 12-char name; rejects '' , '   ' (whitespace only), a 13-char name, and non-string inputs (null/number); validateMonster returns false for a monster whose name is '' or whitespace-only or >12 chars, and true for a monster created via createMonster('m-1','でじたん',T0). Reuse the baseBaby() helper where helpful (createMonster default name 'テストモン' is 5 chars -> still valid).",
+    "Verify no other shared consumer breaks: createMonster still accepts any string (it does not validate); the rename/first-run UI (FEAT-002) is responsible for only passing valid names. Do not change createMonster's signature."
+  ],
+  "acceptance_criteria": [
+    "normalizeMonsterName, isValidMonsterName, MONSTER_NAME_MAX_LENGTH, MONSTER_NAME_MIN_LENGTH are exported from @ddm/shared (via game.ts re-exported by index.ts).",
+    "validateMonster returns false when name is empty, whitespace-only, or longer than 12 code points; returns true for 'でじたん' and other 1..12 names.",
+    "`npm test` passes with new tests included and total >= 47 (strictly greater, since tests are added).",
+    "`npm run build` succeeds (tsc typechecks shared + backend which imports validateMonster)."
+  ],
+  "verification": [
+    "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"; from repo root run `npm run build` and confirm success.",
+    "Run `npm test` and confirm all shared tests pass and the count increased from 47.",
+    "Confirm a test asserts validateMonster(createMonster('m-1','でじたん',T0)) === true."
+  ],
+  "blocked_reason": null,
+  "findings": "Added MONSTER_NAME_MAX_LENGTH=12 / MONSTER_NAME_MIN_LENGTH=1 constants and pure helpers normalizeMonsterName (trim) and isValidMonsterName (code-point count via Array.from, rejects non-string/empty/whitespace-only/>12) to packages/shared/src/game.ts. Tightened validateMonster's okTop to use isValidMonsterName(m.name) instead of the plain string check; updated its JSDoc. createMonster signature/behavior unchanged. Added 5 tests to game.test.ts covering trim, valid ('でじたん','A',12 ascii/JA), rejects ('', whitespace, 13, null/number/undefined), and validateMonster true/false cases including validateMonster(createMonster('m-1','でじたん',T0))===true. Verified: npm run build OK; shared tests 47 -> 52 pass; frontend tests 62 pass. Left the unrelated package-lock.json change untouched."
+}

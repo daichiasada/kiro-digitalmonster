@@ -17,6 +17,7 @@ import {
 } from "./ui-helpers.ts";
 import { MonsterSprite } from "./assets/monsters/MonsterSprite.tsx";
 import { StatsPanel } from "./components/StatsPanel.tsx";
+import { NameDialog } from "./components/NameDialog.tsx";
 import { CarePanel } from "./components/CarePanel.tsx";
 import { BattlePanel } from "./components/BattlePanel.tsx";
 import { ChatPanel } from "./components/ChatPanel.tsx";
@@ -100,6 +101,45 @@ export function App() {
     },
     [closeResetConfirm],
   );
+
+  // Name dialog (issue #36): the first-run variant auto-opens right after a
+  // fresh hatch (game.needsName), while the rename variant is opened from the
+  // StatsPanel header affordance. Both render the same accessible NameDialog.
+  const [nameDialog, setNameDialog] = useState<null | { mode: "firstRun" | "rename" }>(null);
+  const renameTriggerRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-open the first-run dialog once the hook signals a fresh hatch. Guard
+  // on `nameDialog === null` so we only open it once.
+  useEffect(() => {
+    if (game.needsName && nameDialog === null) {
+      setNameDialog({ mode: "firstRun" });
+    }
+  }, [game.needsName, nameDialog]);
+
+  const closeNameDialog = useCallback(() => {
+    const wasRename = nameDialog?.mode === "rename";
+    setNameDialog(null);
+    // First-run skip/close keeps the default name but must clear the hook's
+    // signal so the dialog does not immediately re-open.
+    game.dismissNeedsName();
+    // Restore focus to the opener. The rename trigger lives in StatsPanel; the
+    // first-run dialog has no persistent opener so focus is left to the browser.
+    if (wasRename) {
+      renameTriggerRef.current?.focus();
+    }
+  }, [nameDialog, game.dismissNeedsName]);
+
+  const handleNameSubmit = useCallback(
+    (name: string) => {
+      void game.rename(name);
+      closeNameDialog();
+    },
+    [game.rename, closeNameDialog],
+  );
+
+  const openRenameDialog = useCallback(() => {
+    setNameDialog({ mode: "rename" });
+  }, []);
 
   // First-run onboarding hint. Lazy initializer reads localStorage once;
   // dismissing persists the "ddm.onboarded" flag so it never shows again.
@@ -227,6 +267,20 @@ export function App() {
         </div>
       )}
 
+      {nameDialog !== null && game.monster !== null && (
+        <NameDialog
+          title={
+            nameDialog.mode === "firstRun"
+              ? t("name.firstRunTitle")
+              : t("name.renameTitle")
+          }
+          initialName={nameDialog.mode === "rename" ? game.monster.name : ""}
+          mode={nameDialog.mode}
+          onSubmit={handleNameSubmit}
+          onClose={closeNameDialog}
+        />
+      )}
+
       <EvolutionBanner stageId={game.justEvolvedTo} onDismiss={game.dismissEvolution} />
 
       {game.error !== null && <p className="app-error" role="alert">{game.error}</p>}
@@ -304,7 +358,11 @@ export function App() {
           </div>
 
           <div className="controls-area">
-            <StatsPanel monster={game.monster} />
+            <StatsPanel
+              monster={game.monster}
+              onRename={openRenameDialog}
+              renameButtonRef={renameTriggerRef}
+            />
             <CarePanel
               monster={game.monster}
               busy={game.busy}

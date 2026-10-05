@@ -481,6 +481,29 @@ test("MESSAGES.ja and MESSAGES.en have identical key sets", () => {
   assert.deepEqual(jaKeys, enKeys);
 });
 
+test("monster naming (issue #36) keys have non-empty ja and en entries", () => {
+  const nameKeys: MessageKey[] = [
+    "name.firstRunTitle",
+    "name.renameTitle",
+    "name.label",
+    "name.placeholder",
+    "name.save",
+    "name.skip",
+    "name.cancel",
+    "name.validation",
+    "name.renameButton",
+    "name.renameButtonAria",
+  ];
+  for (const key of nameKeys) {
+    const ja = MESSAGES.ja[key];
+    const en = MESSAGES.en[key];
+    assert.equal(typeof ja, "string", `${key} ja missing`);
+    assert.equal(typeof en, "string", `${key} en missing`);
+    assert.ok(ja.length > 0, `${key} ja empty`);
+    assert.ok(en.length > 0, `${key} en empty`);
+  }
+});
+
 test("chat.disabledHint has no stray leading/trailing whitespace in either language", () => {
   // The JA value must match the original inline literal byte-for-byte (the
   // JSX source stripped surrounding whitespace), so no leading space is allowed.
