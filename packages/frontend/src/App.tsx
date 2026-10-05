@@ -5,6 +5,7 @@ import {
   babySpeechText,
   canChat,
   careEffect,
+  isHungerCaution,
   latestMonsterReply,
   playerStartHpFromLog,
   type CareAction,
@@ -174,8 +175,26 @@ export function App() {
                 text={canChat(game.monster.stageId) ? latestMonsterReply(game.chatLog) : babySpeechText(lang)}
                 pending={canChat(game.monster.stageId) ? game.chatPending : false}
               />
-              {game.monster.isSleeping && <span className="zzz" aria-hidden="true">💤</span>}
-              {game.monster.dirty && <span className="dirt" aria-hidden="true">💢</span>}
+              {game.monster.isSleeping && (
+                <span className="zzz" role="img" aria-label={t("badge.sleeping")} title={t("badge.sleeping")}>
+                  💤
+                </span>
+              )}
+              {game.monster.dirty && (
+                <span className="dirt" role="img" aria-label={t("badge.dirty")} title={t("badge.dirty")}>
+                  💢
+                </span>
+              )}
+              {isHungerCaution(game.monster.hungryLevel) && (
+                <span
+                  className="hunger-badge caution"
+                  role="img"
+                  aria-label={t("badge.hungry")}
+                  title={t("badge.hungry")}
+                >
+                  🍖
+                </span>
+              )}
               {careFx !== null && (
                 <span
                   key={careFx.key}

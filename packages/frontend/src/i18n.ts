@@ -47,9 +47,15 @@ const JA_MESSAGES = {
   // Stats panel
   "stats.mood": "きぶん: ",
   "stats.hp": "HP",
+  "stats.fullness": "満腹度",
   "stats.atk": "攻撃",
   "stats.def": "防御",
   "stats.trainingCount": "トレーニング回数: ",
+
+  // Sprite-adjacent state badges (also used as accessible labels)
+  "badge.hungry": "お腹がすいている",
+  "badge.dirty": "よごれている",
+  "badge.sleeping": "睡眠中",
   "stats.evolveTitle": "進化条件",
   "stats.finalStage": "最終段階（{stage}）",
   "stats.nextStage": "次の段階: ",
@@ -121,9 +127,15 @@ const EN_MESSAGES: Record<MessageKey, string> = {
   // Stats panel
   "stats.mood": "Mood: ",
   "stats.hp": "HP",
+  "stats.fullness": "Fullness",
   "stats.atk": "ATK",
   "stats.def": "DEF",
   "stats.trainingCount": "Training count: ",
+
+  // Sprite-adjacent state badges (also used as accessible labels)
+  "badge.hungry": "Hungry",
+  "badge.dirty": "Dirty",
+  "badge.sleeping": "Sleeping",
   "stats.evolveTitle": "Evolution",
   "stats.finalStage": "Final stage ({stage})",
   "stats.nextStage": "Next stage: ",
