@@ -1,0 +1,30 @@
+{
+  "project_type": "Monorepo (npm workspaces): @ddm/shared (TS pure logic, node:test), @ddm/backend (Lambda), @ddm/frontend (React + Vite + TS), infra (AWS CDK; S3 + CloudFront with OAC, BucketDeployment of packages/frontend/dist + a generated config.json at bucket root).",
+  "language": "TypeScript",
+  "build_system": "npm workspaces. Root `npm run build` builds shared -> backend -> frontend (tsc && vite build -> packages/frontend/dist) -> infra. Node/npm may need `export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"`.",
+  "test_framework": "node:test with --experimental-strip-types. Shared: packages/shared/src/__tests__/*.ts. Frontend: single pure, DOM/React-free file packages/frontend/src/game-ui.test.ts (imports from ui-helpers.ts). No DOM/React allowed in tests.",
+  "build_command": "npm run build (root). Frontend only: npm run build -w @ddm/frontend",
+  "test_command": "npm test (shared, baseline 152) AND npm test -w @ddm/frontend (baseline 135)",
+  "verification_instructions": "1) export PATH for node v22. 2) `npm run build` must succeed (tsc + vite build). 3) `npm test` passes (shared, >=152). 4) `npm test -w @ddm/frontend` passes (frontend, >=135, with new hunger-projection tests). 5) Confirm packages/frontend/dist contains manifest.webmanifest, sw.js, and icon(s) after build (static public assets are copied verbatim).",
+  "snapshot_or_generated_files": "None checked in. vite build emits packages/frontend/dist (gitignored). Files under packages/frontend/public/ are copied verbatim to dist root by Vite.",
+  "setup_instructions": "export PATH=\"/opt/toolchains/.nvm/versions/node/v22.23.3/bin:$PATH\"; npm ci already done (node_modules present). No extra deps may be added.",
+  "environment_constraints": "Network OPEN_INTERNET. Cannot push or open PRs (orchestrator does that). Do NOT add any runtime dependency (no vite-plugin-pwa, no workbox). SW + manifest are hand-rolled static files in packages/frontend/public/. Notification/serviceWorker APIs are browser-only and cannot run under node:test, so only the PURE projection math gets unit-tested; the SW itself and permission wiring are feature-detected/guarded, not unit-tested.",
+  "contribution_requirements": "JA is source-of-truth and must stay BYTE-IDENTICAL for existing i18n keys and existing settings JSON keys. Every new user-facing string needs BOTH ja + en in i18n.ts (EN typed Record<MessageKey,string>, compile-enforced). parseSettings must stay backward-compatible (new notificationsEnabled defaults false). Branch feat/pwa-notifications off main, well-separated commits, do NOT touch backup/previous-main branches.",
+  "key_patterns": "Pure helpers live in packages/frontend/src/ui-helpers.ts and are unit-tested in game-ui.test.ts (mirror fullnessPercent/isHungerCaution/dayStamp style with Number.isFinite guards). Settings persisted as single JSON blob under `ddm.settings` via parseSettings/readSettings/writeSettings + DEFAULT_SETTINGS; App.tsx holds settings state (useState(readSettings)) and persists via updateSettings->writeSettings; SettingsPanel.tsx renders controls and calls onChange({...settings, field}). i18n keys use dotted names (e.g. settings.sfx); settings.* block exists. Hunger: shared game.ts TICK_MS=60_000, MAX_HUNGRY_LEVEL=10, HUNGRY_CAUTION_LEVEL=7; applyTimePassage raises hungryLevel by floor(elapsed/TICK_MS) while awake & not capped. config.ts already fetches config.json with cache:'no-store'. CloudFront uses CACHING_OPTIMIZED; BucketDeployment invalidates /* on each deploy.",
+  "relevant_files": [
+    "packages/frontend/index.html (add manifest link, theme-color meta already present, apple-touch-icon)",
+    "packages/frontend/public/ (NEW dir: manifest.webmanifest, sw.js, icon.svg/png)",
+    "packages/frontend/src/ui-helpers.ts (extend Settings + DEFAULT_SETTINGS + parseSettings with notificationsEnabled; add pure hunger-projection helper)",
+    "packages/frontend/src/components/SettingsPanel.tsx (add notifications toggle row)",
+    "packages/frontend/src/App.tsx (wire notifications: gesture-gated permission request, schedule local notification from projection, SW registration prod-only/feature-detected)",
+    "packages/frontend/src/state/useMonster.ts (source of monster.hungryLevel + lastUpdatedAt + isSleeping used for projection)",
+    "packages/frontend/src/i18n.ts (add settings.notifications + notification copy keys, ja+en)",
+    "packages/frontend/src/main.tsx (candidate place to register SW; prefer App effect, feature-detected/prod-only)",
+    "packages/frontend/src/config.ts (config.json fetch; already cache:no-store; SW must NOT cache config.json)",
+    "packages/frontend/src/game-ui.test.ts (add unit tests for the projection helper + extended parseSettings)",
+    "packages/frontend/vite.config.ts (base './'; public/ copied verbatim; NO plugin changes)",
+    "infra/lib/digital-monster-stack.ts (CloudFront CACHING_OPTIMIZED + /* invalidation; reference only, not modified)",
+    "README.md + README.ja.md (document PWA/manifest/SW caching strategy + notifications)"
+  ],
+  "directory_structure": "packages/shared/src (game.ts constants + logic, __tests__/), packages/backend/src, packages/frontend/{index.html, vite.config.ts, src/{App.tsx, main.tsx, i18n.ts, ui-helpers.ts, config.ts, components/, state/, game-ui.test.ts}}, infra/lib (CDK stack). No packages/frontend/public yet."
+}

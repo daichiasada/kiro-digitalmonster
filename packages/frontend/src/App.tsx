@@ -40,6 +40,29 @@ export function App() {
   const game = useMonster();
   const { lang, t } = useI18n();
 
+  // PWA service worker registration (issue #44). PRODUCTION-ONLY and
+  // feature-detected so local `vite dev` is never affected (no SW caching to
+  // confuse HMR). Registered on window 'load' to avoid competing with initial
+  // page work, with a relative 'sw.js' path (resolved against BASE_URL) so it
+  // works under CloudFront where base is "./". Any failure is a silent no-op:
+  // the game works fine without a SW, so registration must never throw into the
+  // UI (graceful degradation).
+  useEffect(() => {
+    if (!(import.meta.env.PROD && "serviceWorker" in navigator)) {
+      return;
+    }
+    const register = () => {
+      try {
+        const swUrl = new URL("sw.js", import.meta.env.BASE_URL ?? "/").toString();
+        void navigator.serviceWorker.register(swUrl).catch(() => {});
+      } catch {
+        // Silent no-op: a missing/blocked SW must not break the app.
+      }
+    };
+    window.addEventListener("load", register);
+    return () => window.removeEventListener("load", register);
+  }, []);
+
   // Transient "last care action" signal used to drive a short, non-blocking
   // overlay animation over the sprite. The counter forces React to remount the
   // overlay so repeating the SAME action re-fires its animation.

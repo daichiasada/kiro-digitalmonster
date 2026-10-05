@@ -1,0 +1,7 @@
+{
+  "task_id": "task-pwa-notifications",
+  "task_description": "Issue #44: Make the AI Monster game installable (PWA: hand-rolled web app manifest + service worker, zero new deps) with a CloudFront-correct cache strategy that never strands users on stale HTML or a stale config.json/API URL, and add opt-in LOCAL browser notifications that fire when hunger is projected to reach the caution level. Permission is requested only from a user gesture (settings toggle, default OFF); the game works normally when notifications are off/denied/unsupported. New settings key notificationsEnabled is backward-compatible. Pure hunger-projection math is unit-tested. JA/EN parity throughout.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
