@@ -625,6 +625,15 @@ export interface ChatContext {
    * reads this together with `affectionBand` to pick the reply tone.
    */
   affection: number;
+  /**
+   * The monster's evolution form (issue #38), taken from the loaded server
+   * record via `formOf` when present, else defaulted to `FORM_DEFAULT`
+   * ("base") because client chat requests do not carry form. The chat handler
+   * reads this to append a per-variant tone line to the system prompt. "base"
+   * (and legacy no-form saves, which `formOf` maps to "base") appends nothing,
+   * keeping the neutral prompt byte-identical to pre-#38.
+   */
+  form: MonsterForm;
 }
 
 /**
@@ -646,6 +655,7 @@ export function chooseChatContext(
       name: loaded.name,
       fromServer: true,
       affection: affectionOf(loaded),
+      form: formOf(loaded),
     };
   }
   const stageId = asGrowthStage(request.stageId) ?? "baby";
@@ -653,7 +663,7 @@ export function chooseChatContext(
     typeof request.monsterName === "string" && request.monsterName.trim() !== ""
       ? request.monsterName
       : "モンスター";
-  return { stageId, name, fromServer: false, affection: AFFECTION_INITIAL };
+  return { stageId, name, fromServer: false, affection: AFFECTION_INITIAL, form: FORM_DEFAULT };
 }
 
 /** Fraction of maxHp a fainted monster is revived to, so it is never stranded. */

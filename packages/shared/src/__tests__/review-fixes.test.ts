@@ -56,12 +56,14 @@ test("chooseChatContext trusts the loaded record when it exists", () => {
     ...baseBaby(),
     name: "本物",
     stageId: "champion",
+    form: "attack",
   };
   // Client tries to spoof a higher stage / different name.
   const ctx = chooseChatContext(loaded, { stageId: "ultimate", monsterName: "偽物" });
   assert.equal(ctx.stageId, "champion", "cannot spoof a higher stage");
   assert.equal(ctx.name, "本物");
   assert.equal(ctx.fromServer, true);
+  assert.equal(ctx.form, "attack", "form comes from the loaded record (issue #38)");
 });
 
 test("chooseChatContext falls back to client fields when record is missing", () => {
@@ -69,6 +71,15 @@ test("chooseChatContext falls back to client fields when record is missing", () 
   assert.equal(ctx.stageId, "rookie");
   assert.equal(ctx.name, "でじたん");
   assert.equal(ctx.fromServer, false);
+  assert.equal(ctx.form, "base", "client fallback has no form, defaults to base");
+});
+
+test("chooseChatContext maps a legacy no-form record to base (issue #38)", () => {
+  const legacy = baseBaby();
+  // Legacy saves predate #38 and carry no `form` field.
+  delete (legacy as { form?: unknown }).form;
+  const ctx = chooseChatContext(legacy as Monster, { stageId: "baby", monsterName: "" });
+  assert.equal(ctx.form, "base", "formOf defaults a missing form to base");
 });
 
 test("chooseChatContext defaults an unknown client stage to baby", () => {

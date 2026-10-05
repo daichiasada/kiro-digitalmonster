@@ -68,6 +68,22 @@ function buildSystemPrompt(context: ChatContext, lang: Lang): string {
         "You are not very attached to this owner yet, so speak in a slightly distant, reserved tone.",
       );
     }
+    // Evolution form drives an extra tone layer (issue #38). "base" (and legacy
+    // no-form saves, which formOf maps to "base") appends NOTHING so the EN
+    // prompt stays byte-identical to pre-#38.
+    if (context.form === "attack") {
+      lines.push(
+        "You evolved into an attack type, so speak in a brave, competitive, energetic fighter's tone.",
+      );
+    } else if (context.form === "defense") {
+      lines.push(
+        "You evolved into a defense type, so speak in a calm, gentle, protective tone.",
+      );
+    } else if (context.form === "mischief") {
+      lines.push(
+        "You evolved into a mischief type, so speak in a cheeky, playful, rascally tone.",
+      );
+    }
     return lines.join("\n");
   }
   const lines = [
@@ -85,6 +101,22 @@ function buildSystemPrompt(context: ChatContext, lang: Lang): string {
   } else if (band === "cold") {
     lines.push(
       "まだあまり懐いていないので、よそよそしく少し距離のある口調で話してください。",
+    );
+  }
+  // 進化タイプ（issue #38）による口調の味付け。"base"（および form を持たない
+  // レガシーセーブ。formOf が "base" に正規化する）は何も追加しないので、中立の
+  // プロンプトは #38 以前とバイト単位で同一のまま。
+  if (context.form === "attack") {
+    lines.push(
+      "攻撃タイプに進化したので、勇敢で負けず嫌い、元気いっぱいの戦士のような口調で話してください。",
+    );
+  } else if (context.form === "defense") {
+    lines.push(
+      "防御タイプに進化したので、落ち着いて優しく、飼い主を守ろうとする頼もしい口調で話してください。",
+    );
+  } else if (context.form === "mischief") {
+    lines.push(
+      "やんちゃタイプに進化したので、生意気で遊び好き、いたずらっぽい口調で話してください。",
     );
   }
   return lines.join("\n");
